@@ -45,7 +45,7 @@ flowchart LR
      * Enum: `alcance_tipo_enum` (`GLOBAL`, `SUCURSAL`).
      * Constraints e Invariantes de dominio (ADR-001):
        * `CHECK ((alcance_tipo = 'GLOBAL' AND id_sucursal IS NULL) OR (alcance_tipo = 'SUCURSAL' AND id_sucursal IS NOT NULL))`
-       * Índice condicional: `UNIQUE (persona_id) WHERE (estado = 'activo')` en `asignaciones_laborales`.
+       * Índice condicional: `UNIQUE (id_persona) WHERE (estado = 'activo')` en `asignaciones_laborales`.
        * Integridad referencial con claves foráneas explícitas y políticas de eliminación (`ON DELETE CASCADE`, `ON DELETE RESTRICT`, `ON DELETE SET NULL`).
   2. Crear script de datos semilla en `supabase/seed.sql`:
      * 2 sucursales: Santa Cruz e Interdepartamental.
