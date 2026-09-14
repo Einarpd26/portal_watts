@@ -42,5 +42,3 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# actas de reuniones internas del equipo
-/actas/

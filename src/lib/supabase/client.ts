@@ -1,15 +1,14 @@
 import { createBrowserClient } from '@supabase/ssr';
 import type { Database } from '@/types/database';
 
-let supabaseBrowserClient: ReturnType<typeof createBrowserClient<Database>> | null = null;
-
 /**
- * Cliente de Supabase para el navegador (React / Client-Side)
- * Implementa el patrón Singleton para evitar múltiples conexiones en el cliente.
+ * Cliente de Supabase para el navegador (React / Client-Side).
+ * 
+ * @supabase/ssr implementa el patrón Singleton de forma nativa en el navegador
+ * (opción isSingleton: true por defecto), cacheando y reutilizando internamente
+ * la misma instancia en memoria para evitar conexiones redundantes.
  */
 export function createClient() {
-  if (supabaseBrowserClient) return supabaseBrowserClient;
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -19,20 +18,11 @@ export function createClient() {
     );
   }
 
-  supabaseBrowserClient = createBrowserClient<Database>(
-    supabaseUrl,
-    supabaseAnonKey,
-    {
-      cookieOptions: {
-        path: '/',
-        sameSite: 'lax',
-      },
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-      },
-    }
-  );
-
-  return supabaseBrowserClient;
+  return createBrowserClient<Database>(supabaseUrl, supabaseAnonKey, {
+    cookieOptions: {
+      path: '/',
+      sameSite: 'lax',
+    },
+  });
 }
+

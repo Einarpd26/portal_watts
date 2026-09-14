@@ -1,5 +1,5 @@
 import { createClient as createGenericClient } from '@supabase/supabase-js';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createServerClient, serializeCookieHeader } from '@supabase/ssr';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { GetServerSidePropsContext } from 'next';
 import type { Database } from '@/types/database';
@@ -59,22 +59,21 @@ export function createServerClientForReqRes(
         }));
       },
       setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          let cookieStr = `${name}=${encodeURIComponent(value)}; Path=${options?.path || '/'}; SameSite=${options?.sameSite || 'Lax'}`;
-          if (options?.maxAge) cookieStr += `; Max-Age=${options.maxAge}`;
-          if (options?.domain) cookieStr += `; Domain=${options.domain}`;
-          if (options?.secure) cookieStr += '; Secure';
-          if (options?.httpOnly) cookieStr += '; HttpOnly';
+        const newHeaders = cookiesToSet.map(({ name, value, options }) =>
+          serializeCookieHeader(name, value, {
+            ...options,
+            secure: options?.secure ?? process.env.NODE_ENV === 'production',
+          })
+        );
 
-          const currentCookies = res.getHeader('Set-Cookie');
-          if (!currentCookies) {
-            res.setHeader('Set-Cookie', cookieStr);
-          } else if (Array.isArray(currentCookies)) {
-            res.setHeader('Set-Cookie', [...currentCookies, cookieStr]);
-          } else {
-            res.setHeader('Set-Cookie', [String(currentCookies), cookieStr]);
-          }
-        });
+        const existing = res.getHeader('Set-Cookie');
+        const existingHeaders = Array.isArray(existing)
+          ? existing.map(String)
+          : existing != null
+            ? [String(existing)]
+            : [];
+
+        res.setHeader('Set-Cookie', [...existingHeaders, ...newHeaders]);
       },
     },
   });
