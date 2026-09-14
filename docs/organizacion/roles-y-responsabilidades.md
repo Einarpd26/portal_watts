@@ -67,7 +67,7 @@ El modelo operativo adopta una estructura ágil orientada a especialización fun
 
 ### 3.4. Desarrollador Frontend & UI/UX (Componentes y Páginas de Negocio)
 
-- **Responsable:** Mendoza Paucara Alan William
+- **Responsable:** Tiquisara Huanca Carlos Angel
 - **Objetivo del Rol:** Transformar los casos de uso transaccionales en interfaces web intuitivas, rápidas y visualmente atractivas con Next.js y Tailwind CSS.
 - **Obligaciones y Funciones:**
   1. **Construcción de Componentes Base:** Desarrollar los bloques atómicos reutilizables del sistema (botones, modales, campos de formulario, badges de estado) en `src/components/ui/`.
@@ -79,7 +79,7 @@ El modelo operativo adopta una estructura ágil orientada a especialización fun
 
 ### 3.5. Desarrollador Frontend SIG (Mapas) & Coordinador de Documentación PUDS
 
-- **Responsable:** Tiquisara Huanca Carlos Angel
+- **Responsable:** Mendoza Paucara Alan William
 - **Objetivo del Rol:** Liderar la visualización cartográfica territorial del software y custodiar la integridad académica de los entregables PUDS.
 - **Obligaciones y Funciones:**
   1. **Especialización Geoespacial (SIG):** Desarrollar la integración con Leaflet/OpenStreetMap para el renderizado de polígonos territoriales (rutas) y pines geolocalizados (clientes ABC).
