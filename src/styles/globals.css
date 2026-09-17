@@ -8,7 +8,7 @@
 
 @theme {
   /* Tipografía — variable inyectada por next/font en _app.tsx */
-  --font-sans: var(--font-dm-sans), system-ui, sans-serif;
+  --font-sans: var(--font-plus-jakarta-sans), system-ui, sans-serif;
 
   /* Primario — Rojo Watts */
   --color-primary-50: #fef2f2;
