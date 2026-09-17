@@ -143,3 +143,79 @@ ON CONFLICT DO NOTHING;
 
 -- Nota: El Distribuidor (CI: 8594012) intencionalmente NO tiene registro en usuario_roles,
 -- validando la regla de negocio de que tiene empleo activo pero no cuenta ni rol de acceso digital.
+
+-- ------------------------------------------------------------------------------
+-- 7. USUARIOS DE AUTENTICACIÓN (Supabase Auth - Credenciales para Desarrollo Local)
+-- ------------------------------------------------------------------------------
+-- Inserta credenciales en auth.users y auth.identities para los 4 roles activos.
+-- Contraseña estándar para todos: Password123!
+
+DO $$
+DECLARE
+    pwd_hash text := extensions.crypt('Password123!', extensions.gen_salt('bf'));
+    
+    u_gerencia uuid := '00000000-0000-0000-0000-000000000001';
+    u_fiscalizador uuid := '00000000-0000-0000-0000-000000000002';
+    u_supervisor uuid := '00000000-0000-0000-0000-000000000003';
+    u_vendedor uuid := '00000000-0000-0000-0000-000000000004';
+BEGIN
+    -- A. Insertar usuarios en auth.users
+    -- OJO: las columnas de tokens/cambios (confirmation_token, recovery_token,
+    -- email_change, *_token_*) deben ir con '' y NUNCA NULL: GoTrue las escanea
+    -- como string no-nulo y un NULL provoca HTTP 500
+    -- ("converting NULL to string is unsupported") al intentar iniciar sesión.
+    INSERT INTO auth.users (
+        id,
+        instance_id,
+        email,
+        encrypted_password,
+        email_confirmed_at,
+        raw_app_meta_data,
+        raw_user_meta_data,
+        aud,
+        role,
+        created_at,
+        updated_at,
+        confirmation_token,
+        recovery_token,
+        email_change_token_new,
+        email_change,
+        email_change_token_current,
+        phone_change_token,
+        phone_change,
+        reauthentication_token
+    )
+    VALUES
+        (u_gerencia, '00000000-0000-0000-0000-000000000000', 'gerencia@carameloswatts.com', pwd_hash, now(), '{"provider":"email","providers":["email"]}', '{"email_verified":true}', 'authenticated', 'authenticated', now(), now(), '', '', '', '', '', '', '', ''),
+        (u_fiscalizador, '00000000-0000-0000-0000-000000000000', 'fiscalizador.scz@carameloswatts.com', pwd_hash, now(), '{"provider":"email","providers":["email"]}', '{"email_verified":true}', 'authenticated', 'authenticated', now(), now(), '', '', '', '', '', '', '', ''),
+        (u_supervisor, '00000000-0000-0000-0000-000000000000', 'supervisor.scz@carameloswatts.com', pwd_hash, now(), '{"provider":"email","providers":["email"]}', '{"email_verified":true}', 'authenticated', 'authenticated', now(), now(), '', '', '', '', '', '', '', ''),
+        (u_vendedor, '00000000-0000-0000-0000-000000000000', 'vendedor.scz@carameloswatts.com', pwd_hash, now(), '{"provider":"email","providers":["email"]}', '{"email_verified":true}', 'authenticated', 'authenticated', now(), now(), '', '', '', '', '', '', '', '')
+    ON CONFLICT (id) DO UPDATE SET
+        encrypted_password = EXCLUDED.encrypted_password,
+        email_confirmed_at = EXCLUDED.email_confirmed_at;
+
+    -- B. Insertar identidades en auth.identities
+    INSERT INTO auth.identities (
+        id,
+        user_id,
+        identity_data,
+        provider,
+        provider_id,
+        last_sign_in_at,
+        created_at,
+        updated_at
+    )
+    VALUES
+        (gen_random_uuid(), u_gerencia, jsonb_build_object('sub', u_gerencia::text, 'email', 'gerencia@carameloswatts.com'), 'email', u_gerencia::text, now(), now(), now()),
+        (gen_random_uuid(), u_fiscalizador, jsonb_build_object('sub', u_fiscalizador::text, 'email', 'fiscalizador.scz@carameloswatts.com'), 'email', u_fiscalizador::text, now(), now(), now()),
+        (gen_random_uuid(), u_supervisor, jsonb_build_object('sub', u_supervisor::text, 'email', 'supervisor.scz@carameloswatts.com'), 'email', u_supervisor::text, now(), now(), now()),
+        (gen_random_uuid(), u_vendedor, jsonb_build_object('sub', u_vendedor::text, 'email', 'vendedor.scz@carameloswatts.com'), 'email', u_vendedor::text, now(), now(), now())
+    ON CONFLICT (provider_id, provider) DO NOTHING;
+
+    -- C. Vincular auth_user_id en la tabla public.personas
+    UPDATE public.personas SET auth_user_id = u_gerencia WHERE ci = '4892101';
+    UPDATE public.personas SET auth_user_id = u_fiscalizador WHERE ci = '5781290';
+    UPDATE public.personas SET auth_user_id = u_supervisor WHERE ci = '6394812';
+    UPDATE public.personas SET auth_user_id = u_vendedor WHERE ci = '7483921';
+END $$;
+
