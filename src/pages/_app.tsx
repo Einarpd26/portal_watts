@@ -1,7 +1,7 @@
 import "@/styles/globals.css";
-import type { AppProps } from "next/app";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DM_Sans } from "next/font/google";
+import type { AppPropsWithLayout } from "@/types";
 
 // Tipografía corporativa DM Sans (tokens-de-marca.md §3).
 // Se define en el Custom App para que toda la app consuma la variable
@@ -12,11 +12,16 @@ const dmSans = DM_Sans({
   weight: ["400", "500", "600", "700", "800"],
 });
 
-export default function App({ Component, pageProps }: AppProps) {
+export default function App({ Component, pageProps }: AppPropsWithLayout) {
+  // Layout por página (Pages Router). Las pantallas internas declaran
+  // getLayout = (page) => <AppLayout>{page}</AppLayout>; /login no declara
+  // ningún layout y se renderiza sola.
+  const getLayout = Component.getLayout ?? ((page) => page);
+
   return (
     <AuthProvider>
       <div className={`${dmSans.variable} font-sans`}>
-        <Component {...pageProps} />
+        {getLayout(<Component {...pageProps} />)}
       </div>
     </AuthProvider>
   );
