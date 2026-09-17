@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";
@@ -16,15 +17,19 @@ import {
 } from "./navItems";
 
 // ==============================================================================
-// BOCETO: App Shell (top bar global + sidebar). Patrón enterprise estándar
-// (Salesforce, SAP Fiori, AWS Console). Se filtra por permisos igual que el
-// Navbar (RBAC, ADR-001). Si no convence, se revierte al Navbar agrupado.
+// App Shell (top bar global + sidebar) con identidad de marca — Nivel 2.
+// Marca aplicada (tokens-de-marca.md):
+//   §5.1 gradiente 135deg en la franja superior del header
+//   §5.3 título, separadores y patrón de navegación
+//   §9   logo horizontal sobre fondo claro (h-8, width auto)
+//   §4   shadow-brand en el item activo
+// La textura diagonal y los orbs (§5.2) se reservan para pantallas de auth.
 // ==============================================================================
 
 const SIDEBAR_ITEM = {
-  base: "block rounded-lg px-3 py-2 text-sm transition",
-  active: "bg-red-50 font-semibold text-red-700",
-  inactive: "text-gray-700 hover:bg-gray-50",
+  base: "block rounded-btn px-3 py-2 text-sm transition",
+  active: "bg-[linear-gradient(135deg,#7f1d1d_0%,#dc2626_100%)] font-semibold text-white shadow-brand",
+  inactive: "text-gray-700 hover:bg-primary-50 hover:text-primary-700",
   disabled: "cursor-not-allowed text-gray-400",
 };
 
@@ -64,7 +69,7 @@ function SidebarLink({
 
 function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="px-3 pb-1 pt-4 text-[10px] font-bold tracking-[0.08em] text-gray-400 uppercase">
+    <p className="px-3 pb-1 pt-4 text-[10px] font-bold tracking-[0.08em] text-primary-600 uppercase">
       {children}
     </p>
   );
@@ -78,6 +83,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const permisos = user?.permisos ?? [];
   const operationItems = OPERATION_GROUP.filter((item) => hasPermission(permisos, item));
   const managementItems = MANAGEMENT_GROUP.filter((item) => hasPermission(permisos, item));
+
+  // Iniciales para el avatar de marca (ej. "EP")
+  const initials = `${user?.nombres?.[0] ?? ""}${user?.apellidos?.[0] ?? ""}`.toUpperCase();
 
   const closeSidebar = () => setIsSidebarOpen(false);
 
@@ -116,15 +124,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-100">
-      {/* Top bar global: identidad + usuario */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 md:px-6">
+    <div className="flex min-h-screen flex-col bg-gray-50">
+      {/* Top bar global: gradiente de marca (§5.1) + identidad */}
+      <header className="flex h-14 shrink-0 items-center justify-between bg-[linear-gradient(135deg,#7f1d1d_0%,#dc2626_100%)] px-4 md:px-6">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setIsSidebarOpen(true)}
             aria-label="Abrir menú"
-            className="rounded-md border border-gray-200 p-2 text-gray-600 md:hidden"
+            className="rounded-md border border-white/30 p-2 text-white md:hidden"
           >
             <svg
               width="18"
@@ -138,19 +146,40 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <path d="M4 7h16M4 12h16M4 17h16" />
             </svg>
           </button>
-          <Link href="/dashboard" className="text-xl font-extrabold tracking-tight text-primary-700">
-            Portal Watts
+
+          {/* Logo corporativo sobre chip blanco (mantiene contraste sobre el gradiente) */}
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <span className="rounded-md bg-white p-1.5">
+              <Image
+                src="/watts_logo_rojo.png"
+                alt="Caramelos Watts"
+                width={94}
+                height={28}
+                priority
+                className="h-7 w-auto"
+              />
+            </span>
+            <span aria-hidden="true" className="hidden h-5 w-px bg-white/15 sm:block" />
+            <span className="hidden text-sm font-bold tracking-tight text-white sm:block">
+              Portal Watts
+            </span>
           </Link>
         </div>
 
-        <div className="flex items-center gap-4 text-sm">
-          <span className="hidden text-gray-600 sm:inline">
+        <div className="flex items-center gap-3">
+          {user && (
+            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/30 bg-white/25 text-xs font-bold text-white">
+              {initials}
+            </div>
+          )}
+          <span className="hidden text-sm text-white/80 md:inline">
             {user?.nombres} {user?.apellidos}
           </span>
+          <span aria-hidden="true" className="hidden h-5 w-px bg-white/15 sm:block" />
           <button
             type="button"
             onClick={handleLogout}
-            className="font-semibold text-red-600 transition hover:text-red-700"
+            className="rounded-btn border border-white/25 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/10"
           >
             Cerrar sesión
           </button>
@@ -173,9 +202,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             />
             <aside className="fixed inset-y-0 left-0 z-50 flex w-60 flex-col bg-white px-3 py-4 shadow-2xl md:hidden">
               <div className="mb-4 flex items-center justify-between">
-                <span className="text-lg font-extrabold tracking-tight text-primary-700">
-                  Portal Watts
-                </span>
+                <Image
+                  src="/watts_logo_rojo.png"
+                  alt="Caramelos Watts"
+                  width={94}
+                  height={28}
+                  className="h-7 w-auto"
+                />
                 <button
                   type="button"
                   onClick={closeSidebar}
