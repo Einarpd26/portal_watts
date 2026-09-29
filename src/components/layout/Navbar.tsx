@@ -70,7 +70,7 @@ const NAV_ICONS: Record<string, ReactNode> = {
 
 // Estados de estilo por variante, según tokens-de-marca.md §5.3.
 const DESKTOP_TAB = {
-  base: "inline-flex items-center border-b-2 px-1 pb-2 text-xs font-semibold transition",
+  base: "inline-flex items-center border-b-2 px-1 pb-1.5 text-xs font-semibold transition",
   active: "border-white text-white",
   inactive: "border-transparent text-white/60 hover:text-white/90",
   disabled: "cursor-not-allowed border-transparent text-white/40",
@@ -168,17 +168,17 @@ export default function Navbar() {
   return (
     <header className="bg-[linear-gradient(135deg,#7f1d1d_0%,#dc2626_100%)]">
       {/* Fila superior: logo + identidad de usuario + cierre de sesión */}
-      <div className="flex items-center justify-between px-6 pt-4 pb-3">
+      <div className="flex items-center justify-between px-6 py-2">
         <Link href="/dashboard" className="flex items-center gap-2">
           {/* Logo corporativo sobre chip blanco (mantiene contraste sobre el gradiente) */}
-          <span className="rounded-md bg-white p-1.5">
+          <span className="rounded-md bg-white p-1">
             <Image
               src="/watts_logo_rojo.png"
               alt="Caramelos Watts"
               width={94}
               height={28}
               priority
-              className="h-7 w-auto"
+              className="h-6 w-auto"
             />
           </span>
           <span aria-hidden="true" className="hidden h-5 w-px bg-white/15 sm:block" />
@@ -189,7 +189,7 @@ export default function Navbar() {
 
         <div className="hidden items-center gap-3 lg:flex">
           {user && (
-            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/30 bg-white/25 text-xs font-bold text-white">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full border border-white/30 bg-white/25 text-xs font-bold text-white">
               {initials}
             </div>
           )}
@@ -229,7 +229,7 @@ export default function Navbar() {
 
       {/* Fila de tabs (desktop): un solo nivel agrupado por dominio,
           separador superior según tokens-de-marca §5.3 */}
-      <nav className="hidden items-center gap-4 border-t border-white/15 px-6 pt-3 lg:flex">
+      <nav className="hidden items-center gap-4 border-t border-white/15 px-6 pt-1.5 lg:flex">
         <NavLink item={DASHBOARD_TAB} styles={DESKTOP_TAB} showIcon iconSize="h-3.5 w-3.5" />
 
         {operationItems.length > 0 && (
