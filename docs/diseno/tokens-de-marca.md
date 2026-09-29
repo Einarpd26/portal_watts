@@ -10,7 +10,7 @@
 Esta guía define los tokens visuales y los contratos de componentes base que debe respetar cualquier pantalla de Portal Watts:
 
 - Paleta de colores corporativos y semánticos
-- Tipografía corporativa (DM Sans)
+- Tipografía corporativa (Plus Jakarta Sans)
 - Radios, sombras y patrones de marca (gradientes, textura, orbs)
 - Contratos visuales de los componentes atómicos: Button, Input, Card, Alert, Spinner
 - Estructura del header / navegación por rol y su variante mobile
@@ -68,27 +68,29 @@ Variables derivadas (CSS):
 
 ---
 
-## 3. Tipografía — DM Sans
+## 3. Tipografía — Plus Jakarta Sans
 
-- **Familia:** `'DM Sans', system-ui, sans-serif`
-- **Pesos:** 400, 500, 600, 700, 800
-- **Uso de pesos:** títulos `font-extrabold` (800), labels `font-semibold uppercase` (600), cuerpo `font-medium`/normal.
+> **Decisión (rama `design/tokens-de-marca`):** se reemplaza **DM Sans** por **Plus Jakarta Sans** como tipografía corporativa. Se buscaba una familia más estética y con más carácter en títulos y números, manteniendo la calma de lectura en tablas y densidades del portal. Candidatas evaluadas: Plus Jakarta Sans, Manrope, Outfit, pairing Space Grotesk + Manrope.
 
-> ⚠️ **Nota de implementación:** Portal Watts usa **Next.js 16** — preferir `next/font/google` (`DM_Sans`) en vez del `<link>` de Google Fonts para evitar layout shift y bloqueo de renderizado. En Pages Router, el patrón es idéntico al que ya usa el boilerplate con Geist: definir la fuente con `variable` y consumirla vía `@theme inline` en el CSS.
+- **Familia:** `'Plus Jakarta Sans', system-ui, sans-serif`
+- **Pesos cargados con `next/font/google`:** 400, 500, 600, 700, 800 (la variable de Google Fonts soporta 200–800).
+- **Uso de pesos:** títulos `font-extrabold` (800), labels `font-semibold uppercase` (600), cuerpo `font-medium`/normal (400/500).
+
+> ⚠️ **Nota de implementación:** Portal Watts usa **Next.js 16** — usar `next/font/google` (`Plus_Jakarta_Sans`) en vez del `<link>` de Google Fonts para evitar layout shift y bloqueo de renderizado. En Pages Router, el patrón es idéntico al del boilerplate original con Geist: definir la fuente con `variable` en el Custom App (`_app.tsx`) y consumirla vía `@theme` en el CSS.
 
 ```ts
-import { DM_Sans } from 'next/font/google';
+import { Plus_Jakarta_Sans } from 'next/font/google';
 
-const dmSans = DM_Sans({
-  variable: '--font-dm-sans',
+const plusJakartaSans = Plus_Jakarta_Sans({
+  variable: '--font-plus-jakarta-sans',
   subsets: ['latin'],
   weight: ['400', '500', '600', '700', '800'],
 });
 ```
 
 ```css
-@theme inline {
-  --font-sans: var(--font-dm-sans);
+@theme {
+  --font-sans: var(--font-plus-jakarta-sans);
 }
 ```
 
@@ -186,7 +188,7 @@ Bloque `@theme` listo para pegar en `globals.css`:
 ```css
 @theme {
   /* Fuente */
-  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
 
   /* Primario — Rojo Watts */
   --color-primary-50:  #fef2f2;
@@ -262,7 +264,7 @@ body {
 ## 10. Checklist para el Maquetado
 
 - [ ] Aplicar bloque `@theme` + fondo base en `globals.css` (quitar dark mode).
-- [ ] Cargar DM Sans con `next/font/google` y vincular `--font-sans`.
+- [ ] Cargar Plus Jakarta Sans con `next/font/google` y vincular `--font-sans`.
 - [ ] `Navbar.tsx`: header con gradiente 135deg, título, tabs por rol + drawer mobile + botón cerrar sesión.
 - [ ] `login.tsx`: AuthShell (gradiente 140deg + textura + orbs) + card + logo 120×120 + Inputs + Button `lg` con `isLoading`.
 - [ ] Usar `/watts_logo_rojo.png` y `/icon-watts.png` del directorio `public/`.

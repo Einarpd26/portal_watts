@@ -14,14 +14,14 @@ const DashboardPage: PageWithLayout = () => {
   }
 
   return (
-    <div className="mx-auto max-w-3xl rounded-lg bg-white p-6 shadow">
-      <div className="mb-6 border-b pb-4">
+    <div className="mx-auto max-w-3xl rounded-card bg-white p-6 shadow-card">
+      <div className="mb-6 border-b border-gray-200 pb-4">
         <h1 className="text-2xl font-bold text-gray-800">Panel de Control (Dashboard)</h1>
       </div>
 
       {user ? (
         <div className="space-y-4">
-          <div className="rounded border border-green-200 bg-green-50 p-4 text-green-800">
+          <div className="rounded-btn border border-green-200 bg-green-50 p-4 text-green-800">
             <p className="text-lg font-semibold">
               ¡Sesión iniciada con éxito mediante Cookies HttpOnly!
             </p>
