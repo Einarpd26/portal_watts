@@ -100,7 +100,7 @@ portal_watts/
    ```bash
    npx supabase start
    ```
-   Este comando levantará los contenedores de PostgreSQL, PostGIS, Supabase Auth y el panel de administración local (Studio en `http://127.0.0.1:54323`).
+   Este comando levantará los contenedores de PostgreSQL, PostGIS, Supabase Auth y el panel de administración local (Studio en `http://127.0.0.1:55323`).
 
 4. **Aplicar migraciones y datos semilla:**
    ```bash
