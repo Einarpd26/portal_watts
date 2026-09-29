@@ -170,20 +170,18 @@ export default function Navbar() {
       {/* Fila superior: logo + identidad de usuario + cierre de sesión */}
       <div className="flex items-center justify-between px-6 py-2">
         <Link href="/dashboard" className="flex items-center gap-2">
-          {/* Logo corporativo sobre chip blanco (mantiene contraste sobre el gradiente) */}
-          <span className="rounded-md bg-white p-1">
-            <Image
-              src="/watts_logo_rojo.png"
-              alt="Caramelos Watts"
-              width={94}
-              height={28}
-              priority
-              className="h-6 w-auto"
-            />
-          </span>
+          {/* Logo corporativo en blanco: contrasta directo sobre el gradiente, sin chip. */}
+          <Image
+            src="/watts_logo_blanco.png"
+            alt="Caramelos Watts"
+            width={94}
+            height={28}
+            priority
+            className="h-6 w-auto"
+          />
           <span aria-hidden="true" className="hidden h-5 w-px bg-white/15 sm:block" />
           <span className="hidden text-sm font-extrabold tracking-tight text-white sm:block">
-            Portal Watts
+            Portal Web
           </span>
         </Link>
 
@@ -263,17 +261,13 @@ export default function Navbar() {
           <div className="fixed inset-0 z-40 bg-black/40" onClick={closeDrawer} aria-hidden="true" />
           <aside className="fixed right-0 top-0 z-50 flex h-full w-72 flex-col bg-white shadow-2xl">
             <header className="flex items-center justify-between bg-[linear-gradient(135deg,#7f1d1d_0%,#dc2626_100%)] px-4 py-4">
-              <span className="flex items-center gap-2">
-                <span className="rounded-md bg-white p-1.5">
-                  <Image
-                    src="/watts_logo_rojo.png"
-                    alt="Caramelos Watts"
-                    width={94}
-                    height={28}
-                    className="h-7 w-auto"
-                  />
-                </span>
-              </span>
+              <Image
+                src="/watts_logo_blanco.png"
+                alt="Caramelos Watts"
+                width={94}
+                height={28}
+                className="h-7 w-auto"
+              />
               <button
                 type="button"
                 onClick={closeDrawer}

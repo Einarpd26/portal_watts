@@ -254,10 +254,11 @@ body {
 
 | Archivo (public/) | Dimensiones | Uso |
 |---|---|---|
-| `watts_logo_rojo.png` | 4250×1268 (horizontal) | Login + Navbar (con `next/image`) |
+| `watts_logo_rojo.png` | 4250×1268 (horizontal) | Login (fondo blanco de la card) |
+| `watts_logo_blanco.png` | 5041×1497 (horizontal) | Navbar — logo en blanco, directo sobre el gradiente rojo, sin chip |
 | `icon-watts.png` | 192×192 (cuadrado) | Favicon / ícono de app |
 
-> El logo horizontal se muestra a 120×120 en el login (recortado por `rounded-2xl`). Para el Navbar conviene una altura menor (ej. `h-8`/`h-10`) con `width` auto.
+> El logo horizontal se muestra a 120×120 en el login (recortado por `rounded-2xl`). Para el Navbar se usa la variante blanca a una altura menor (`h-6`/`h-7`) con `width` auto — al ser blanco no necesita el chip de fondo que sí requiere la variante roja para tener contraste.
 
 ---
 
@@ -267,4 +268,4 @@ body {
 - [ ] Cargar Plus Jakarta Sans con `next/font/google` y vincular `--font-sans`.
 - [ ] `Navbar.tsx`: header con gradiente 135deg, título, tabs por rol + drawer mobile + botón cerrar sesión.
 - [ ] `login.tsx`: AuthShell (gradiente 140deg + textura + orbs) + card + logo 120×120 + Inputs + Button `lg` con `isLoading`.
-- [ ] Usar `/watts_logo_rojo.png` y `/icon-watts.png` del directorio `public/`.
+- [ ] Usar `/watts_logo_rojo.png` (login), `/watts_logo_blanco.png` (Navbar) y `/icon-watts.png` (favicon) del directorio `public/`.
