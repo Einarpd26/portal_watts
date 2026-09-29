@@ -1,0 +1,19 @@
+{
+  "name": "Portal Watts",
+  "short_name": "Portal Watts",
+  "description": "Sistema de gestión para la planificación de rutas comerciales de Caramelos Watts.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#dc2626",
+  "icons": [
+    {
+      "src": "/icon-watts.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

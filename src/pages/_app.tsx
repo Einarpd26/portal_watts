@@ -1,4 +1,5 @@
 import "@/styles/globals.css";
+import { useEffect } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import type { AppPropsWithLayout } from "@/types";
@@ -17,6 +18,16 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
   // getLayout = (page) => <AppLayout>{page}</AppLayout>; /login no declara
   // ningún layout y se renderiza sola.
   const getLayout = Component.getLayout ?? ((page) => page);
+
+  // Registro del service worker (PWA instalable). Guardado tras el mount
+  // del cliente: navigator.serviceWorker no existe en SSR.
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch((err) => {
+        console.error("Error registrando el service worker:", err);
+      });
+    }
+  }, []);
 
   return (
     <AuthProvider>

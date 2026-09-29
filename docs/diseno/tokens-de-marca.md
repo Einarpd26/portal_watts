@@ -260,6 +260,8 @@ body {
 
 > El logo horizontal se muestra a 120×120 en el login (recortado por `rounded-2xl`). Para el Navbar se usa la variante blanca a una altura menor (`h-6`/`h-7`) con `width` auto — al ser blanco no necesita el chip de fondo que sí requiere la variante roja para tener contraste.
 
+**Deuda técnica:** `public/manifest.json` (PWA, RNF-06) usa `icon-watts.png` en 192×192 como único ícono. Falta agregar una versión en 512×512 para una pantalla de splash de mejor calidad al instalar en el celular — no bloqueante, la instalación funciona igual sin ella.
+
 ---
 
 ## 10. Checklist para el Maquetado
