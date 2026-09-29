@@ -1,6 +1,7 @@
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -13,6 +14,59 @@ import {
   type NavItem,
   hasPermission,
 } from "./navItems";
+
+// Íconos por href (rescatados de la exploración de sidebar en
+// design/tokens-de-marca). Sin width/height fijo: el tamaño lo controla el
+// <span> que envuelve al ícono en NavLink (18px en el drawer mobile, 14px en
+// los tabs de escritorio, para no desbalancear el texto compacto del tab).
+const NAV_ICONS: Record<string, ReactNode> = {
+  "/dashboard": (
+    <svg className="h-full w-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="7" height="9" rx="1.5" />
+      <rect x="14" y="3" width="7" height="5" rx="1.5" />
+      <rect x="14" y="12" width="7" height="9" rx="1.5" />
+      <rect x="3" y="16" width="7" height="5" rx="1.5" />
+    </svg>
+  ),
+  "/mapa": (
+    <svg className="h-full w-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 4 4 6v14l5-2 6 2 5-2V4l-5 2-6-2Z" />
+      <path d="M9 4v14M15 6v14" />
+    </svg>
+  ),
+  "/planificacion": (
+    <svg className="h-full w-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="5" y="3" width="14" height="18" rx="2" />
+      <path d="M9 3V1.5M15 3V1.5M9 12l2 2 4-4" />
+    </svg>
+  ),
+  "/personal": (
+    <svg className="h-full w-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+      <path d="M16 5.5a3 3 0 0 1 0 6M21 20c0-2.6-1.7-4.9-4-5.6" />
+    </svg>
+  ),
+  "/cuentas": (
+    <svg className="h-full w-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 3h16v18l-3-2-3 2-3-2-3 2-3-2V3Z" />
+      <path d="M9 9h6M9 13h6" />
+    </svg>
+  ),
+  "/territorio": (
+    <svg className="h-full w-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3Z" />
+    </svg>
+  ),
+  "/ayuda": (
+    <svg className="h-full w-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9.2a2.5 2.5 0 1 1 4 2.2c-.8.7-1.5 1.1-1.5 2.4" />
+      <path d="M12 17h.01" />
+    </svg>
+  ),
+};
 
 // Estados de estilo por variante, según tokens-de-marca.md §5.3.
 const DESKTOP_TAB = {
@@ -35,13 +89,24 @@ function NavLink({
   item,
   styles,
   onNavigate,
+  showIcon = false,
+  iconSize = "h-[18px] w-[18px]",
 }: {
   item: NavItem;
   styles: ItemStyles;
   onNavigate?: () => void;
+  showIcon?: boolean;
+  /** Clases de tamaño del ícono (Tailwind). Ajustar según la escala del tab. */
+  iconSize?: string;
 }) {
   const router = useRouter();
   const isActive = router.pathname === item.href;
+  const icon = showIcon ? NAV_ICONS[item.href] : null;
+
+  // Sin color propio: el ícono hereda currentColor del texto (state activo/
+  // inactivo/deshabilitado), así funciona igual sobre el gradiente rojo del
+  // desktop y sobre el fondo blanco del drawer mobile.
+  const iconWrapper = icon && <span className={`shrink-0 ${iconSize}`}>{icon}</span>;
 
   // Módulo sin página todavía: se muestra deshabilitado con tooltip.
   if (!item.available) {
@@ -49,8 +114,9 @@ function NavLink({
       <span
         aria-disabled="true"
         title="Próximamente"
-        className={`${styles.base} ${styles.disabled}`}
+        className={`${styles.base} ${styles.disabled} flex items-center gap-2.5`}
       >
+        {iconWrapper}
         {item.label}
       </span>
     );
@@ -61,8 +127,9 @@ function NavLink({
       href={item.href}
       onClick={onNavigate}
       aria-current={isActive ? "page" : undefined}
-      className={`${styles.base} ${isActive ? styles.active : styles.inactive}`}
+      className={`${styles.base} ${isActive ? styles.active : styles.inactive} flex items-center gap-2.5`}
     >
+      {iconWrapper}
       {item.label}
     </Link>
   );
@@ -88,6 +155,9 @@ export default function Navbar() {
 
   const closeDrawer = () => setIsDrawerOpen(false);
 
+  // Iniciales para el avatar de marca (ej. "EP").
+  const initials = `${user?.nombres?.[0] ?? ""}${user?.apellidos?.[0] ?? ""}`.toUpperCase();
+
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -97,13 +167,36 @@ export default function Navbar() {
 
   return (
     <header className="bg-[linear-gradient(135deg,#7f1d1d_0%,#dc2626_100%)]">
-      {/* Fila superior: título + cierre de sesión */}
+      {/* Fila superior: logo + identidad de usuario + cierre de sesión */}
       <div className="flex items-center justify-between px-6 pt-4 pb-3">
-        <Link href="/dashboard" className="text-xl font-extrabold tracking-tight text-white">
-          Portal Watts
+        <Link href="/dashboard" className="flex items-center gap-2">
+          {/* Logo corporativo sobre chip blanco (mantiene contraste sobre el gradiente) */}
+          <span className="rounded-md bg-white p-1.5">
+            <Image
+              src="/watts_logo_rojo.png"
+              alt="Caramelos Watts"
+              width={94}
+              height={28}
+              priority
+              className="h-7 w-auto"
+            />
+          </span>
+          <span aria-hidden="true" className="hidden h-5 w-px bg-white/15 sm:block" />
+          <span className="hidden text-sm font-extrabold tracking-tight text-white sm:block">
+            Portal Watts
+          </span>
         </Link>
 
-        <div className="hidden items-center lg:flex">
+        <div className="hidden items-center gap-3 lg:flex">
+          {user && (
+            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/30 bg-white/25 text-xs font-bold text-white">
+              {initials}
+            </div>
+          )}
+          <span className="text-sm text-white/80">
+            {user?.nombres} {user?.apellidos}
+          </span>
+          <span aria-hidden="true" className="h-5 w-px bg-white/15" />
           <button
             type="button"
             onClick={handleLogout}
@@ -137,13 +230,13 @@ export default function Navbar() {
       {/* Fila de tabs (desktop): un solo nivel agrupado por dominio,
           separador superior según tokens-de-marca §5.3 */}
       <nav className="hidden items-center gap-4 border-t border-white/15 px-6 pt-3 lg:flex">
-        <NavLink item={DASHBOARD_TAB} styles={DESKTOP_TAB} />
+        <NavLink item={DASHBOARD_TAB} styles={DESKTOP_TAB} showIcon iconSize="h-3.5 w-3.5" />
 
         {operationItems.length > 0 && (
           <>
             <GroupDivider />
             {operationItems.map((item) => (
-              <NavLink key={item.href} item={item} styles={DESKTOP_TAB} />
+              <NavLink key={item.href} item={item} styles={DESKTOP_TAB} showIcon iconSize="h-3.5 w-3.5" />
             ))}
           </>
         )}
@@ -152,14 +245,14 @@ export default function Navbar() {
           <>
             <GroupDivider />
             {managementItems.map((item) => (
-              <NavLink key={item.href} item={item} styles={DESKTOP_TAB} />
+              <NavLink key={item.href} item={item} styles={DESKTOP_TAB} showIcon iconSize="h-3.5 w-3.5" />
             ))}
           </>
         )}
 
         {/* Link de ayuda siempre visible al final del nav */}
         <div className="ml-auto">
-          <NavLink item={HELP_LINK} styles={DESKTOP_TAB} />
+          <NavLink item={HELP_LINK} styles={DESKTOP_TAB} showIcon iconSize="h-3.5 w-3.5" />
         </div>
       </nav>
 
@@ -170,8 +263,16 @@ export default function Navbar() {
           <div className="fixed inset-0 z-40 bg-black/40" onClick={closeDrawer} aria-hidden="true" />
           <aside className="fixed right-0 top-0 z-50 flex h-full w-72 flex-col bg-white shadow-2xl">
             <header className="flex items-center justify-between bg-[linear-gradient(135deg,#7f1d1d_0%,#dc2626_100%)] px-4 py-4">
-              <span className="text-xl font-extrabold tracking-tight text-white">
-                Portal Watts
+              <span className="flex items-center gap-2">
+                <span className="rounded-md bg-white p-1.5">
+                  <Image
+                    src="/watts_logo_rojo.png"
+                    alt="Caramelos Watts"
+                    width={94}
+                    height={28}
+                    className="h-7 w-auto"
+                  />
+                </span>
               </span>
               <button
                 type="button"
@@ -194,7 +295,7 @@ export default function Navbar() {
             </header>
 
             <nav className="flex-1 space-y-1 overflow-y-auto p-4">
-              <NavLink item={DASHBOARD_TAB} styles={MOBILE_ITEM} onNavigate={closeDrawer} />
+              <NavLink item={DASHBOARD_TAB} styles={MOBILE_ITEM} onNavigate={closeDrawer} showIcon />
 
               {operationItems.length > 0 && (
                 <div className="pt-3">
@@ -202,7 +303,7 @@ export default function Navbar() {
                     {OPERATION_GROUP_LABEL}
                   </p>
                   {operationItems.map((item) => (
-                    <NavLink key={item.href} item={item} styles={MOBILE_ITEM} onNavigate={closeDrawer} />
+                    <NavLink key={item.href} item={item} styles={MOBILE_ITEM} onNavigate={closeDrawer} showIcon />
                   ))}
                 </div>
               )}
@@ -213,13 +314,13 @@ export default function Navbar() {
                     {MANAGEMENT_GROUP_LABEL}
                   </p>
                   {managementItems.map((item) => (
-                    <NavLink key={item.href} item={item} styles={MOBILE_ITEM} onNavigate={closeDrawer} />
+                    <NavLink key={item.href} item={item} styles={MOBILE_ITEM} onNavigate={closeDrawer} showIcon />
                   ))}
                 </div>
               )}
 
               <div className="pt-3">
-                <NavLink item={HELP_LINK} styles={MOBILE_ITEM} onNavigate={closeDrawer} />
+                <NavLink item={HELP_LINK} styles={MOBILE_ITEM} onNavigate={closeDrawer} showIcon />
               </div>
             </nav>
 
