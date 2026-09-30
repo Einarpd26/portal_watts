@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createServerClientForReqRes } from '@/lib/supabase/server';
 import { todayBolivia } from '@/utils/boliviaTime';
+import type { AlcanceTipo, RolActivo } from '@/types';
 
 export default async function handler(
   req: NextApiRequest,
@@ -59,20 +60,37 @@ export default async function handler(
       return res.status(403).json({ error: 'Cuenta dada de baja' });
     }
 
-    // Tomamos el primer rol asignado (asumiendo 1 rol por usuario en la sesión actual)
-    const activeRole = persona.usuario_roles;
-    const rol = activeRole?.roles;
+    // Soporte multi-rol: usuario_roles puede ser array o un solo objeto según la relación
+    const rolesArray = Array.isArray(persona.usuario_roles)
+      ? persona.usuario_roles
+      : persona.usuario_roles ? [persona.usuario_roles] : [];
+
+    // Fusionar todos los permisos (sin duplicados)
+    const allPermisos = [...new Set(rolesArray.flatMap(r => r.roles?.permisos ?? []))];
+
+    // Rol primario = el primero en el array (el más recientemente asignado)
+    const primaryRole = rolesArray[0];
+
+    const roles: RolActivo[] = rolesArray.map(r => ({
+      id_rol: 0, // id_rol no está en el select actual de me.ts; se omite
+      codigo: r.roles?.codigo ?? 'SIN_ROL',
+      nombre: r.roles?.codigo ?? 'SIN_ROL',
+      permisos: r.roles?.permisos ?? [],
+      alcance_tipo: r.alcance_tipo as AlcanceTipo,
+      id_sucursal: r.id_sucursal,
+    }));
 
     const userSession = {
       id_persona: persona.id,
       ci: persona.ci,
       nombres: persona.nombres,
       apellidos: persona.apellidos,
-      email: persona.email || user.email,
-      rol_codigo: rol?.codigo || 'SIN_ROL',
-      alcance_tipo: activeRole?.alcance_tipo || 'SUCURSAL',
-      id_sucursal: activeRole?.id_sucursal || null,
-      permisos: rol?.permisos || [],
+      email: persona.email || user.email || '',
+      rol_codigo: primaryRole?.roles?.codigo ?? 'SIN_ROL',
+      alcance_tipo: (primaryRole?.alcance_tipo ?? 'SUCURSAL') as AlcanceTipo,
+      id_sucursal: primaryRole?.id_sucursal ?? null,
+      permisos: allPermisos,
+      roles,
     };
 
     // 6. Devolver la información del usuario

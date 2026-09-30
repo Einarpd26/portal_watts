@@ -49,6 +49,18 @@ export type AlcanceTipo = 'GLOBAL' | 'SUCURSAL';
 export type EstadoLaboral = 'activo' | 'inactivo';
 
 /**
+ * Entrada de rol activo (soporte multi-rol)
+ */
+export interface RolActivo {
+  id_rol: number;
+  codigo: string;
+  nombre: string;
+  permisos: string[];
+  alcance_tipo: AlcanceTipo;
+  id_sucursal: number | null;
+}
+
+/**
  * Objeto de Sesión resuelto para el usuario autenticado
  */
 export interface UserSession {
@@ -61,4 +73,36 @@ export interface UserSession {
   alcance_tipo: AlcanceTipo;
   id_sucursal: number | null;
   permisos: string[];
+  roles: RolActivo[];
+}
+
+// ------------------------------------------------------------------------------
+// Tipos de Vista — CU-02 Gestión de Accesos
+// ------------------------------------------------------------------------------
+
+/**
+ * Persona con asignación laboral activa pero sin cuenta de acceso digital
+ */
+export interface PersonaSinCuenta {
+  id: number;
+  ci: string;
+  nombres: string;
+  apellidos: string;
+  telefono: string | null;
+  cargo_nombre: string;
+  sucursal_nombre: string;
+  id_sucursal: number;
+}
+
+/**
+ * Usuario con cuenta activa e información de sus roles asignados
+ */
+export interface UsuarioActivo {
+  id_persona: number;
+  ci: string;
+  nombres: string;
+  apellidos: string;
+  auth_user_id: string;
+  email: string | null;
+  roles: RolActivo[];
 }

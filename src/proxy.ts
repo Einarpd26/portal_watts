@@ -42,9 +42,11 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isLoginPage = path === '/login';
   
-  // Por ahora, asumimos que cualquier ruta que NO sea /login, ni / (home), es privada.
-  // Ajusta esto según vayas creando más pantallas (ej. path.startsWith('/dashboard'))
-  const isProtectedRoute = path !== '/login' && path !== '/';
+  // Rutas protegidas: /admin, /dashboard, y cualquier otra que no sea /login ni /
+  const isProtectedRoute =
+    path.startsWith('/admin') ||
+    path.startsWith('/dashboard') ||
+    (path !== '/login' && path !== '/');
 
   // Regla A: No tiene cuenta e intenta entrar a zona privada -> Al Login
   if (!user && isProtectedRoute) {
