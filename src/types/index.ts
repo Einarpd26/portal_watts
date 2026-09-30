@@ -7,6 +7,10 @@ import { Database } from './database';
 // Re-exportar el tipo global de la base de datos
 export type { Database, Json } from './database';
 
+import type { ReactElement, ReactNode } from 'react';
+import type { NextPage } from 'next';
+import type { AppProps } from 'next/app';
+
 // ------------------------------------------------------------------------------
 // Tipos de Dominio — Capa 1: Identidad Organizacional y RBAC
 // ------------------------------------------------------------------------------
@@ -106,3 +110,20 @@ export interface UsuarioActivo {
   email: string | null;
   roles: RolActivo[];
 }
+
+// ------------------------------------------------------------------------------
+// Tipos de Layout Compartido (Pages Router - patrón getLayout)
+// ------------------------------------------------------------------------------
+
+/**
+ * Página que puede declarar su propio layout vía `getLayout`.
+ * Las páginas internas (dashboard, etc.) lo usan para envolverse en <AppLayout>;
+ * /login no lo declara y se renderiza sola.
+ */
+export type PageWithLayout = NextPage & {
+  getLayout?: (page: ReactElement) => ReactNode;
+};
+
+export type AppPropsWithLayout = AppProps & {
+  Component: PageWithLayout;
+};
