@@ -15,6 +15,8 @@ export type NavItem = {
   requiredPermissions: string[];
   /** false = el módulo aún no tiene página: se muestra deshabilitado ("Próximamente"), nunca cae en 404. */
   available: boolean;
+  /** Botón de acción pequeño que aparece junto al tab (ej. "Nuevo colaborador"). */
+  action?: { label: string; href: string };
 };
 
 // Tab base: home de la zona privada. Visible para todo rol autenticado.
@@ -35,7 +37,8 @@ export const OPERATION_GROUP: NavItem[] = [
 // Grupo "Gestión": administración corporativa de la sucursal.
 export const MANAGEMENT_GROUP_LABEL = "Gestión";
 export const MANAGEMENT_GROUP: NavItem[] = [
-  { label: "Personal", href: "/personal", requiredPermissions: ["personal:gestionar"], available: false },
+  { label: "Personal", href: "/admin/personal", requiredPermissions: ["personal:gestionar"], available: true, action: { label: "Nuevo colaborador", href: "/admin/personal?new=1" } },
+  { label: "Accesos", href: "/admin/usuarios", requiredPermissions: ["cuentas:gestionar"], available: true },
   { label: "Cuentas", href: "/cuentas", requiredPermissions: ["cuentas:gestionar"], available: false },
   { label: "Territorio", href: "/territorio", requiredPermissions: ["territorio:gestionar"], available: false },
 ];

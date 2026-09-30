@@ -5,11 +5,14 @@ import Navbar from "./Navbar";
 // Variante A: navbar de un solo nivel agrupado por dominio (Operación/Gestión).
 // Se monta UNA vez por sesión de navegación SPA gracias al patrón getLayout de
 // Pages Router: el navbar persiste entre páginas y solo cambia <main>.
-export default function AppLayout({ children }: { children: ReactNode }) {
+//
+// flush=true: sin padding en <main>. Usar en páginas admin que tienen su propio
+// header de gradiente full-width (admin/usuarios, admin/personal).
+export default function AppLayout({ children, flush = false }: { children: ReactNode; flush?: boolean }) {
   return (
     <div className="flex min-h-screen flex-col bg-gray-100">
       <Navbar />
-      <main className="flex-1 p-6">{children}</main>
+      <main className={`flex-1${flush ? "" : " p-6"}`}>{children}</main>
     </div>
   );
 }
