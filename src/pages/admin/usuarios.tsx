@@ -50,19 +50,16 @@ const GestionAccesosPage: PageWithLayout = () => {
   return (
     <div className="min-h-full bg-gray-50">
       {/* Page header — brand gradient */}
-      <header
-        style={{ background: 'linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%)' }}
-        className="px-6 py-5 shadow-md"
-      >
+      <header className="px-6 pt-6">
         <div className="max-w-6xl mx-auto flex items-center gap-3">
-          <div className="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-xl bg-white/10">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+          <div className="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-xl bg-primary-50">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </div>
           <div>
-            <h1 className="text-xl font-extrabold text-white tracking-tight">Gestión de Accesos</h1>
-            <p className="text-sm text-white/70 mt-0.5">Alta y revocación de cuentas de usuario</p>
+            <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">Gestión de Accesos</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Alta y revocación de cuentas de usuario</p>
           </div>
         </div>
       </header>

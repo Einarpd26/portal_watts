@@ -50,21 +50,18 @@ const GestionPersonalPage: PageWithLayout = () => {
   return (
     <div className="min-h-full bg-gray-50">
       {/* Page header — brand gradient */}
-      <header
-        style={{ background: 'linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%)' }}
-        className="px-6 py-5 shadow-md"
-      >
+      <header className="px-6 pt-6">
         <div className="mx-auto flex max-w-6xl items-center gap-3">
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white/10">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary-50">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
               <circle cx="9" cy="8" r="3" />
               <path strokeLinecap="round" d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
               <path strokeLinecap="round" d="M16 5.5a3 3 0 0 1 0 6M21 20c0-2.6-1.7-4.9-4-5.6" />
             </svg>
           </div>
           <div>
-            <h1 className="text-lg font-bold text-white">Gestión de Personal Comercial</h1>
-            <p className="text-xs text-white/60">Registro y administración de colaboradores</p>
+            <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">Gestión de Personal Comercial</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Registro y administración de colaboradores</p>
           </div>
         </div>
       </header>
