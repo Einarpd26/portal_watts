@@ -112,6 +112,28 @@ export interface UsuarioActivo {
 }
 
 // ------------------------------------------------------------------------------
+// Tipos de Vista — CU-03 Gestión de Personal Comercial
+// ------------------------------------------------------------------------------
+
+export interface PersonaConAsignacion {
+  id: number;
+  ci: string;
+  nombres: string;
+  apellidos: string;
+  telefono: string | null;
+  auth_user_id: string | null;
+  fecha_baja: string | null;
+  asignacion: {
+    id: number;
+    estado: string;
+    fecha_inicio: string;
+    cargo_nombre: string;
+    sucursal_id: number;
+    sucursal_nombre: string;
+  } | null;
+}
+
+// ------------------------------------------------------------------------------
 // Tipos de Layout Compartido (Pages Router - patrón getLayout)
 // ------------------------------------------------------------------------------
 

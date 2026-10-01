@@ -127,6 +127,8 @@ export function useGestionUsuarios(): UseGestionUsuariosReturn {
   }, []);
 
   useEffect(() => {
+    // Fetch-on-mount: loadData's initial setIsLoading(true) is a no-op here (state starts true).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void Promise.all([loadData(), loadCatalogos()]);
   }, [loadData, loadCatalogos]);
 

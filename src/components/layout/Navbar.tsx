@@ -40,11 +40,16 @@ const NAV_ICONS: Record<string, ReactNode> = {
       <path d="M9 3V1.5M15 3V1.5M9 12l2 2 4-4" />
     </svg>
   ),
-  "/personal": (
+  "/admin/personal": (
     <svg className="h-full w-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="9" cy="8" r="3" />
       <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
       <path d="M16 5.5a3 3 0 0 1 0 6M21 20c0-2.6-1.7-4.9-4-5.6" />
+    </svg>
+  ),
+  "/admin/usuarios": (
+    <svg className="h-full w-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 2 4 6v6c0 4.4 3.4 8.5 8 9.5 4.6-1 8-5.1 8-9.5V6L12 2Z" />
     </svg>
   ),
   "/cuentas": (
@@ -234,7 +239,21 @@ export default function Navbar() {
           <>
             <GroupDivider />
             {operationItems.map((item) => (
-              <NavLink key={item.href} item={item} styles={DESKTOP_TAB} showIcon iconSize="h-3.5 w-3.5" />
+              <span key={item.href} className="inline-flex items-center gap-1">
+                <NavLink item={item} styles={DESKTOP_TAB} showIcon iconSize="h-3.5 w-3.5" />
+                {item.action && item.available && (
+                  <Link
+                    href={item.action.href}
+                    title={item.action.label}
+                    aria-label={item.action.label}
+                    className="mb-2 flex h-4 w-4 items-center justify-center rounded border border-white/20 text-white/50 transition hover:border-white/40 hover:text-white"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                      <path d="M12 4v16M4 12h16" />
+                    </svg>
+                  </Link>
+                )}
+              </span>
             ))}
           </>
         )}
@@ -243,7 +262,21 @@ export default function Navbar() {
           <>
             <GroupDivider />
             {managementItems.map((item) => (
-              <NavLink key={item.href} item={item} styles={DESKTOP_TAB} showIcon iconSize="h-3.5 w-3.5" />
+              <span key={item.href} className="inline-flex items-center gap-1">
+                <NavLink item={item} styles={DESKTOP_TAB} showIcon iconSize="h-3.5 w-3.5" />
+                {item.action && item.available && (
+                  <Link
+                    href={item.action.href}
+                    title={item.action.label}
+                    aria-label={item.action.label}
+                    className="mb-2 flex h-4 w-4 items-center justify-center rounded border border-white/20 text-white/50 transition hover:border-white/40 hover:text-white"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                      <path d="M12 4v16M4 12h16" />
+                    </svg>
+                  </Link>
+                )}
+              </span>
             ))}
           </>
         )}
@@ -297,7 +330,24 @@ export default function Navbar() {
                     {OPERATION_GROUP_LABEL}
                   </p>
                   {operationItems.map((item) => (
-                    <NavLink key={item.href} item={item} styles={MOBILE_ITEM} onNavigate={closeDrawer} showIcon />
+                    <div key={item.href} className="flex items-center gap-1">
+                      <div className="flex-1">
+                        <NavLink item={item} styles={MOBILE_ITEM} onNavigate={closeDrawer} showIcon />
+                      </div>
+                      {item.action && item.available && (
+                        <Link
+                          href={item.action.href}
+                          title={item.action.label}
+                          aria-label={item.action.label}
+                          onClick={closeDrawer}
+                          className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                        >
+                          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                            <path d="M12 4v16M4 12h16" />
+                          </svg>
+                        </Link>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}
@@ -308,7 +358,24 @@ export default function Navbar() {
                     {MANAGEMENT_GROUP_LABEL}
                   </p>
                   {managementItems.map((item) => (
-                    <NavLink key={item.href} item={item} styles={MOBILE_ITEM} onNavigate={closeDrawer} showIcon />
+                    <div key={item.href} className="flex items-center gap-1">
+                      <div className="flex-1">
+                        <NavLink item={item} styles={MOBILE_ITEM} onNavigate={closeDrawer} showIcon />
+                      </div>
+                      {item.action && item.available && (
+                        <Link
+                          href={item.action.href}
+                          title={item.action.label}
+                          aria-label={item.action.label}
+                          onClick={closeDrawer}
+                          className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                        >
+                          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                            <path d="M12 4v16M4 12h16" />
+                          </svg>
+                        </Link>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}

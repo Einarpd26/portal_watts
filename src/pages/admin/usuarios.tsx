@@ -7,8 +7,10 @@ import UsuariosTable from '@/components/usuarios/UsuariosTable';
 import ConfirmAccesoModal from '@/components/usuarios/ConfirmAccesoModal';
 import RevocarAccesoModal from '@/components/usuarios/RevocarAccesoModal';
 import Alert from '@/components/ui/Alert';
+import AppLayout from '@/components/layout/AppLayout';
+import type { PageWithLayout } from '@/types';
 
-export default function GestionAccesosPage() {
+const GestionAccesosPage: PageWithLayout = () => {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
 
@@ -46,38 +48,18 @@ export default function GestionAccesosPage() {
   if (!user.permisos.includes('cuentas:gestionar')) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-full bg-gray-50">
       {/* Page header — brand gradient */}
-      <header
-        style={{ background: 'linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%)' }}
-        className="px-6 py-5 shadow-md"
-      >
+      <header className="px-6 pt-6">
         <div className="max-w-6xl mx-auto flex items-center gap-3">
-          {/* Shield icon */}
-          <div className="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-xl bg-white/10">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-              />
+          <div className="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-xl bg-primary-50">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </div>
           <div>
-            <h1 className="text-xl font-extrabold text-white tracking-tight">
-              Gestión de Accesos
-            </h1>
-            <p className="text-sm text-white/70 mt-0.5">
-              Alta y revocación de cuentas de usuario
-            </p>
+            <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">Gestión de Accesos</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Alta y revocación de cuentas de usuario</p>
           </div>
         </div>
       </header>
@@ -85,17 +67,14 @@ export default function GestionAccesosPage() {
       {/* Toast alert */}
       {toast && (
         <div className="max-w-6xl mx-auto px-6 pt-4">
-          <Alert
-            state={toast.type === 'warning' ? 'warning' : toast.type}
-            onClose={clearToast}
-          >
+          <Alert state={toast.type === 'warning' ? 'warning' : toast.type} onClose={clearToast}>
             {toast.message}
           </Alert>
         </div>
       )}
 
       {/* Main content */}
-      <main className="max-w-6xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6 items-start">
+      <div className="max-w-6xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6 items-start">
         <NuevoAccesoForm
           personasSinCuenta={personasSinCuenta}
           roles={roles}
@@ -114,7 +93,7 @@ export default function GestionAccesosPage() {
           callerAlcanceTipo={user.alcance_tipo}
           callerIdSucursal={user.id_sucursal}
         />
-      </main>
+      </div>
 
       {/* Modals */}
       <ConfirmAccesoModal
@@ -134,4 +113,8 @@ export default function GestionAccesosPage() {
       />
     </div>
   );
-}
+};
+
+GestionAccesosPage.getLayout = (page) => <AppLayout flush>{page}</AppLayout>;
+
+export default GestionAccesosPage;
