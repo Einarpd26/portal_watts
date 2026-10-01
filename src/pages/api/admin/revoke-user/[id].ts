@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { createAdminClient } from '@/lib/supabase/server';
+import { revokeAccess } from '@/utils/revokeAccess';
 
 export default async function handler(
   req: NextApiRequest,
@@ -54,25 +55,11 @@ export default async function handler(
     }
   }
 
-  // 5. Eliminar de auth.users
-  const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(persona.auth_user_id);
-
-  if (authDeleteError) {
-    console.error('Error eliminando usuario de auth.users:', authDeleteError);
+  // 5. Eliminar de auth.users, limpiar auth_user_id y usuario_roles
+  const revoked = await revokeAccess(supabaseAdmin, { id, auth_user_id: persona.auth_user_id });
+  if (!revoked) {
     return res.status(500).json({ error: 'Error al eliminar la cuenta de autenticación' });
   }
-
-  // 6. Limpiar auth_user_id en personas
-  await supabaseAdmin
-    .from('personas')
-    .update({ auth_user_id: null })
-    .eq('id', id);
-
-  // 7. Eliminar registros de usuario_roles
-  await supabaseAdmin
-    .from('usuario_roles')
-    .delete()
-    .eq('id_persona', id);
 
   return res.status(200).json({ success: true });
 }
