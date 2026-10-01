@@ -51,7 +51,7 @@ const GestionAccesosPage: PageWithLayout = () => {
     <div className="min-h-full bg-gray-50">
       {/* Page header — brand gradient */}
       <header className="px-6 pt-6">
-        <div className="max-w-6xl mx-auto flex items-center gap-3">
+        <div className="max-w-7xl mx-auto flex items-center gap-3">
           <div className="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-xl bg-primary-50">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -66,7 +66,7 @@ const GestionAccesosPage: PageWithLayout = () => {
 
       {/* Toast alert */}
       {toast && (
-        <div className="max-w-6xl mx-auto px-6 pt-4">
+        <div className="max-w-7xl mx-auto px-6 pt-4">
           <Alert state={toast.type === 'warning' ? 'warning' : toast.type} onClose={clearToast}>
             {toast.message}
           </Alert>
@@ -74,7 +74,7 @@ const GestionAccesosPage: PageWithLayout = () => {
       )}
 
       {/* Main content */}
-      <div className="max-w-6xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6 items-start">
+      <div className="max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-6 items-start">
         <NuevoAccesoForm
           personasSinCuenta={personasSinCuenta}
           roles={roles}
