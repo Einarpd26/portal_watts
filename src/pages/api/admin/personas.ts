@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .select(`
       id, ci, nombres, apellidos, telefono, auth_user_id, fecha_baja,
       asignaciones_laborales (
-        id, estado, fecha_inicio,
+        id, estado, fecha_inicio, id_cargo,
         cargos ( nombre_cargo ),
         sucursales ( id, nombre_sucursal )
       )
@@ -57,6 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             id: active.id,
             estado: active.estado,
             fecha_inicio: active.fecha_inicio,
+            cargo_id: active.id_cargo,
             cargo_nombre: cargo?.nombre_cargo ?? '',
             sucursal_id: suc?.id ?? 0,
             sucursal_nombre: suc?.nombre_sucursal ?? '',

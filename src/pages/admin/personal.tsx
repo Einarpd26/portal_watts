@@ -5,6 +5,8 @@ import { useGestionPersonal } from '@/hooks/useGestionPersonal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import Alert from '@/components/ui/Alert';
+import Button from '@/components/ui/Button';
+import DarDeBajaModal from '@/components/personal/DarDeBajaModal';
 import AppLayout from '@/components/layout/AppLayout';
 import type { PageWithLayout } from '@/types';
 
@@ -30,10 +32,20 @@ const GestionPersonalPage: PageWithLayout = () => {
     isSubmitting,
     toast,
     clearToast,
+    editingId,
     openModal,
+    openEditModal,
     closeModal,
-    submitNuevaPersona,
+    submitPersona,
+    bajaTarget,
+    bajaForm,
+    setBajaForm,
+    openBaja,
+    closeBaja,
+    submitBaja,
   } = useGestionPersonal();
+
+  const isEditing = editingId !== null;
 
   // Auto-open modal when navigated from the navbar "+" button (?new=1)
   useEffect(() => {
@@ -94,7 +106,8 @@ const GestionPersonalPage: PageWithLayout = () => {
             </button>
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px] text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-xs font-bold uppercase tracking-wider text-gray-400">
                 <th className="px-5 py-3 text-left">Colaborador</th>
@@ -103,18 +116,19 @@ const GestionPersonalPage: PageWithLayout = () => {
                 <th className="px-5 py-3 text-left">Sucursal</th>
                 <th className="px-5 py-3 text-left">Teléfono</th>
                 <th className="px-5 py-3 text-left">Acceso digital</th>
+                <th className="px-5 py-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {personas.map((p) => (
                 <tr key={p.id} className="transition hover:bg-gray-50/60">
-                  <td className="px-5 py-3.5 font-medium text-gray-900">
+                  <td className="whitespace-nowrap px-5 py-3.5 font-medium text-gray-900">
                     {p.apellidos}, {p.nombres}
                   </td>
-                  <td className="px-5 py-3.5 font-mono text-gray-600">{p.ci}</td>
-                  <td className="px-5 py-3.5 text-gray-600">{p.asignacion?.cargo_nombre ?? '—'}</td>
-                  <td className="px-5 py-3.5 text-gray-600">{p.asignacion?.sucursal_nombre ?? '—'}</td>
-                  <td className="px-5 py-3.5 text-gray-500">{p.telefono ?? '—'}</td>
+                  <td className="whitespace-nowrap px-5 py-3.5 font-mono text-gray-600">{p.ci}</td>
+                  <td className="whitespace-nowrap px-5 py-3.5 text-gray-600">{p.asignacion?.cargo_nombre ?? '—'}</td>
+                  <td className="whitespace-nowrap px-5 py-3.5 text-gray-600">{p.asignacion?.sucursal_nombre ?? '—'}</td>
+                  <td className="whitespace-nowrap px-5 py-3.5 text-gray-500">{p.telefono ?? '—'}</td>
                   <td className="px-5 py-3.5">
                     {p.auth_user_id ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-700">
@@ -127,10 +141,21 @@ const GestionPersonalPage: PageWithLayout = () => {
                       </span>
                     )}
                   </td>
+                  <td className="whitespace-nowrap px-5 py-3.5 text-right">
+                    <div className="inline-flex gap-2">
+                      <Button variant="secondary" size="sm" onClick={() => openEditModal(p)}>
+                        Editar
+                      </Button>
+                      <Button variant="danger" size="sm" onClick={() => openBaja(p)}>
+                        Dar de baja
+                      </Button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
       </div>
@@ -155,9 +180,13 @@ const GestionPersonalPage: PageWithLayout = () => {
               className="rounded-t-2xl px-6 py-4"
             >
               <h2 id="modal-title" className="text-base font-bold text-white">
-                Registrar nuevo colaborador
+                {isEditing ? 'Editar colaborador' : 'Registrar nuevo colaborador'}
               </h2>
-              <p className="text-xs text-white/60">Complete los datos del colaborador y su asignación laboral.</p>
+              <p className="text-xs text-white/60">
+                {isEditing
+                  ? 'Si cambia el cargo o la sucursal, se abre una nueva asignación laboral.'
+                  : 'Complete los datos del colaborador y su asignación laboral.'}
+              </p>
             </div>
 
             {/* Modal body */}
@@ -217,12 +246,14 @@ const GestionPersonalPage: PageWithLayout = () => {
                   ))}
                 </Select>
               </div>
-              <Input
-                label="Fecha de ingreso (opcional — por defecto hoy)"
-                type="date"
-                value={form.fecha_inicio}
-                onChange={(e) => setForm({ ...form, fecha_inicio: e.target.value })}
-              />
+              {!isEditing && (
+                <Input
+                  label="Fecha de ingreso (opcional — por defecto hoy)"
+                  type="date"
+                  value={form.fecha_inicio}
+                  onChange={(e) => setForm({ ...form, fecha_inicio: e.target.value })}
+                />
+              )}
             </div>
 
             {/* Modal footer */}
@@ -237,16 +268,28 @@ const GestionPersonalPage: PageWithLayout = () => {
               </button>
               <button
                 type="button"
-                onClick={() => void submitNuevaPersona()}
+                onClick={() => void submitPersona()}
                 disabled={isSubmitting}
                 className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
               >
-                {isSubmitting ? 'Registrando...' : 'Registrar colaborador'}
+                {isSubmitting
+                  ? isEditing ? 'Guardando...' : 'Registrando...'
+                  : isEditing ? 'Guardar cambios' : 'Registrar colaborador'}
               </button>
             </div>
           </div>
         </>
       )}
+
+      {/* Modal — baja laboral */}
+      <DarDeBajaModal
+        persona={bajaTarget}
+        form={bajaForm}
+        setForm={setBajaForm}
+        isSubmitting={isSubmitting}
+        onConfirm={() => void submitBaja()}
+        onCancel={closeBaja}
+      />
     </div>
   );
 };

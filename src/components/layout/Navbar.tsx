@@ -321,6 +321,23 @@ export default function Navbar() {
               </button>
             </header>
 
+            {/* Identidad del usuario: en desktop vive en la fila superior (lg:flex) */}
+            {user && (
+              <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-50 text-sm font-bold text-primary-600">
+                  {initials}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-gray-900">
+                    {user.nombres} {user.apellidos}
+                  </p>
+                  <p className="truncate text-xs text-gray-500">
+                    {user.roles?.[0]?.nombre ?? user.rol_codigo}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <nav className="flex-1 space-y-1 overflow-y-auto p-4">
               <NavLink item={DASHBOARD_TAB} styles={MOBILE_ITEM} onNavigate={closeDrawer} showIcon />
 

@@ -127,6 +127,7 @@ export interface PersonaConAsignacion {
     id: number;
     estado: string;
     fecha_inicio: string;
+    cargo_id: number;
     cargo_nombre: string;
     sucursal_id: number;
     sucursal_nombre: string;
