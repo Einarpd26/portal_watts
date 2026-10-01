@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createServerClientForReqRes } from '@/lib/supabase/server';
 import { todayBolivia } from '@/utils/boliviaTime';
+import { getPasswordChangeState, TEMP_PASSWORD_EXPIRED } from '@/utils/passwordChange';
 import type { AlcanceTipo, RolActivo } from '@/types';
 
 export default async function handler(
@@ -22,6 +23,11 @@ export default async function handler(
     // 4. Si no hay usuario o hay error (ej. token expirado o inválido)
     if (error || !user) {
       return res.status(401).json({ error: 'No autenticado' });
+    }
+
+    // Contraseña temporal vencida: la cuenta no obtiene sesión (el admin debe regenerar el acceso)
+    if (getPasswordChangeState(user.app_metadata) === 'expired') {
+      return res.status(403).json({ error: 'La contraseña temporal expiró', code: TEMP_PASSWORD_EXPIRED });
     }
 
     // 5. Fetch del perfil completo (UserSession) cruzando tablas

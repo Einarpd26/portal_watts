@@ -9,7 +9,6 @@ import type { PersonaSinCuenta, Rol, Sucursal, UsuarioActivo } from '@/types';
 export interface FormState {
   id_persona: number | null;
   email: string;
-  password: string;
   id_rol: number | null;
   alcance_tipo: 'GLOBAL' | 'SUCURSAL';
   id_sucursal: number | null;
@@ -18,11 +17,18 @@ export interface FormState {
 const EMPTY_FORM: FormState = {
   id_persona: null,
   email: '',
-  password: '',
   id_rol: null,
   alcance_tipo: 'SUCURSAL',
   id_sucursal: null,
 };
+
+// Credenciales temporales devueltas una sola vez al crear un acceso
+export interface CredencialesTemporales {
+  nombre: string;
+  email: string;
+  password: string;
+  expiresAt: string;
+}
 
 export interface UseGestionUsuariosReturn {
   // Data
@@ -47,6 +53,8 @@ export interface UseGestionUsuariosReturn {
   revokeModal: { open: boolean; user: UsuarioActivo | null };
   openRevoke: (user: UsuarioActivo) => void;
   closeRevoke: () => void;
+  credenciales: CredencialesTemporales | null;
+  closeCredenciales: () => void;
   // Actions
   submitInvite: () => Promise<void>;
   submitRevoke: () => Promise<void>;
@@ -78,6 +86,9 @@ export function useGestionUsuarios(): UseGestionUsuariosReturn {
     open: boolean;
     preview: { nombre: string; email: string; rolNombre: string } | null;
   }>({ open: false, preview: null });
+
+  const [credenciales, setCredenciales] = useState<CredencialesTemporales | null>(null);
+  const closeCredenciales = useCallback(() => setCredenciales(null), []);
 
   const [revokeModal, setRevokeModal] = useState<{ open: boolean; user: UsuarioActivo | null }>({
     open: false,
@@ -185,8 +196,6 @@ export function useGestionUsuarios(): UseGestionUsuariosReturn {
     if (!form.id_persona) errors.id_persona = 'Seleccioná un colaborador';
     if (!form.email) errors.email = 'El email es requerido';
     else if (!EMAIL_REGEX.test(form.email)) errors.email = 'Email inválido';
-    if (!form.password) errors.password = 'La contraseña es requerida';
-    else if (form.password.length < 8) errors.password = 'Mínimo 8 caracteres';
     if (!form.id_rol) errors.id_rol = 'Seleccioná un rol';
     if (form.alcance_tipo === 'SUCURSAL' && !form.id_sucursal) {
       errors.id_sucursal = 'Seleccioná una sucursal';
@@ -240,7 +249,6 @@ export function useGestionUsuarios(): UseGestionUsuariosReturn {
         body: JSON.stringify({
           id_persona: form.id_persona,
           email: form.email,
-          password: form.password,
           id_rol: form.id_rol,
           alcance_tipo: form.alcance_tipo,
           id_sucursal: form.id_sucursal,
@@ -254,6 +262,14 @@ export function useGestionUsuarios(): UseGestionUsuariosReturn {
         return;
       }
 
+      const persona = personasSinCuenta.find((p) => p.id === form.id_persona);
+      setCredenciales({
+        nombre: persona ? `${persona.nombres} ${persona.apellidos}` : '',
+        email: form.email,
+        password: data.temp_password,
+        expiresAt: data.expires_at,
+      });
+
       closeConfirm();
       resetForm();
       await loadData();
@@ -264,7 +280,7 @@ export function useGestionUsuarios(): UseGestionUsuariosReturn {
     } finally {
       setIsSubmitting(false);
     }
-  }, [form, closeConfirm, resetForm, loadData, showToast]);
+  }, [form, personasSinCuenta, closeConfirm, resetForm, loadData, showToast]);
 
   const submitRevoke = useCallback(async () => {
     if (!revokeModal.user) return;
@@ -309,6 +325,8 @@ export function useGestionUsuarios(): UseGestionUsuariosReturn {
     revokeModal,
     openRevoke,
     closeRevoke,
+    credenciales,
+    closeCredenciales,
     submitInvite,
     submitRevoke,
     toast,

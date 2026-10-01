@@ -15,6 +15,8 @@ const LOGIN_ERROR_MESSAGES: Record<string, string> = {
   invalid_credentials: "Correo o contraseña incorrectos.",
   email_not_confirmed: "Todavía no se confirmó tu correo electrónico. Revisa tu bandeja de entrada.",
   user_not_found: "No existe una cuenta con ese correo electrónico.",
+  temp_password_expired:
+    "Tu contraseña temporal expiró. Pedile a un administrador que te genere un nuevo acceso.",
   "pkce-failed": "La autenticación no pudo completarse. Inténtalo de nuevo.",
   access_denied: "La autenticación no pudo completarse. Inténtalo de nuevo.",
 };

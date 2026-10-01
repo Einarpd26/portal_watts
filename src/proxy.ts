@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { getPasswordChangeState } from '@/utils/passwordChange';
 
 export async function proxy(request: NextRequest) {
   // 1. Creamos una respuesta inicial que permite continuar la petición
@@ -47,6 +48,36 @@ export async function proxy(request: NextRequest) {
     path.startsWith('/admin') ||
     path.startsWith('/dashboard') ||
     (path !== '/login' && path !== '/');
+
+  // Cambio obligatorio de contraseña temporal (CU-01 A3). Se evalúa antes que las
+  // reglas A/B para que ninguna ruta privada ni el login lo esquiven.
+  const isChangePasswordPage = path === '/cambiar-password';
+  const pwState = user ? getPasswordChangeState(user.app_metadata) : 'none';
+
+  // Redirige conservando las cookies que el cliente de Supabase haya escrito en `response`
+  const redirectTo = (pathname: string, search = '') => {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname;
+    url.search = search;
+    const redirect = NextResponse.redirect(url);
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    return redirect;
+  };
+
+  if (user && pwState === 'expired') {
+    // La temporal venció sin usarse: se cierra la sesión (signOut limpia las cookies en `response`)
+    await supabase.auth.signOut();
+    if (isLoginPage) return response;
+    return redirectTo('/login', '?error=temp_password_expired');
+  }
+
+  if (user && pwState === 'required' && !isChangePasswordPage) {
+    return redirectTo('/cambiar-password');
+  }
+
+  if (user && pwState === 'none' && isChangePasswordPage) {
+    return redirectTo('/dashboard');
+  }
 
   // Regla A: No tiene cuenta e intenta entrar a zona privada -> Al Login
   if (!user && isProtectedRoute) {

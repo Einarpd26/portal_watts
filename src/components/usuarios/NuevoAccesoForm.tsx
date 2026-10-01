@@ -71,18 +71,6 @@ export default function NuevoAccesoForm({
           autoComplete="email"
         />
 
-        {/* Contraseña */}
-        <Input
-          label="Contraseña"
-          type="password"
-          placeholder="Mínimo 8 caracteres"
-          value={form.password}
-          onChange={(e) => setForm({ password: e.target.value })}
-          error={formErrors.password}
-          showPasswordToggle
-          autoComplete="new-password"
-        />
-
         {/* Rol */}
         <Select
           label="Rol"

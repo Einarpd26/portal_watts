@@ -1,6 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createServerClientForReqRes } from '@/lib/supabase/server';
 import { todayBolivia } from '@/utils/boliviaTime';
+import {
+  getPasswordChangeState,
+  PASSWORD_CHANGE_REQUIRED,
+  TEMP_PASSWORD_EXPIRED,
+} from '@/utils/passwordChange';
 import type { AlcanceTipo, RolActivo, UserSession } from '@/types';
 
 export async function requireCallerAuth(
@@ -13,6 +18,17 @@ export async function requireCallerAuth(
 
   if (error || !user) {
     res.status(401).json({ error: 'No autenticado' });
+    return null;
+  }
+
+  // El proxy no cubre /api: sin este gate, el cambio obligatorio se saltaría llamando a la API directo
+  const pwState = getPasswordChangeState(user.app_metadata);
+  if (pwState === 'expired') {
+    res.status(403).json({ error: 'La contraseña temporal expiró', code: TEMP_PASSWORD_EXPIRED });
+    return null;
+  }
+  if (pwState === 'required') {
+    res.status(403).json({ error: 'Debés cambiar tu contraseña temporal', code: PASSWORD_CHANGE_REQUIRED });
     return null;
   }
 
