@@ -106,7 +106,8 @@ const GestionPersonalPage: PageWithLayout = () => {
             </button>
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px] text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-xs font-bold uppercase tracking-wider text-gray-400">
                 <th className="px-5 py-3 text-left">Colaborador</th>
@@ -121,13 +122,13 @@ const GestionPersonalPage: PageWithLayout = () => {
             <tbody className="divide-y divide-gray-50">
               {personas.map((p) => (
                 <tr key={p.id} className="transition hover:bg-gray-50/60">
-                  <td className="px-5 py-3.5 font-medium text-gray-900">
+                  <td className="whitespace-nowrap px-5 py-3.5 font-medium text-gray-900">
                     {p.apellidos}, {p.nombres}
                   </td>
-                  <td className="px-5 py-3.5 font-mono text-gray-600">{p.ci}</td>
-                  <td className="px-5 py-3.5 text-gray-600">{p.asignacion?.cargo_nombre ?? '—'}</td>
-                  <td className="px-5 py-3.5 text-gray-600">{p.asignacion?.sucursal_nombre ?? '—'}</td>
-                  <td className="px-5 py-3.5 text-gray-500">{p.telefono ?? '—'}</td>
+                  <td className="whitespace-nowrap px-5 py-3.5 font-mono text-gray-600">{p.ci}</td>
+                  <td className="whitespace-nowrap px-5 py-3.5 text-gray-600">{p.asignacion?.cargo_nombre ?? '—'}</td>
+                  <td className="whitespace-nowrap px-5 py-3.5 text-gray-600">{p.asignacion?.sucursal_nombre ?? '—'}</td>
+                  <td className="whitespace-nowrap px-5 py-3.5 text-gray-500">{p.telefono ?? '—'}</td>
                   <td className="px-5 py-3.5">
                     {p.auth_user_id ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-700">
@@ -154,6 +155,7 @@ const GestionPersonalPage: PageWithLayout = () => {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
       </div>
