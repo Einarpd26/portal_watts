@@ -123,24 +123,24 @@ export default function UsuariosTable({
                         <div className="text-xs text-gray-400 mt-0.5">{user.email}</div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-gray-600 font-mono text-xs">
+                    <td className="px-4 py-3 text-gray-600 font-mono text-xs whitespace-nowrap">
                       {user.ci}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       {primaryRole ? (
                         <RolBadge codigo={primaryRole.codigo} />
                       ) : (
                         <span className="text-gray-400 text-xs">Sin rol</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-gray-600 text-xs">
+                    <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
                       {primaryRole?.alcance_tipo === 'GLOBAL'
                         ? 'Global'
                         : primaryRole?.id_sucursal
                         ? `Sucursal #${primaryRole.id_sucursal}`
                         : '—'}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
                       {canRevoke && (
                         <Button
                           variant="danger"
