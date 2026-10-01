@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { createAdminClient } from '@/lib/supabase/server';
-import { validatePassword } from '@/utils/passwordPolicy';
+import { generateTempPassword, tempPasswordExpiry } from '@/utils/tempPassword';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -18,26 +18,20 @@ export default async function handler(
   if (!caller) return;
 
   // 2. Extraer y validar campos del body
-  const { id_persona, email, password, id_rol, alcance_tipo, id_sucursal } = req.body as {
+  const { id_persona, email, id_rol, alcance_tipo, id_sucursal } = req.body as {
     id_persona: number;
     email: string;
-    password: string;
     id_rol: number;
     alcance_tipo: 'GLOBAL' | 'SUCURSAL';
     id_sucursal?: number | null;
   };
 
-  if (!id_persona || !email || !password || !id_rol || !alcance_tipo) {
-    return res.status(400).json({ error: 'Faltan campos requeridos: id_persona, email, password, id_rol, alcance_tipo' });
+  if (!id_persona || !email || !id_rol || !alcance_tipo) {
+    return res.status(400).json({ error: 'Faltan campos requeridos: id_persona, email, id_rol, alcance_tipo' });
   }
 
   if (!EMAIL_REGEX.test(email)) {
     return res.status(400).json({ error: 'El email no tiene un formato válido' });
-  }
-
-  const pwValidation = validatePassword(password);
-  if (!pwValidation.valid) {
-    return res.status(400).json({ error: `Contraseña inválida: ${pwValidation.errors.join(', ')}` });
   }
 
   // 3. Gate: FISCALIZADOR solo puede crear usuarios en su sucursal
@@ -81,11 +75,15 @@ export default async function handler(
     return res.status(400).json({ error: 'El colaborador no tiene asignación laboral activa' });
   }
 
-  // 6. Crear usuario en auth.users
+  // 6. Crear usuario en auth.users con contraseña temporal generada por el sistema.
+  // app_metadata marca el cambio obligatorio en el primer inicio de sesión y su vencimiento.
+  const tempPassword = generateTempPassword();
+  const expiresAt = tempPasswordExpiry();
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
     email,
-    password,
+    password: tempPassword,
     email_confirm: true,
+    app_metadata: { must_change_password: true, temp_password_expires_at: expiresAt },
   });
 
   if (authError || !authData.user) {
@@ -132,8 +130,12 @@ export default async function handler(
     return res.status(500).json({ error: 'Error al asignar el rol al usuario' });
   }
 
+  // La contraseña temporal viaja una sola vez en esta respuesta: no se guarda en claro
+  res.setHeader('Cache-Control', 'no-store');
   return res.status(201).json({
     success: true,
-    message: 'Acceso creado. Compartí las credenciales con el colaborador.',
+    message: 'Acceso creado. Compartí las credenciales temporales con el colaborador.',
+    temp_password: tempPassword,
+    expires_at: expiresAt,
   });
 }

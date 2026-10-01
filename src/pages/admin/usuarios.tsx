@@ -5,6 +5,7 @@ import { useGestionUsuarios } from '@/hooks/useGestionUsuarios';
 import NuevoAccesoForm from '@/components/usuarios/NuevoAccesoForm';
 import UsuariosTable from '@/components/usuarios/UsuariosTable';
 import ConfirmAccesoModal from '@/components/usuarios/ConfirmAccesoModal';
+import CredencialesTemporalesModal from '@/components/usuarios/CredencialesTemporalesModal';
 import RevocarAccesoModal from '@/components/usuarios/RevocarAccesoModal';
 import Alert from '@/components/ui/Alert';
 import AppLayout from '@/components/layout/AppLayout';
@@ -37,6 +38,8 @@ const GestionAccesosPage: PageWithLayout = () => {
     revokeModal,
     openRevoke,
     closeRevoke,
+    credenciales,
+    closeCredenciales,
     submitInvite,
     submitRevoke,
     toast,
@@ -103,6 +106,8 @@ const GestionAccesosPage: PageWithLayout = () => {
         onConfirm={submitInvite}
         onCancel={closeConfirm}
       />
+
+      <CredencialesTemporalesModal credenciales={credenciales} onClose={closeCredenciales} />
 
       <RevocarAccesoModal
         open={revokeModal.open}
