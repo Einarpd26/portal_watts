@@ -104,6 +104,6 @@ export const config = {
      * Ignora archivos estáticos e internos de Next.js para no gastar recursos
      * evaluando imágenes, CSS, o el endpoint /api (tu API ya se cuida sola)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|api).*)',
+    '/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|api).*)',
   ],
 };
