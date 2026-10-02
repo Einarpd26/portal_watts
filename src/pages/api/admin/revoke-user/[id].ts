@@ -23,6 +23,11 @@ export default async function handler(
     return res.status(400).json({ error: 'ID de persona inválido' });
   }
 
+  // Nadie puede revocar su propio acceso: eliminaría su cuenta en auth.users sin vuelta atrás
+  if (id === caller.id_persona) {
+    return res.status(400).json({ error: 'No podés revocar tu propio acceso' });
+  }
+
   const supabaseAdmin = createAdminClient();
 
   // 3. Obtener auth_user_id de la persona

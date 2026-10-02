@@ -95,6 +95,7 @@ const GestionAccesosPage: PageWithLayout = () => {
           onRevoke={openRevoke}
           callerAlcanceTipo={user.alcance_tipo}
           callerIdSucursal={user.id_sucursal}
+          callerIdPersona={user.id_persona}
         />
       </div>
 

@@ -8,6 +8,7 @@ interface UsuariosTableProps {
   onRevoke: (user: UsuarioActivo) => void;
   callerAlcanceTipo: 'GLOBAL' | 'SUCURSAL';
   callerIdSucursal: number | null;
+  callerIdPersona: number;
 }
 
 function RolBadge({ codigo }: { codigo: string }) {
@@ -36,8 +37,10 @@ export default function UsuariosTable({
   onRevoke,
   callerAlcanceTipo,
   callerIdSucursal,
+  callerIdPersona,
 }: UsuariosTableProps) {
   const canRevokeUser = (user: UsuarioActivo): boolean => {
+    if (user.id_persona === callerIdPersona) return false;
     if (callerAlcanceTipo === 'GLOBAL') return true;
     if (callerIdSucursal === null) return false;
     return user.roles.some((r) => r.id_sucursal === callerIdSucursal);
@@ -141,6 +144,9 @@ export default function UsuariosTable({
                         : '—'}
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {user.id_persona === callerIdPersona && (
+                        <span className="text-xs font-semibold text-gray-400">Tu cuenta</span>
+                      )}
                       {canRevoke && (
                         <Button
                           variant="danger"

@@ -146,9 +146,11 @@ const GestionPersonalPage: PageWithLayout = () => {
                       <Button variant="secondary" size="sm" onClick={() => openEditModal(p)}>
                         Editar
                       </Button>
-                      <Button variant="danger" size="sm" onClick={() => openBaja(p)}>
-                        Dar de baja
-                      </Button>
+                      {p.id !== user.id_persona && (
+                        <Button variant="danger" size="sm" onClick={() => openBaja(p)}>
+                          Dar de baja
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>
