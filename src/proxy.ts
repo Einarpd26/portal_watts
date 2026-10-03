@@ -81,16 +81,12 @@ export async function proxy(request: NextRequest) {
 
   // Regla A: No tiene cuenta e intenta entrar a zona privada -> Al Login
   if (!user && isProtectedRoute) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = '/login';
-    return NextResponse.redirect(loginUrl);
+    return redirectTo('/login');
   }
 
   // Regla B: Ya tiene cuenta e intenta entrar al Login -> Al Dashboard
   if (user && isLoginPage) {
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = '/dashboard'; // Más adelante redirigirás según su rol
-    return NextResponse.redirect(dashboardUrl);
+    return redirectTo('/dashboard');
   }
 
   // 5. Todo en orden, le abrimos la puerta

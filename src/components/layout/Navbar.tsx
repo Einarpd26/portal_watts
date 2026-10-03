@@ -1,8 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import { useState, type ReactNode } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   DASHBOARD_TAB,
@@ -104,8 +104,7 @@ function NavLink({
   /** Clases de tamaño del ícono (Tailwind). Ajustar según la escala del tab. */
   iconSize?: string;
 }) {
-  const router = useRouter();
-  const isActive = router.pathname === item.href;
+  const isActive = typeof window !== "undefined" && window.location.pathname === item.href;
   const icon = showIcon ? NAV_ICONS[item.href] : null;
 
   // Sin color propio: el ícono hereda currentColor del texto (state activo/
@@ -146,10 +145,77 @@ function GroupDivider() {
   return <span aria-hidden="true" className="mb-2 h-4 w-px bg-white/15" />;
 }
 
+// Componente reutilizable para grupos de navegación en escritorio (DRY)
+function DesktopNavGroup({ items }: { items: NavItem[] }) {
+  if (items.length === 0) return null;
+  return (
+    <>
+      <GroupDivider />
+      {items.map((item) => (
+        <span key={item.href} className="inline-flex items-center gap-1">
+          <NavLink item={item} styles={DESKTOP_TAB} showIcon iconSize="h-3.5 w-3.5" />
+          {item.action && item.available && (
+            <Link
+              href={item.action.href}
+              title={item.action.label}
+              aria-label={item.action.label}
+              className="mb-2 flex h-4 w-4 items-center justify-center rounded border border-white/20 text-white/50 transition hover:border-white/40 hover:text-white"
+            >
+              <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                <path d="M12 4v16M4 12h16" />
+              </svg>
+            </Link>
+          )}
+        </span>
+      ))}
+    </>
+  );
+}
+
+// Componente reutilizable para grupos de navegación en el drawer móvil (DRY)
+function MobileNavGroup({
+  label,
+  items,
+  onNavigate,
+}: {
+  label: string;
+  items: NavItem[];
+  onNavigate: () => void;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div className="pt-3">
+      <p className="px-3 pb-1 text-[10px] font-bold tracking-[0.08em] text-gray-400 uppercase">
+        {label}
+      </p>
+      {items.map((item) => (
+        <div key={item.href} className="flex items-center gap-1">
+          <div className="flex-1">
+            <NavLink item={item} styles={MOBILE_ITEM} onNavigate={onNavigate} showIcon />
+          </div>
+          {item.action && item.available && (
+            <Link
+              href={item.action.href}
+              title={item.action.label}
+              aria-label={item.action.label}
+              onClick={onNavigate}
+              className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+            >
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                <path d="M12 4v16M4 12h16" />
+              </svg>
+            </Link>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Navbar() {
-  const { user } = useAuth();
-  const router = useRouter();
+  const { user, logout } = useAuth();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Filtramos por permisos atómicos del usuario (RBAC, ADR-001).
   // Cada rol ve su subconjunto: Gerencia → todos; Fiscalizador → Operación+Gestión
@@ -164,14 +230,23 @@ export default function Navbar() {
   const initials = `${user?.nombres?.[0] ?? ""}${user?.apellidos?.[0] ?? ""}`.toUpperCase();
 
   const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    // El listener SIGNED_OUT del AuthContext limpia user; el proxy nos reenvía al login.
-    router.push("/login");
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } catch (err: unknown) {
+      console.error("Error cerrando sesión:", err);
+      setIsLoggingOut(false);
+    }
+  };
+
+  const onLogoutClick = () => {
+    handleLogout().catch((err: unknown) => {
+      console.error("Error no controlado al cerrar sesión:", err);
+    });
   };
 
   return (
-    <header className="bg-[linear-gradient(135deg,#7f1d1d_0%,#dc2626_100%)]">
+    <header className="bg-gradient-to-br from-red-900 to-red-600">
       {/* Fila superior: logo + identidad de usuario + cierre de sesión */}
       <div className="flex items-center justify-between px-6 py-2">
         <Link href="/dashboard" className="flex items-center gap-2">
@@ -202,10 +277,11 @@ export default function Navbar() {
           <span aria-hidden="true" className="h-5 w-px bg-white/15" />
           <button
             type="button"
-            onClick={handleLogout}
-            className="text-xs font-semibold text-white/70 transition hover:text-white"
+            onClick={onLogoutClick}
+            disabled={isLoggingOut}
+            className="text-xs font-semibold text-white/70 transition hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Cerrar sesión
+            {isLoggingOut ? "Cerrando..." : "Cerrar sesión"}
           </button>
         </div>
 
@@ -230,56 +306,11 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* Fila de tabs (desktop): un solo nivel agrupado por dominio,
-          separador superior según tokens-de-marca §5.3 */}
+      {/* Fila de tabs (desktop): un solo nivel agrupado por dominio */}
       <nav className="hidden items-center gap-4 border-t border-white/15 px-6 pt-1.5 lg:flex">
         <NavLink item={DASHBOARD_TAB} styles={DESKTOP_TAB} showIcon iconSize="h-3.5 w-3.5" />
-
-        {operationItems.length > 0 && (
-          <>
-            <GroupDivider />
-            {operationItems.map((item) => (
-              <span key={item.href} className="inline-flex items-center gap-1">
-                <NavLink item={item} styles={DESKTOP_TAB} showIcon iconSize="h-3.5 w-3.5" />
-                {item.action && item.available && (
-                  <Link
-                    href={item.action.href}
-                    title={item.action.label}
-                    aria-label={item.action.label}
-                    className="mb-2 flex h-4 w-4 items-center justify-center rounded border border-white/20 text-white/50 transition hover:border-white/40 hover:text-white"
-                  >
-                    <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
-                      <path d="M12 4v16M4 12h16" />
-                    </svg>
-                  </Link>
-                )}
-              </span>
-            ))}
-          </>
-        )}
-
-        {managementItems.length > 0 && (
-          <>
-            <GroupDivider />
-            {managementItems.map((item) => (
-              <span key={item.href} className="inline-flex items-center gap-1">
-                <NavLink item={item} styles={DESKTOP_TAB} showIcon iconSize="h-3.5 w-3.5" />
-                {item.action && item.available && (
-                  <Link
-                    href={item.action.href}
-                    title={item.action.label}
-                    aria-label={item.action.label}
-                    className="mb-2 flex h-4 w-4 items-center justify-center rounded border border-white/20 text-white/50 transition hover:border-white/40 hover:text-white"
-                  >
-                    <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
-                      <path d="M12 4v16M4 12h16" />
-                    </svg>
-                  </Link>
-                )}
-              </span>
-            ))}
-          </>
-        )}
+        <DesktopNavGroup items={operationItems} />
+        <DesktopNavGroup items={managementItems} />
 
         {/* Link de ayuda siempre visible al final del nav */}
         <div className="ml-auto">
@@ -287,13 +318,12 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Drawer lateral mobile (tokens-de-marca §5.3: w-72, header en gradiente,
-          items activos bg-red-50 / inactivos hover:bg-gray-50) */}
+      {/* Drawer lateral mobile */}
       {isDrawerOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/40" onClick={closeDrawer} aria-hidden="true" />
           <aside className="fixed right-0 top-0 z-50 flex h-full w-72 flex-col bg-white shadow-2xl">
-            <header className="flex items-center justify-between bg-[linear-gradient(135deg,#7f1d1d_0%,#dc2626_100%)] px-4 py-4">
+            <header className="flex items-center justify-between bg-gradient-to-br from-red-900 to-red-600 px-4 py-4">
               <Image
                 src="/watts_logo_blanco.png"
                 alt="Caramelos Watts"
@@ -321,7 +351,7 @@ export default function Navbar() {
               </button>
             </header>
 
-            {/* Identidad del usuario: en desktop vive en la fila superior (lg:flex) */}
+            {/* Identidad del usuario */}
             {user && (
               <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-50 text-sm font-bold text-primary-600">
@@ -340,62 +370,8 @@ export default function Navbar() {
 
             <nav className="flex-1 space-y-1 overflow-y-auto p-4">
               <NavLink item={DASHBOARD_TAB} styles={MOBILE_ITEM} onNavigate={closeDrawer} showIcon />
-
-              {operationItems.length > 0 && (
-                <div className="pt-3">
-                  <p className="px-3 pb-1 text-[10px] font-bold tracking-[0.08em] text-gray-400 uppercase">
-                    {OPERATION_GROUP_LABEL}
-                  </p>
-                  {operationItems.map((item) => (
-                    <div key={item.href} className="flex items-center gap-1">
-                      <div className="flex-1">
-                        <NavLink item={item} styles={MOBILE_ITEM} onNavigate={closeDrawer} showIcon />
-                      </div>
-                      {item.action && item.available && (
-                        <Link
-                          href={item.action.href}
-                          title={item.action.label}
-                          aria-label={item.action.label}
-                          onClick={closeDrawer}
-                          className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-                        >
-                          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
-                            <path d="M12 4v16M4 12h16" />
-                          </svg>
-                        </Link>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {managementItems.length > 0 && (
-                <div className="pt-3">
-                  <p className="px-3 pb-1 text-[10px] font-bold tracking-[0.08em] text-gray-400 uppercase">
-                    {MANAGEMENT_GROUP_LABEL}
-                  </p>
-                  {managementItems.map((item) => (
-                    <div key={item.href} className="flex items-center gap-1">
-                      <div className="flex-1">
-                        <NavLink item={item} styles={MOBILE_ITEM} onNavigate={closeDrawer} showIcon />
-                      </div>
-                      {item.action && item.available && (
-                        <Link
-                          href={item.action.href}
-                          title={item.action.label}
-                          aria-label={item.action.label}
-                          onClick={closeDrawer}
-                          className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-                        >
-                          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
-                            <path d="M12 4v16M4 12h16" />
-                          </svg>
-                        </Link>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <MobileNavGroup label={OPERATION_GROUP_LABEL} items={operationItems} onNavigate={closeDrawer} />
+              <MobileNavGroup label={MANAGEMENT_GROUP_LABEL} items={managementItems} onNavigate={closeDrawer} />
 
               <div className="pt-3">
                 <NavLink item={HELP_LINK} styles={MOBILE_ITEM} onNavigate={closeDrawer} showIcon />
@@ -405,13 +381,14 @@ export default function Navbar() {
             <footer className="border-t border-gray-100 p-4">
               <button
                 type="button"
+                disabled={isLoggingOut}
                 onClick={() => {
                   closeDrawer();
-                  void handleLogout();
+                  onLogoutClick();
                 }}
-                className="w-full rounded-xl bg-gray-50 px-3 py-2 text-left text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
+                className="w-full rounded-xl bg-gray-50 px-3 py-2 text-left text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Cerrar sesión
+                {isLoggingOut ? "Cerrando sesión..." : "Cerrar sesión"}
               </button>
             </footer>
           </aside>
