@@ -55,10 +55,14 @@ export default async function handler(
     }
 
     // 3. Determinar la URL de redirección
+    const host = req.headers.host || '127.0.0.1:3000';
+    const proto = req.headers['x-forwarded-proto'] || 'http';
+    const currentOrigin = req.headers.origin || `${proto}://${host}`;
     const siteUrl =
+      currentOrigin ||
       process.env.NEXT_PUBLIC_APP_URL ||
       process.env.NEXT_PUBLIC_SITE_URL ||
-      'http://localhost:3000';
+      'http://127.0.0.1:3000';
 
     const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
       normalizedEmail,
