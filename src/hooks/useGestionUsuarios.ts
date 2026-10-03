@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
 import type { PersonaSinCuenta, Rol, Sucursal, UsuarioActivo } from '@/types';
 
 // ---------------------------------------------------------------------------
@@ -58,6 +59,7 @@ export interface UseGestionUsuariosReturn {
   // Actions
   submitInvite: () => Promise<void>;
   submitRevoke: () => Promise<void>;
+  submitUnlock: (user: UsuarioActivo) => Promise<void>;
   // Feedback
   toast: { type: 'success' | 'error' | 'warning'; message: string } | null;
   clearToast: () => void;
@@ -119,53 +121,63 @@ export function useGestionUsuarios(): UseGestionUsuariosReturn {
         const d = await usersRes.json();
         setActiveUsers(d.users ?? []);
       }
-    } catch (err) {
-      console.error('Error loading gestión accesos data:', err);
+    } catch (err: unknown) {
+      logger.error('Error loading gestión accesos data:', err);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   const loadCatalogos = useCallback(async () => {
-    const supabase = createClient();
-    const [rolesRes, sucursalesRes] = await Promise.all([
-      supabase.from('roles').select('id, codigo, nombre, permisos, descripcion, created_at').order('nombre'),
-      supabase.from('sucursales').select('id, nombre_sucursal').order('nombre_sucursal'),
-    ]);
+    try {
+      const supabase = createClient();
+      const [rolesRes, sucursalesRes] = await Promise.all([
+        supabase.from('roles').select('id, codigo, nombre, permisos, descripcion, created_at').order('nombre'),
+        supabase.from('sucursales').select('id, nombre_sucursal').order('nombre_sucursal'),
+      ]);
 
-    if (rolesRes.data) setRoles(rolesRes.data);
-    if (sucursalesRes.data) setSucursales(sucursalesRes.data as Sucursal[]);
+      if (rolesRes.data) setRoles(rolesRes.data);
+      if (sucursalesRes.data) setSucursales(sucursalesRes.data as Sucursal[]);
+    } catch (err: unknown) {
+      logger.error('Error cargando catálogos de roles y sucursales:', err);
+    }
   }, []);
 
   useEffect(() => {
-    // Fetch-on-mount: loadData's initial setIsLoading(true) is a no-op here (state starts true).
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void Promise.all([loadData(), loadCatalogos()]);
+    Promise.all([loadData(), loadCatalogos()]).catch((err: unknown) => {
+      logger.error('Error en carga inicial de gestión de usuarios:', err);
+    });
   }, [loadData, loadCatalogos]);
 
   // ---------------------------------------------------------------------------
   // Form helpers
   // ---------------------------------------------------------------------------
-  const setForm = useCallback((updates: Partial<FormState>) => {
-    setFormState((prev) => {
-      const next = { ...prev, ...updates };
+  const setForm = useCallback(
+    (updates: Partial<FormState>) => {
+      setFormState((prev) => {
+        let alcance_tipo = prev.alcance_tipo;
+        let id_sucursal = prev.id_sucursal;
 
-      // Auto-set alcance_tipo when rol changes
-      if (updates.id_rol !== undefined) {
-        setRoles((currentRoles) => {
-          const selectedRole = currentRoles.find((r) => r.id === updates.id_rol);
+        if (updates.id_rol !== undefined) {
+          const selectedRole = roles.find((r) => r.id === updates.id_rol);
           if (selectedRole) {
             const isGlobal = GLOBAL_ROLES.includes(selectedRole.codigo);
-            next.alcance_tipo = isGlobal ? 'GLOBAL' : 'SUCURSAL';
-            if (isGlobal) next.id_sucursal = null;
+            alcance_tipo = isGlobal ? 'GLOBAL' : 'SUCURSAL';
+            if (isGlobal) id_sucursal = null;
           }
-          return currentRoles;
-        });
-      }
+        }
 
-      return next;
-    });
-  }, []);
+        return {
+          ...prev,
+          ...updates,
+          alcance_tipo: updates.alcance_tipo ?? alcance_tipo,
+          id_sucursal: updates.id_sucursal !== undefined ? updates.id_sucursal : id_sucursal,
+        };
+      });
+    },
+    [roles]
+  );
 
   const resetForm = useCallback(() => {
     setFormState(EMPTY_FORM);
@@ -274,8 +286,8 @@ export function useGestionUsuarios(): UseGestionUsuariosReturn {
       resetForm();
       await loadData();
       showToast('success', data.message ?? 'Acceso creado correctamente');
-    } catch (err) {
-      console.error('Error en submitInvite:', err);
+    } catch (err: unknown) {
+      logger.error('Error en submitInvite:', err);
       showToast('error', 'Error de conexión. Intentá de nuevo.');
     } finally {
       setIsSubmitting(false);
@@ -300,13 +312,46 @@ export function useGestionUsuarios(): UseGestionUsuariosReturn {
       closeRevoke();
       await loadData();
       showToast('success', 'Acceso revocado correctamente');
-    } catch (err) {
-      console.error('Error en submitRevoke:', err);
+    } catch (err: unknown) {
+      logger.error('Error en submitRevoke:', err);
       showToast('error', 'Error de conexión. Intentá de nuevo.');
     } finally {
       setIsSubmitting(false);
     }
   }, [revokeModal.user, closeRevoke, loadData, showToast]);
+
+  const submitUnlock = useCallback(
+    async (userToUnlock: UsuarioActivo) => {
+      if (!userToUnlock.email) return;
+      setIsSubmitting(true);
+      try {
+        const res = await fetch('/api/admin/unlock-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: userToUnlock.email }),
+        });
+
+        if (res.ok) {
+          showToast('success', `Cuenta de ${userToUnlock.nombres} ${userToUnlock.apellidos} desbloqueada exitosamente.`);
+          await loadData();
+        } else {
+          let errData: { error?: string } = {};
+          try {
+            errData = await res.json();
+          } catch (jsonErr: unknown) {
+            logger.error('Error parseando respuesta de unlock:', jsonErr);
+          }
+          showToast('error', errData.error || 'Error al desbloquear usuario');
+        }
+      } catch (err: unknown) {
+        logger.error('Error en submitUnlock:', err);
+        showToast('error', 'Error de red al intentar desbloquear usuario');
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [loadData, showToast]
+  );
 
   return {
     personasSinCuenta,
@@ -329,6 +374,7 @@ export function useGestionUsuarios(): UseGestionUsuariosReturn {
     closeCredenciales,
     submitInvite,
     submitRevoke,
+    submitUnlock,
     toast,
     clearToast,
   };

@@ -1,11 +1,13 @@
-import React from 'react';
+"use client";
+
 import Button from '@/components/ui/Button';
 import type { UsuarioActivo } from '@/types';
 
-interface UsuariosTableProps {
+export interface UsuariosTableProps {
   users: UsuarioActivo[];
   isLoading: boolean;
   onRevoke: (user: UsuarioActivo) => void;
+  onUnlock?: (user: UsuarioActivo) => void;
   callerAlcanceTipo: 'GLOBAL' | 'SUCURSAL';
   callerIdSucursal: number | null;
   callerIdPersona: number;
@@ -31,10 +33,11 @@ function SkeletonRow() {
   );
 }
 
-export default function UsuariosTable({
+export function UsuariosTable({
   users,
   isLoading,
   onRevoke,
+  onUnlock,
   callerAlcanceTipo,
   callerIdSucursal,
   callerIdPersona,
@@ -119,8 +122,18 @@ export default function UsuariosTable({
                     className="hover:bg-gray-50/60 transition-colors"
                   >
                     <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">
-                        {user.apellidos} {user.nombres}
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-900">
+                          {user.apellidos} {user.nombres}
+                        </span>
+                        {user.bloqueado && (
+                          <span
+                            className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-800"
+                            title={user.bloqueo_mensaje ?? 'Cuenta bloqueada por exceso de intentos fallidos'}
+                          >
+                            {user.es_permanente ? 'Bloqueo definitivo' : 'Bloqueo temporal'}
+                          </span>
+                        )}
                       </div>
                       {user.email && (
                         <div className="text-xs text-gray-400 mt-0.5">{user.email}</div>
@@ -144,18 +157,30 @@ export default function UsuariosTable({
                         : '—'}
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {user.id_persona === callerIdPersona && (
-                        <span className="text-xs font-semibold text-gray-400">Tu cuenta</span>
-                      )}
-                      {canRevoke && (
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => onRevoke(user)}
-                        >
-                          Revocar
-                        </Button>
-                      )}
+                      <div className="flex items-center justify-end gap-2">
+                        {user.id_persona === callerIdPersona && (
+                          <span className="text-xs font-semibold text-gray-400">Tu cuenta</span>
+                        )}
+                        {user.bloqueado && onUnlock && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => onUnlock(user)}
+                            title="Desbloquear cuenta manualmente"
+                          >
+                            Desbloquear
+                          </Button>
+                        )}
+                        {canRevoke && (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => onRevoke(user)}
+                          >
+                            Revocar
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -167,3 +192,5 @@ export default function UsuariosTable({
     </div>
   );
 }
+
+export default UsuariosTable;

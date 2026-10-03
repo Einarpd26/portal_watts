@@ -169,6 +169,45 @@ export type Database = {
         }
         Relationships: []
       }
+      intentos_login: {
+        Row: {
+          bloqueado_hasta: string | null
+          bloqueos_acumulados: number
+          created_at: string
+          desbloqueado_por: string | null
+          email: string
+          es_permanente: boolean
+          id: number
+          intentos_fallidos: number
+          ultimo_desbloqueo: string | null
+          ultimo_intento: string
+        }
+        Insert: {
+          bloqueado_hasta?: string | null
+          bloqueos_acumulados?: number
+          created_at?: string
+          desbloqueado_por?: string | null
+          email: string
+          es_permanente?: boolean
+          id?: never
+          intentos_fallidos?: number
+          ultimo_desbloqueo?: string | null
+          ultimo_intento?: string
+        }
+        Update: {
+          bloqueado_hasta?: string | null
+          bloqueos_acumulados?: number
+          created_at?: string
+          desbloqueado_por?: string | null
+          email?: string
+          es_permanente?: boolean
+          id?: never
+          intentos_fallidos?: number
+          ultimo_desbloqueo?: string | null
+          ultimo_intento?: string
+        }
+        Relationships: []
+      }
       personas: {
         Row: {
           apellidos: string

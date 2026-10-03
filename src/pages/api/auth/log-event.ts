@@ -1,6 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createServerClientForReqRes } from '@/lib/supabase/server';
 import { registrarBitacora } from '@/lib/bitacora';
+import { registrarFalloLogin, registrarExitoLogin } from '@/lib/lockout';
+import { normalizeRolesArray } from '@/utils/roleUtils';
+import { logger } from '@/lib/logger';
 
 type LogAuthBody = {
   accion: 'INICIO_SESION' | 'CIERRE_SESION' | 'LOGIN_FALLIDO';
@@ -29,7 +32,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let userRol: string | null = null;
 
     if (user) {
-      // Si el usuario está autenticado en Supabase, buscamos su perfil y rol
       const { data: persona } = await supabase
         .from('personas')
         .select(`
@@ -44,22 +46,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (persona) {
         idPersona = persona.id;
         userEmail = persona.email || user.email || userEmail;
-        const rolesArray = Array.isArray(persona.usuario_roles)
-          ? persona.usuario_roles
-          : persona.usuario_roles ? [persona.usuario_roles] : [];
+        const rolesArray = normalizeRolesArray(persona.usuario_roles);
         userRol = rolesArray[0]?.roles?.codigo ?? null;
       }
+    }
+
+    // Procesar política de intentos fallidos y restablecimiento de login
+    if (accion === 'LOGIN_FALLIDO') {
+      const { evaluation, mensaje } = await registrarFalloLogin(userEmail, req);
+      return res.status(200).json({
+        success: true,
+        lockout: evaluation,
+        mensaje,
+      });
+    }
+
+    if (accion === 'INICIO_SESION') {
+      // Login exitoso: restablece contadores de intentos fallidos
+      await registrarExitoLogin(userEmail);
     }
 
     let descripcion = '';
     if (accion === 'INICIO_SESION') {
       descripcion = 'Inicio de sesión exitoso en el portal';
-    } else if (accion === 'CIERRE_SESION') {
-      descripcion = 'Cierre de sesión finalizado por el usuario';
     } else {
-      descripcion = razon
-        ? `Intento fallido de inicio de sesión: ${razon}`
-        : 'Intento fallido de inicio de sesión con credenciales inválidas';
+      descripcion = 'Cierre de sesión finalizado por el usuario';
     }
 
     await registrarBitacora(
@@ -78,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({ success: true });
   } catch (err: unknown) {
-    console.error('Error registrando evento de autenticación en bitácora:', err);
+    logger.error('Error registrando evento de autenticación en bitácora:', err);
     return res.status(500).json({ error: 'Error al registrar evento de auditoría' });
   }
 }

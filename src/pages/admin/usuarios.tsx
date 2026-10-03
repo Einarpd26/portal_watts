@@ -1,4 +1,6 @@
-import React, { useEffect } from 'react';
+"use client";
+
+import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGestionUsuarios } from '@/hooks/useGestionUsuarios';
@@ -9,6 +11,7 @@ import CredencialesTemporalesModal from '@/components/usuarios/CredencialesTempo
 import RevocarAccesoModal from '@/components/usuarios/RevocarAccesoModal';
 import Alert from '@/components/ui/Alert';
 import AppLayout from '@/components/layout/AppLayout';
+import { logger } from '@/lib/logger';
 import type { PageWithLayout } from '@/types';
 
 const GestionAccesosPage: PageWithLayout = () => {
@@ -18,7 +21,9 @@ const GestionAccesosPage: PageWithLayout = () => {
   // Auth guard: redirect if no permission
   useEffect(() => {
     if (!authLoading && user && !user.permisos.includes('cuentas:gestionar')) {
-      void router.replace('/dashboard');
+      router.replace('/dashboard').catch((navErr: unknown) => {
+        logger.error('Error redirigiendo usuario sin permisos:', navErr);
+      });
     }
   }, [authLoading, user, router]);
 
@@ -42,6 +47,7 @@ const GestionAccesosPage: PageWithLayout = () => {
     closeCredenciales,
     submitInvite,
     submitRevoke,
+    submitUnlock,
     toast,
     clearToast,
   } = useGestionUsuarios();
@@ -93,6 +99,7 @@ const GestionAccesosPage: PageWithLayout = () => {
           users={activeUsers}
           isLoading={isLoading}
           onRevoke={openRevoke}
+          onUnlock={submitUnlock}
           callerAlcanceTipo={user.alcance_tipo}
           callerIdSucursal={user.id_sucursal}
           callerIdPersona={user.id_persona}

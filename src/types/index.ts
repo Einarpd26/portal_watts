@@ -109,6 +109,9 @@ export interface UsuarioActivo {
   auth_user_id: string;
   email: string | null;
   roles: RolActivo[];
+  bloqueado?: boolean;
+  bloqueo_mensaje?: string;
+  es_permanente?: boolean;
 }
 
 // ------------------------------------------------------------------------------

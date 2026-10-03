@@ -9,6 +9,7 @@ import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { validateLoginForm, type LoginFormErrors } from "@/utils/authValidation";
+import { logger } from "@/lib/logger";
 
 // Mapeo de códigos de error de Supabase Auth a mensajes legibles (CU-01, flujo A1).
 // Cubre tanto errores de submit (authError.code) como errores de callback
@@ -26,7 +27,7 @@ const LOGIN_ERROR_MESSAGES: Record<string, string> = {
   user_banned: "Tu cuenta ha sido suspendida. Comunícate con la administración.",
 };
 
-export default function LoginPage() {
+export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<LoginFormErrors>({});
@@ -44,7 +45,7 @@ export default function LoginPage() {
           ? "/admin/usuarios"
           : "/dashboard";
       router.replace(destination).catch((err: unknown) => {
-        console.error("Error redirigiendo usuario autenticado:", err);
+        logger.error("Error redirigiendo usuario autenticado:", err);
       });
     }
   }, [authLoading, user, router]);
@@ -81,6 +82,25 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // 1. Pre-verificación de bloqueo de cuenta (OWASP 3 intentos: 15m, 1h, permanente)
+      try {
+        const lockoutRes = await fetch("/api/auth/check-lockout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: validation.trimmedEmail }),
+        });
+        if (lockoutRes.ok) {
+          const lockoutData = await lockoutRes.json();
+          if (lockoutData.locked) {
+            setFormError(lockoutData.evaluation?.mensaje ?? "Cuenta bloqueada.");
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (checkErr: unknown) {
+        logger.error("Error comprobando bloqueo previo de cuenta:", checkErr);
+      }
+
       const supabase = createClient();
 
       const { error: authError } = await supabase.auth.signInWithPassword({
@@ -89,24 +109,33 @@ export default function LoginPage() {
       });
 
       if (authError) {
-        // Registrar intento fallido en bitácora de auditoría
-        fetch("/api/auth/log-event", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            accion: "LOGIN_FALLIDO",
-            email: validation.trimmedEmail,
-            razon: authError.code ?? authError.message ?? "Credenciales inválidas",
-          }),
-        }).catch((logErr: unknown) => {
-          console.error("Error registrando fallo de login en bitácora:", logErr);
-        });
-
-        setFormError(
+        let errorMsg =
           LOGIN_ERROR_MESSAGES[authError.code ?? ""] ??
-            LOGIN_ERROR_MESSAGES[authError.message ?? ""] ??
-            "Ocurrió un error al iniciar sesión. Inténtalo de nuevo."
-        );
+          LOGIN_ERROR_MESSAGES[authError.message ?? ""] ??
+          "Ocurrió un error al iniciar sesión. Inténtalo de nuevo.";
+
+        // Registrar intento fallido en bitácora y aplicar política de bloqueo
+        try {
+          const logRes = await fetch("/api/auth/log-event", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              accion: "LOGIN_FALLIDO",
+              email: validation.trimmedEmail,
+              razon: authError.code ?? authError.message ?? "Credenciales inválidas",
+            }),
+          });
+          if (logRes.ok) {
+            const logData = await logRes.json();
+            if (logData.mensaje) {
+              errorMsg = logData.mensaje;
+            }
+          }
+        } catch (logErr: unknown) {
+          logger.error("Error registrando fallo de login en bitácora:", logErr);
+        }
+
+        setFormError(errorMsg);
         setLoading(false);
         return;
       }
@@ -124,7 +153,7 @@ export default function LoginPage() {
             razon: result.error ?? "Verificación de perfil fallida",
           }),
         }).catch((logErr: unknown) => {
-          console.error("Error registrando rechazo de perfil en bitácora:", logErr);
+          logger.error("Error registrando rechazo de perfil en bitácora:", logErr);
         });
 
         // Destruir la cookie de Supabase Auth para no dejar sesión zombie
@@ -150,7 +179,7 @@ export default function LoginPage() {
           email: validation.trimmedEmail,
         }),
       }).catch((logErr: unknown) => {
-        console.error("Error registrando inicio de sesión en bitácora:", logErr);
+        logger.error("Error registrando inicio de sesión en bitácora:", logErr);
       });
 
       // Redirección directa según rol
@@ -162,7 +191,7 @@ export default function LoginPage() {
 
       await router.replace(targetRoute);
     } catch (err: unknown) {
-      console.error("Error durante el inicio de sesión:", err);
+      logger.error("Error durante el inicio de sesión:", err);
       setFormError("Ocurrió un error inesperado al iniciar sesión. Inténtalo de nuevo.");
       setLoading(false);
     }
@@ -200,7 +229,7 @@ export default function LoginPage() {
           <form
             onSubmit={(e) => {
               handleLogin(e).catch((err: unknown) => {
-                console.error("Error no controlado en handleLogin:", err);
+                logger.error("Error no controlado en handleLogin:", err);
               });
             }}
             className="w-full space-y-4"
@@ -257,3 +286,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+export default LoginPage;
