@@ -251,6 +251,10 @@ otp_expiry = 3600
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"
 
+[auth.email.template.recovery]
+subject = "Recuperación de contraseña - Caramelos Watts"
+content_path = "./supabase/templates/recovery.html"
+
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
 # enabled = true
@@ -389,7 +393,7 @@ deno_version = 2
 # secret_key = "env(SECRET_VALUE)"
 
 [analytics]
-enabled = true
+enabled = false
 port = 54447
 # Configure one of the supported backends: `postgres`, `bigquery`.
 backend = "postgres"
