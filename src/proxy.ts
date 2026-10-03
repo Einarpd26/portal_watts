@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { getPasswordChangeState } from '@/utils/passwordChange';
+import { logger } from '@/lib/logger';
 
 export async function proxy(request: NextRequest) {
   // 1. Creamos una respuesta inicial que permite continuar la petición
@@ -37,17 +38,24 @@ export async function proxy(request: NextRequest) {
   });
 
   // 3. Validar el usuario (comprueba la cookie contra los servidores de Supabase)
-  const { data: { user } } = await supabase.auth.getUser();
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch (err: unknown) {
+    logger.error('Error obteniendo usuario en proxy middleware:', err);
+    user = null;
+  }
 
   // 4. Reglas del "Guardia de Seguridad"
   const path = request.nextUrl.pathname;
   const isLoginPage = path === '/login';
+  const isForgotPasswordPage = path === '/auth/forgot-password';
+  const isAuthPage = path.startsWith('/auth/');
   
-  // Rutas protegidas: /admin, /dashboard, y cualquier otra que no sea /login ni /
-  const isProtectedRoute =
-    path.startsWith('/admin') ||
-    path.startsWith('/dashboard') ||
-    (path !== '/login' && path !== '/');
+  // Rutas públicas: /, /login, /auth/* (recuperación de contraseña, callbacks)
+  const isPublicRoute = path === '/' || isLoginPage || isAuthPage;
+  const isProtectedRoute = !isPublicRoute;
 
   // Cambio obligatorio de contraseña temporal (CU-01 A3). Se evalúa antes que las
   // reglas A/B para que ninguna ruta privada ni el login lo esquiven.
@@ -66,8 +74,12 @@ export async function proxy(request: NextRequest) {
 
   if (user && pwState === 'expired') {
     // La temporal venció sin usarse: se cierra la sesión (signOut limpia las cookies en `response`)
-    await supabase.auth.signOut();
-    if (isLoginPage) return response;
+    try {
+      await supabase.auth.signOut();
+    } catch (signOutErr: unknown) {
+      logger.error('Error cerrando sesión de credencial expirada en proxy:', signOutErr);
+    }
+    if (isLoginPage || isForgotPasswordPage) return response;
     return redirectTo('/login', '?error=temp_password_expired');
   }
 
@@ -84,8 +96,10 @@ export async function proxy(request: NextRequest) {
     return redirectTo('/login');
   }
 
-  // Regla B: Ya tiene cuenta e intenta entrar al Login -> Al Dashboard
-  if (user && isLoginPage) {
+  // Regla B: Ya tiene cuenta activa normal e intenta entrar al Login o a Recuperar -> Al Dashboard
+  // Nota: No se redirige /auth/reset-password porque el usuario que llega desde el correo de recuperación
+  // cuenta con una sesión temporal de recovery otorgada por Supabase para cambiar su clave.
+  if (user && (isLoginPage || isForgotPasswordPage) && pwState === 'none') {
     return redirectTo('/dashboard');
   }
 

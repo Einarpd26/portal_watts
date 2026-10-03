@@ -6,7 +6,7 @@ import { normalizeRolesArray } from '@/utils/roleUtils';
 import { logger } from '@/lib/logger';
 
 type LogAuthBody = {
-  accion: 'INICIO_SESION' | 'CIERRE_SESION' | 'LOGIN_FALLIDO';
+  accion: 'INICIO_SESION' | 'CIERRE_SESION' | 'LOGIN_FALLIDO' | 'RECUPERACION_PASSWORD';
   email?: string;
   razon?: string;
   detalles?: Record<string, unknown>;
@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const { accion, email, razon, detalles } = req.body as LogAuthBody;
 
-    if (!accion || !['INICIO_SESION', 'CIERRE_SESION', 'LOGIN_FALLIDO'].includes(accion)) {
+    if (!accion || !['INICIO_SESION', 'CIERRE_SESION', 'LOGIN_FALLIDO', 'RECUPERACION_PASSWORD'].includes(accion)) {
       return res.status(400).json({ error: 'Acción de autenticación inválida' });
     }
 
@@ -61,14 +61,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    if (accion === 'INICIO_SESION') {
-      // Login exitoso: restablece contadores de intentos fallidos
+    if (accion === 'INICIO_SESION' || accion === 'RECUPERACION_PASSWORD') {
+      // Login o restablecimiento exitoso: restablece contadores de intentos fallidos
       await registrarExitoLogin(userEmail);
     }
 
     let descripcion = '';
     if (accion === 'INICIO_SESION') {
       descripcion = 'Inicio de sesión exitoso en el portal';
+    } else if (accion === 'RECUPERACION_PASSWORD') {
+      descripcion = 'Contraseña restablecida exitosamente mediante flujo de recuperación';
     } else {
       descripcion = 'Cierre de sesión finalizado por el usuario';
     }

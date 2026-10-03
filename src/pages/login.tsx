@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -8,7 +8,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import AuthLayout from "@/components/layout/AuthLayout";
 import { validateLoginForm, type LoginFormErrors } from "@/utils/authValidation";
+import { logAuthEvent } from "@/utils/logAuthEvent";
 import { logger } from "@/lib/logger";
 
 // Mapeo de códigos de error de Supabase Auth a mensajes legibles (CU-01, flujo A1).
@@ -115,24 +117,13 @@ export function LoginPage() {
           "Ocurrió un error al iniciar sesión. Inténtalo de nuevo.";
 
         // Registrar intento fallido en bitácora y aplicar política de bloqueo
-        try {
-          const logRes = await fetch("/api/auth/log-event", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              accion: "LOGIN_FALLIDO",
-              email: validation.trimmedEmail,
-              razon: authError.code ?? authError.message ?? "Credenciales inválidas",
-            }),
-          });
-          if (logRes.ok) {
-            const logData = await logRes.json();
-            if (logData.mensaje) {
-              errorMsg = logData.mensaje;
-            }
-          }
-        } catch (logErr: unknown) {
-          logger.error("Error registrando fallo de login en bitácora:", logErr);
+        const logData = await logAuthEvent({
+          accion: "LOGIN_FALLIDO",
+          email: validation.trimmedEmail,
+          razon: authError.code ?? authError.message ?? "Credenciales inválidas",
+        });
+        if (logData?.mensaje) {
+          errorMsg = logData.mensaje;
         }
 
         setFormError(errorMsg);
@@ -144,14 +135,10 @@ export function LoginPage() {
       const result = await refreshUser();
       if (!result.success) {
         // Registrar rechazo de cuenta en bitácora
-        fetch("/api/auth/log-event", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            accion: "LOGIN_FALLIDO",
-            email: validation.trimmedEmail,
-            razon: result.error ?? "Verificación de perfil fallida",
-          }),
+        logAuthEvent({
+          accion: "LOGIN_FALLIDO",
+          email: validation.trimmedEmail,
+          razon: result.error ?? "Verificación de perfil fallida",
         }).catch((logErr: unknown) => {
           logger.error("Error registrando rechazo de perfil en bitácora:", logErr);
         });
@@ -171,13 +158,9 @@ export function LoginPage() {
       }
 
       // Registrar inicio de sesión exitoso en bitácora de auditoría
-      fetch("/api/auth/log-event", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accion: "INICIO_SESION",
-          email: validation.trimmedEmail,
-        }),
+      logAuthEvent({
+        accion: "INICIO_SESION",
+        email: validation.trimmedEmail,
       }).catch((logErr: unknown) => {
         logger.error("Error registrando inicio de sesión en bitácora:", logErr);
       });
@@ -198,92 +181,68 @@ export function LoginPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-red-900 via-red-800 to-red-600 p-4">
-      {/* Textura diagonal decorativa (tokens-de-marca.md §5.2) */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(-45deg,rgba(255,255,255,0.03)_0px,rgba(255,255,255,0.03)_1px,transparent_1px,transparent_14px)]"
-      />
+    <AuthLayout>
+      {error && (
+        <Alert state="error" onClose={handleCloseError}>
+          {error}
+        </Alert>
+      )}
 
-      {/* Orbs decorativos (tokens-de-marca.md §5.2) */}
-      <div aria-hidden className="pointer-events-none absolute -top-28 -right-24 h-[22rem] w-[22rem] rounded-full bg-white/[.06]" />
-      <div aria-hidden className="pointer-events-none absolute -bottom-16 -left-12 h-56 w-56 rounded-full bg-white/[.06]" />
+      <form
+        onSubmit={(e) => {
+          handleLogin(e).catch((err: unknown) => {
+            logger.error("Error no controlado en handleLogin:", err);
+          });
+        }}
+        className="w-full space-y-4"
+        noValidate
+      >
+        <Input
+          label="Correo Electrónico"
+          type="email"
+          value={email}
+          error={fieldErrors.email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            if (fieldErrors.email) {
+              setFieldErrors((prev) => ({ ...prev, email: undefined }));
+            }
+          }}
+          placeholder="gerencia@carameloswatts.com"
+          autoComplete="email"
+          required
+        />
 
-      <div className="relative w-full max-w-sm rounded-3xl bg-white p-8 shadow-login">
-        <div className="flex flex-col items-center gap-7">
-          <Image
-            src="/watts_logo_rojo.png"
-            alt="Caramelos Watts"
-            width={120}
-            height={120}
-            priority
-            className="rounded-2xl object-cover"
-          />
+        <Input
+          label="Contraseña"
+          type="password"
+          value={password}
+          error={fieldErrors.password}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            if (fieldErrors.password) {
+              setFieldErrors((prev) => ({ ...prev, password: undefined }));
+            }
+          }}
+          placeholder="••••••••"
+          autoComplete="current-password"
+          required
+          showPasswordToggle
+        />
 
-          {error && (
-            <Alert state="error" onClose={handleCloseError}>
-              {error}
-            </Alert>
-          )}
+        <Button type="submit" size="lg" isLoading={loading}>
+          Iniciar Sesión
+        </Button>
+      </form>
 
-          <form
-            onSubmit={(e) => {
-              handleLogin(e).catch((err: unknown) => {
-                logger.error("Error no controlado en handleLogin:", err);
-              });
-            }}
-            className="w-full space-y-4"
-            noValidate
-          >
-            <Input
-              label="Correo Electrónico"
-              type="email"
-              value={email}
-              error={fieldErrors.email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (fieldErrors.email) {
-                  setFieldErrors((prev) => ({ ...prev, email: undefined }));
-                }
-              }}
-              placeholder="gerencia@carameloswatts.com"
-              autoComplete="email"
-              required
-            />
-
-            <Input
-              label="Contraseña"
-              type="password"
-              value={password}
-              error={fieldErrors.password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (fieldErrors.password) {
-                  setFieldErrors((prev) => ({ ...prev, password: undefined }));
-                }
-              }}
-              placeholder="••••••••"
-              autoComplete="current-password"
-              required
-              showPasswordToggle
-            />
-
-            <Button type="submit" size="lg" isLoading={loading}>
-              Iniciar Sesión
-            </Button>
-          </form>
-
-          {/* CU-01 Flujo A4: Recuperación de contraseña */}
-          <button
-            type="button"
-            onClick={() => setFormError("La recuperación de contraseña por correo está pendiente de integración.")}
-            className="text-sm font-medium text-primary-600 transition-colors hover:text-primary-700"
-          >
-            ¿Olvidaste tu contraseña?
-          </button>
-        </div>
-      </div>
-    </div>
+      {/* CU-01 Flujo A4: Recuperación de contraseña */}
+      <Link
+        href="/auth/forgot-password"
+        className="text-sm font-medium text-primary-600 transition-colors hover:text-primary-700"
+      >
+        ¿Olvidaste tu contraseña?
+      </Link>
+    </AuthLayout>
   );
 }
 
