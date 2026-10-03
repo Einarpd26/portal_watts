@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { todayBolivia } from '@/utils/boliviaTime';
+import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
 
 type EditBody = {
   ci?: string;
@@ -114,6 +115,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('alcance_tipo', 'SUCURSAL');
     }
   }
+
+  // Registrar auditoría en bitácora (UTC 0)
+  await registrarBitacoraDesdeSesion(
+    caller,
+    'PERSONAL',
+    'EDITAR_PERSONAL',
+    `Colaborador ID ${id} editado (${nombres.trim()} ${apellidos.trim()}, CI: ${ci.trim()})`,
+    req,
+    { id_persona: id, ci: ci.trim(), id_cargo, id_sucursal, reasignacion: changed }
+  );
 
   return res.status(200).json({ success: true });
 }

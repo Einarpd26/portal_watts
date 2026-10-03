@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { todayBolivia } from '@/utils/boliviaTime';
+import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -73,6 +74,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Error creando asignación, rollback ejecutado:', asignError);
     return res.status(500).json({ error: 'Error al crear la asignación laboral' });
   }
+
+  // Registrar auditoría en bitácora (UTC 0)
+  await registrarBitacoraDesdeSesion(
+    caller,
+    'PERSONAL',
+    'CREAR_PERSONAL',
+    `Nuevo colaborador registrado: ${nombres.trim()} ${apellidos.trim()} (CI: ${ci.trim()})`,
+    req,
+    { id_persona: persona.id, ci: ci.trim(), id_cargo, id_sucursal, fecha_inicio: fecha_inicio ?? todayBolivia() }
+  );
 
   return res.status(201).json({ success: true, id_persona: persona.id });
 }

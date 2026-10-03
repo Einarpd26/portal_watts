@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { generateTempPassword, tempPasswordExpiry } from '@/utils/tempPassword';
+import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -129,6 +130,16 @@ export default async function handler(
     console.error('Error insertando rol, rollback ejecutado:', rolError);
     return res.status(500).json({ error: 'Error al asignar el rol al usuario' });
   }
+
+  // Registrar auditoría en bitácora (UTC 0)
+  await registrarBitacoraDesdeSesion(
+    caller,
+    'ACCESOS',
+    'INVITAR_USUARIO',
+    `Acceso digital creado para el colaborador ID ${id_persona} (${email})`,
+    req,
+    { id_persona, email, id_rol, alcance_tipo, id_sucursal: id_sucursal ?? null }
+  );
 
   // La contraseña temporal viaja una sola vez en esta respuesta: no se guarda en claro
   res.setHeader('Cache-Control', 'no-store');

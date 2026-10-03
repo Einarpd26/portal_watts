@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { revokeAccess } from '@/utils/revokeAccess';
+import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
 
 export default async function handler(
   req: NextApiRequest,
@@ -33,7 +34,7 @@ export default async function handler(
   // 3. Obtener auth_user_id de la persona
   const { data: persona, error: personaError } = await supabaseAdmin
     .from('personas')
-    .select('id, auth_user_id')
+    .select('id, auth_user_id, email, nombres, apellidos')
     .eq('id', id)
     .single();
 
@@ -65,6 +66,16 @@ export default async function handler(
   if (!revoked) {
     return res.status(500).json({ error: 'Error al eliminar la cuenta de autenticación' });
   }
+
+  // Registrar auditoría en bitácora (UTC 0)
+  await registrarBitacoraDesdeSesion(
+    caller,
+    'ACCESOS',
+    'REVOCAR_ACCESO',
+    `Acceso digital revocado para el colaborador ID ${id} (${persona.nombres} ${persona.apellidos})`,
+    req,
+    { id_persona: id, email: persona.email, auth_user_id: persona.auth_user_id }
+  );
 
   return res.status(200).json({ success: true });
 }

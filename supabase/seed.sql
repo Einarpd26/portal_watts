@@ -34,7 +34,8 @@ VALUES
             'personal:gestionar',
             'territorio:gestionar',
             'planificacion:asignar',
-            'mapa:consultar'
+            'mapa:consultar',
+            'bitacora:consultar'
         ]
     ),
     (
@@ -45,7 +46,8 @@ VALUES
             'cuentas:gestionar',
             'personal:gestionar',
             'territorio:gestionar',
-            'mapa:consultar'
+            'mapa:consultar',
+            'bitacora:consultar'
         ]
     ),
     (

@@ -69,6 +69,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     try {
+      // Registrar cierre de sesión en bitácora antes de invalidar la sesión
+      await fetch('/api/auth/log-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accion: 'CIERRE_SESION',
+          email: user?.email,
+        }),
+      }).catch((logErr: unknown) => {
+        console.error('Error registrando cierre de sesión en bitácora:', logErr);
+      });
+
       const supabase = createClient();
       await supabase.auth.signOut();
     } catch (error) {
@@ -78,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
       await router.replace('/login');
     }
-  }, [router]);
+  }, [router, user?.email]);
 
   useEffect(() => {
     const supabase = createClient();

@@ -92,6 +92,59 @@ export type Database = {
           },
         ]
       }
+      bitacora: {
+        Row: {
+          accion: string
+          auth_user_id: string | null
+          created_at: string
+          descripcion: string
+          detalles_json: Json | null
+          direccion_ip: string | null
+          id: number
+          id_persona: number | null
+          modulo: string
+          user_agent: string | null
+          usuario_email: string
+          usuario_rol: string | null
+        }
+        Insert: {
+          accion: string
+          auth_user_id?: string | null
+          created_at?: string
+          descripcion: string
+          detalles_json?: Json | null
+          direccion_ip?: string | null
+          id?: never
+          id_persona?: number | null
+          modulo: string
+          user_agent?: string | null
+          usuario_email: string
+          usuario_rol?: string | null
+        }
+        Update: {
+          accion?: string
+          auth_user_id?: string | null
+          created_at?: string
+          descripcion?: string
+          detalles_json?: Json | null
+          direccion_ip?: string | null
+          id?: never
+          id_persona?: number | null
+          modulo?: string
+          user_agent?: string | null
+          usuario_email?: string
+          usuario_rol?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bitacora_id_persona_fkey"
+            columns: ["id_persona"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cargos: {
         Row: {
           created_at: string

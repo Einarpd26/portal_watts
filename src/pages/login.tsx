@@ -89,6 +89,19 @@ export default function LoginPage() {
       });
 
       if (authError) {
+        // Registrar intento fallido en bitácora de auditoría
+        fetch("/api/auth/log-event", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accion: "LOGIN_FALLIDO",
+            email: validation.trimmedEmail,
+            razon: authError.code ?? authError.message ?? "Credenciales inválidas",
+          }),
+        }).catch((logErr: unknown) => {
+          console.error("Error registrando fallo de login en bitácora:", logErr);
+        });
+
         setFormError(
           LOGIN_ERROR_MESSAGES[authError.code ?? ""] ??
             LOGIN_ERROR_MESSAGES[authError.message ?? ""] ??
@@ -101,6 +114,19 @@ export default function LoginPage() {
       // CU-01 Flujo A2 / A3: Verificación de estado de cuenta y permisos
       const result = await refreshUser();
       if (!result.success) {
+        // Registrar rechazo de cuenta en bitácora
+        fetch("/api/auth/log-event", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accion: "LOGIN_FALLIDO",
+            email: validation.trimmedEmail,
+            razon: result.error ?? "Verificación de perfil fallida",
+          }),
+        }).catch((logErr: unknown) => {
+          console.error("Error registrando rechazo de perfil en bitácora:", logErr);
+        });
+
         // Destruir la cookie de Supabase Auth para no dejar sesión zombie
         await supabase.auth.signOut();
         setLoading(false);
@@ -114,6 +140,18 @@ export default function LoginPage() {
         }
         return;
       }
+
+      // Registrar inicio de sesión exitoso en bitácora de auditoría
+      fetch("/api/auth/log-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accion: "INICIO_SESION",
+          email: validation.trimmedEmail,
+        }),
+      }).catch((logErr: unknown) => {
+        console.error("Error registrando inicio de sesión en bitácora:", logErr);
+      });
 
       // Redirección directa según rol
       const rol = result.user?.rol_codigo;

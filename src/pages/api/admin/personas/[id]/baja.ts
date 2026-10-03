@@ -3,6 +3,7 @@ import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { todayBolivia } from '@/utils/boliviaTime';
 import { revokeAccess } from '@/utils/revokeAccess';
+import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -35,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { data: persona } = await supabase
     .from('personas')
-    .select('id, auth_user_id, fecha_baja, asignaciones_laborales ( id, id_sucursal, fecha_inicio, estado )')
+    .select('id, nombres, apellidos, auth_user_id, fecha_baja, asignaciones_laborales ( id, id_sucursal, fecha_inicio, estado )')
     .eq('id', id)
     .maybeSingle();
 
@@ -76,6 +77,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (revocar_acceso && persona.auth_user_id) {
     accesoRevocado = await revokeAccess(supabase, { id, auth_user_id: persona.auth_user_id });
   }
+
+  // Registrar auditoría en bitácora (UTC 0)
+  await registrarBitacoraDesdeSesion(
+    caller,
+    'PERSONAL',
+    'BAJA_PERSONAL',
+    `Baja laboral registrada para el colaborador ID ${id} (${persona.nombres} ${persona.apellidos}) con fecha ${fecha_baja}`,
+    req,
+    { id_persona: id, fecha_baja, revocar_acceso: Boolean(revocar_acceso), acceso_revocado: accesoRevocado }
+  );
 
   return res.status(200).json({
     success: true,
