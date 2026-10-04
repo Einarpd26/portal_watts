@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { createAdminClient } from '@/lib/supabase/server';
+import { construirFiltroBitacoraSucursal } from '@/utils/bitacoraUtils';
+import { logger } from '@/lib/logger';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -26,6 +28,54 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let query = supabase
     .from('bitacora')
     .select('*', { count: 'exact' });
+
+  // Alcance territorial (ADR-001 §E): con alcance SUCURSAL solo se ve la actividad del
+  // personal de la propia sede. Sin sede asignada no se puede acotar, así que se deniega.
+  if (caller.alcance_tipo === 'SUCURSAL') {
+    if (caller.id_sucursal === null) {
+      return res.status(403).json({ error: 'Sin sucursal asignada' });
+    }
+
+    const [{ data: porRol, error: rolError }, { data: porAsignacion, error: asigError }] = await Promise.all([
+      supabase.from('usuario_roles').select('id_persona').eq('id_sucursal', caller.id_sucursal),
+      supabase
+        .from('asignaciones_laborales')
+        .select('id_persona')
+        .eq('id_sucursal', caller.id_sucursal)
+        .eq('estado', 'activo'),
+    ]);
+
+    if (rolError || asigError) {
+      logger.error('Error resolviendo personal de la sucursal para bitácora:', rolError ?? asigError);
+      return res.status(500).json({ error: 'Error al consultar la bitácora de auditoría' });
+    }
+
+    const idsPersona = [
+      ...new Set([...(porRol ?? []), ...(porAsignacion ?? [])].map((r) => r.id_persona)),
+    ];
+
+    const { data: personas, error: personasError } = idsPersona.length > 0
+      ? await supabase.from('personas').select('email').in('id', idsPersona)
+      : { data: [], error: null };
+
+    if (personasError) {
+      logger.error('Error resolviendo correos de la sucursal para bitácora:', personasError);
+      return res.status(500).json({ error: 'Error al consultar la bitácora de auditoría' });
+    }
+
+    const emails = (personas ?? [])
+      .map((p) => p.email?.trim().toLowerCase())
+      .filter((e): e is string => Boolean(e));
+
+    const filtroSucursal = construirFiltroBitacoraSucursal(idsPersona, emails);
+    if (!filtroSucursal) {
+      return res.status(200).json({
+        data: [],
+        pagination: { page, limit, total: 0, totalPages: 1 },
+      });
+    }
+    query = query.or(filtroSucursal);
+  }
 
   if (modulo && modulo !== 'TODOS') {
     query = query.eq('modulo', modulo);
@@ -53,7 +103,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { data, count, error } = await query;
 
   if (error) {
-    console.error('Error consultando bitácora de auditoría:', error);
+    logger.error('Error consultando bitácora de auditoría:', error);
     return res.status(500).json({ error: 'Error al consultar la bitácora de auditoría' });
   }
 

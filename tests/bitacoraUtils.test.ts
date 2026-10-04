@@ -1,7 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { IncomingMessage } from "node:http";
-import { formatToUtcString, getClientIp, getClientUserAgent } from "../src/utils/bitacoraUtils.ts";
+import {
+  construirFiltroBitacoraSucursal,
+  formatToUtcString,
+  getClientIp,
+  getClientUserAgent,
+} from "../src/utils/bitacoraUtils.ts";
 
 test("Bitácora UTC 0: formatToUtcString formatea correctamente en UTC", () => {
   // Fecha fija en UTC: 2026-10-02T21:15:00.000Z
@@ -65,4 +70,21 @@ test("Bitácora Utils: getClientUserAgent extrae el user-agent correctamente", (
     headers: {},
   } as unknown as IncomingMessage & { headers: Record<string, string | string[] | undefined> };
   assert.strictEqual(getClientUserAgent(reqEmpty), "Desconocido");
+});
+
+test("Bitácora Utils: construirFiltroBitacoraSucursal combina actor, destino y correo", () => {
+  const filtro = construirFiltroBitacoraSucursal([1, 2], ["a@x.com"]);
+  assert.strictEqual(
+    filtro,
+    'id_persona.in.(1,2),detalles_json->>id_persona.in.(1,2),usuario_email.in.("a@x.com")'
+  );
+});
+
+test("Bitácora Utils: construirFiltroBitacoraSucursal escapa comillas en correos", () => {
+  const filtro = construirFiltroBitacoraSucursal([], ['a"b@x.com']);
+  assert.strictEqual(filtro, 'usuario_email.in.("a\\"b@x.com")');
+});
+
+test("Bitácora Utils: construirFiltroBitacoraSucursal devuelve null sin personal", () => {
+  assert.strictEqual(construirFiltroBitacoraSucursal([], []), null);
 });

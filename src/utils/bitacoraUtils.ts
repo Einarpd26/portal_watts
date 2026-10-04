@@ -53,3 +53,26 @@ export function formatToUtcString(dateInput?: string | Date | null): string {
 
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds} UTC`;
 }
+
+/**
+ * Arma el filtro `or` de PostgREST que restringe la bitácora al personal de una sucursal.
+ * Un evento pertenece a la sucursal si lo originó alguien de ella (`id_persona` o
+ * `usuario_email`, este último cubre logins fallidos sin sesión) o si recae sobre uno de
+ * sus colaboradores (`detalles_json.id_persona`, que registran las acciones administrativas).
+ * Devuelve null si la sucursal no tiene personal: no hay nada que mostrar.
+ */
+export function construirFiltroBitacoraSucursal(idsPersona: number[], emails: string[]): string | null {
+  const clauses: string[] = [];
+
+  if (idsPersona.length > 0) {
+    const ids = idsPersona.join(',');
+    clauses.push(`id_persona.in.(${ids})`, `detalles_json->>id_persona.in.(${ids})`);
+  }
+
+  if (emails.length > 0) {
+    const quoted = emails.map((e) => `"${e.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`).join(',');
+    clauses.push(`usuario_email.in.(${quoted})`);
+  }
+
+  return clauses.length > 0 ? clauses.join(',') : null;
+}
