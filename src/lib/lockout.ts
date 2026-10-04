@@ -10,10 +10,17 @@ import {
 } from '@/utils/lockoutUtils';
 import type { UserSession } from '@/types';
 
+// Cantidad de IPs distintas con fallos recientes para un mismo correo que se considera
+// un ataque distribuido (no se bloquea la cuenta, solo se alerta en bitácora).
+const UMBRAL_ATAQUE_DISTRIBUIDO = 3;
+const VENTANA_ATAQUE_DISTRIBUIDO_MS = 60 * 60 * 1000;
+
 /**
- * Consulta el estado actual de bloqueo de una cuenta en base a su email.
+ * Consulta el estado de bloqueo del par (email, ip).
+ * El bloqueo es por par: quien provoca fallos se bloquea a sí mismo, no al titular
+ * de la cuenta, que sigue pudiendo entrar desde otra IP.
  */
-export async function verificarBloqueoCuenta(email: string): Promise<LockoutEvaluation> {
+export async function verificarBloqueoCuenta(email: string, ip: string): Promise<LockoutEvaluation> {
   const cleanEmail = email.trim().toLowerCase();
   if (!cleanEmail) {
     return {
@@ -30,6 +37,7 @@ export async function verificarBloqueoCuenta(email: string): Promise<LockoutEval
       .from('intentos_login')
       .select('*')
       .eq('email', cleanEmail)
+      .eq('ip', ip)
       .maybeSingle();
 
     if (error) {
@@ -55,13 +63,14 @@ export async function verificarBloqueoCuenta(email: string): Promise<LockoutEval
 }
 
 /**
- * Registra un intento fallido de autenticación.
+ * Registra un intento fallido de autenticación del par (email, ip).
  * Aplica la política escalonada de 3 intentos:
- * 1er ciclo: 15 min | 2do ciclo: 1 hora | 3er ciclo: permanente.
+ * 1er ciclo: 15 min | 2do ciclo: 1 hora | 3er ciclo: permanente (para ese par).
  * Registra todos los eventos en la bitácora en UTC 0.
  */
 export async function registrarFalloLogin(
   email: string,
+  ip: string,
   req?: NextApiRequest
 ): Promise<{ evaluation: LockoutEvaluation; mensaje: string }> {
   const cleanEmail = email.trim().toLowerCase();
@@ -74,6 +83,7 @@ export async function registrarFalloLogin(
       .from('intentos_login')
       .select('*')
       .eq('email', cleanEmail)
+      .eq('ip', ip)
       .maybeSingle();
 
     if (fetchErr) {
@@ -102,13 +112,14 @@ export async function registrarFalloLogin(
       await supabase.from('intentos_login').upsert(
         {
           email: cleanEmail,
+          ip,
           intentos_fallidos: nuevosFallidos,
           bloqueos_acumulados: bloqueosAcumulados,
           bloqueado_hasta: null,
           es_permanente: false,
           ultimo_intento: nowIso,
         },
-        { onConflict: 'email' }
+        { onConflict: 'email,ip' }
       );
 
       await registrarBitacora(
@@ -117,7 +128,7 @@ export async function registrarFalloLogin(
           modulo: 'AUTENTICACION',
           accion: 'LOGIN_FALLIDO',
           descripcion: `Intento fallido de login (${nuevosFallidos}/3 del ciclo actual)`,
-          detalles_json: { intento: nuevosFallidos, maxIntentos: 3, ciclo: bloqueosAcumulados + 1 },
+          detalles_json: { intento: nuevosFallidos, maxIntentos: 3, ciclo: bloqueosAcumulados + 1, ip },
         },
         req
       );
@@ -139,13 +150,14 @@ export async function registrarFalloLogin(
     await supabase.from('intentos_login').upsert(
       {
         email: cleanEmail,
+        ip,
         intentos_fallidos: 3,
         bloqueos_acumulados: escalamiento.nuevoNivelBloqueo,
         bloqueado_hasta: escalamiento.bloqueadoHasta,
         es_permanente: escalamiento.esPermanente,
         ultimo_intento: nowIso,
       },
-      { onConflict: 'email' }
+      { onConflict: 'email,ip' }
     );
 
     // Registrar evento de seguridad en bitácora (UTC 0)
@@ -160,10 +172,13 @@ export async function registrarFalloLogin(
           duracion_minutos: escalamiento.duracionMinutos,
           es_permanente: escalamiento.esPermanente,
           desbloquea_utc: escalamiento.bloqueadoHasta,
+          ip,
         },
       },
       req
     );
+
+    await alertarAtaqueDistribuido(cleanEmail, now, req);
 
     const evaluation: LockoutEvaluation = escalamiento.esPermanente
       ? {
@@ -196,15 +211,54 @@ export async function registrarFalloLogin(
 }
 
 /**
- * Restablece los intentos fallidos tras un inicio de sesión exitoso.
+ * Alerta en bitácora si un mismo correo recibe fallos desde varias IPs distintas en
+ * poco tiempo (fuerza bruta distribuida). No bloquea la cuenta: hacerlo reabriría el
+ * sabotaje por bloqueo ajeno; el administrador decide con la evidencia.
  */
-export async function registrarExitoLogin(email: string): Promise<void> {
+async function alertarAtaqueDistribuido(
+  email: string,
+  now: Date,
+  req?: NextApiRequest
+): Promise<void> {
+  try {
+    const supabase = createAdminClient();
+    const desde = new Date(now.getTime() - VENTANA_ATAQUE_DISTRIBUIDO_MS).toISOString();
+    const { data } = await supabase
+      .from('intentos_login')
+      .select('ip')
+      .eq('email', email)
+      .gte('ultimo_intento', desde);
+
+    const ips = [...new Set((data ?? []).map((r) => r.ip))];
+    if (ips.length < UMBRAL_ATAQUE_DISTRIBUIDO) return;
+
+    await registrarBitacora(
+      {
+        usuario_email: email,
+        modulo: 'AUTENTICACION',
+        accion: 'ALERTA_ATAQUE_DISTRIBUIDO',
+        descripcion: `Fallos de login sobre ${email} desde ${ips.length} IPs distintas en la última hora`,
+        detalles_json: { ips },
+      },
+      req
+    );
+  } catch (err: unknown) {
+    logger.error('Error evaluando ataque distribuido:', err);
+  }
+}
+
+/**
+ * Restablece los intentos fallidos tras una autenticación válida.
+ * Con `ip` limpia solo ese par (login exitoso); sin `ip` limpia todos los pares del
+ * correo (recuperación de contraseña: el titular demostró control del buzón).
+ */
+export async function registrarExitoLogin(email: string, ip?: string): Promise<void> {
   const cleanEmail = email.trim().toLowerCase();
   if (!cleanEmail) return;
 
   try {
     const supabase = createAdminClient();
-    await supabase
+    let query = supabase
       .from('intentos_login')
       .update({
         intentos_fallidos: 0,
@@ -214,13 +268,15 @@ export async function registrarExitoLogin(email: string): Promise<void> {
         ultimo_intento: new Date().toISOString(),
       })
       .eq('email', cleanEmail);
+    if (ip) query = query.eq('ip', ip);
+    await query;
   } catch (err: unknown) {
     logger.error('Error restableciendo intentos tras login exitoso:', err);
   }
 }
 
 /**
- * Desbloqueo administrativo manual de una cuenta bloqueada (temporal o permanente).
+ * Desbloqueo administrativo manual: limpia todos los pares (email, ip) de la cuenta.
  */
 export async function desbloquearCuentaAdmin(
   email: string,
@@ -243,7 +299,7 @@ export async function desbloquearCuentaAdmin(
         ultimo_desbloqueo: nowIso,
         desbloqueado_por: adminSession.email,
         ultimo_intento: nowIso,
-      }, { onConflict: 'email' });
+      }, { onConflict: 'email,ip' });
 
     if (error) {
       logger.error('Error desbloqueando cuenta en base de datos:', error);

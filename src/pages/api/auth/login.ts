@@ -3,6 +3,7 @@ import { createServerClientForReqRes } from '@/lib/supabase/server';
 import { registrarBitacora } from '@/lib/bitacora';
 import { registrarFalloLogin, registrarExitoLogin, verificarBloqueoCuenta } from '@/lib/lockout';
 import { validateLoginForm } from '@/utils/authValidation';
+import { getClientIp } from '@/utils/bitacoraUtils';
 import { logger } from '@/lib/logger';
 import type { LockoutEvaluation } from '@/utils/lockoutUtils';
 
@@ -18,7 +19,7 @@ const CREDENTIAL_ERROR_CODES = ['invalid_credentials', 'invalid_grant'];
 
 /**
  * Inicio de sesión del lado servidor (CU-01).
- * La verificación de bloqueo, la contraseña y el conteo de intentos ocurren aquí,
+ * El bloqueo es por par (email, ip). La verificación de bloqueo, la contraseña y el conteo de intentos ocurren aquí,
  * de modo que el navegador no decide nada: no puede omitir el chequeo ni
  * resetear contadores. El email del intento es el del body, pero solo se
  * confirma como "éxito" tras validar la contraseña contra Supabase Auth.
@@ -38,10 +39,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(400).json({ error: 'Credenciales con formato inválido.' });
   }
   const cleanEmail = validation.trimmedEmail.toLowerCase();
+  const ip = getClientIp(req);
 
   try {
     // 1. Bloqueo vigente: se rechaza ANTES de verificar la contraseña
-    const estado = await verificarBloqueoCuenta(cleanEmail);
+    const estado = await verificarBloqueoCuenta(cleanEmail, ip);
     if (estado.bloqueado) {
       return res.status(423).json({
         error: estado.mensaje ?? 'Cuenta bloqueada.',
@@ -61,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       const code = authError?.code ?? 'unknown';
 
       if (CREDENTIAL_ERROR_CODES.includes(code)) {
-        const { evaluation, mensaje } = await registrarFalloLogin(cleanEmail, req);
+        const { evaluation, mensaje } = await registrarFalloLogin(cleanEmail, ip, req);
         return res.status(evaluation.bloqueado ? 423 : 401).json({
           error: mensaje,
           code: evaluation.bloqueado ? 'account_locked' : 'invalid_credentials',
@@ -73,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 3. Éxito real: reinicia contadores y audita
-    await registrarExitoLogin(cleanEmail);
+    await registrarExitoLogin(cleanEmail, ip);
     await registrarBitacora(
       {
         auth_user_id: data.user.id,

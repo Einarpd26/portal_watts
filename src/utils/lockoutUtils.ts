@@ -1,5 +1,6 @@
 export interface IntentosLoginRecord {
   email: string;
+  ip?: string;
   intentos_fallidos: number;
   bloqueos_acumulados: number;
   bloqueado_hasta: string | null;

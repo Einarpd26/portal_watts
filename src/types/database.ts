@@ -179,6 +179,7 @@ export type Database = {
           es_permanente: boolean
           id: number
           intentos_fallidos: number
+          ip: string
           ultimo_desbloqueo: string | null
           ultimo_intento: string
         }
@@ -191,6 +192,7 @@ export type Database = {
           es_permanente?: boolean
           id?: never
           intentos_fallidos?: number
+          ip?: string
           ultimo_desbloqueo?: string | null
           ultimo_intento?: string
         }
@@ -203,6 +205,7 @@ export type Database = {
           es_permanente?: boolean
           id?: never
           intentos_fallidos?: number
+          ip?: string
           ultimo_desbloqueo?: string | null
           ultimo_intento?: string
         }

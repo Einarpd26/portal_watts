@@ -58,7 +58,15 @@ export default async function handler(
           .in('email', emails)
       : { data: [] };
 
-    const intentosMap = new Map((intentosData ?? []).map((i) => [i.email.toLowerCase(), i]));
+    // Hay una fila por (email, ip): se muestra el estado más grave de cada cuenta
+    const peso = (i: { es_permanente: boolean; bloqueado_hasta: string | null; intentos_fallidos: number }) =>
+      i.es_permanente ? 3 : i.bloqueado_hasta && new Date(i.bloqueado_hasta) > new Date() ? 2 : i.intentos_fallidos > 0 ? 1 : 0;
+    const intentosMap = new Map<string, NonNullable<typeof intentosData>[number]>();
+    for (const i of intentosData ?? []) {
+      const key = i.email.toLowerCase();
+      const actual = intentosMap.get(key);
+      if (!actual || peso(i) > peso(actual)) intentosMap.set(key, i);
+    }
     const now = new Date();
 
     const users: UsuarioActivo[] = rows.map((p) => {

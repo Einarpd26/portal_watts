@@ -40,17 +40,11 @@ export default async function handler(
       return res.status(500).json({ error: 'Error al verificar la cuenta de usuario.' });
     }
 
-    // 2. Verificar si la cuenta tiene bloqueo permanente
-    const { data: bloqueo } = await supabaseAdmin
-      .from('intentos_login')
-      .select('es_permanente')
-      .eq('email', normalizedEmail)
-      .maybeSingle();
-
     // Respuesta indistinguible (OWASP antienumeración):
-    // Si no existe, tiene fecha_baja o está permanentemente bloqueada,
-    // respondemos success: true para no filtrar existencia de cuentas.
-    if (!persona || persona.fecha_baja !== null || bloqueo?.es_permanente) {
+    // Si no existe o tiene fecha_baja respondemos success: true para no filtrar existencia
+    // de cuentas. El estado de bloqueo de login NO impide recuperar: es la vía de escape
+    // del titular cuando alguien le provocó fallos a propósito.
+    if (!persona || persona.fecha_baja !== null) {
       return res.status(200).json({ success: true });
     }
 

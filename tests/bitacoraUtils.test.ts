@@ -23,35 +23,33 @@ test("Bitácora UTC 0: formatToUtcString maneja entradas nulas o inválidas con 
   assert.strictEqual(formatToUtcString("fecha-invalida"), "Fecha inválida");
 });
 
-test("Bitácora Utils: getClientIp extrae la IP de x-forwarded-for con múltiples IPs", () => {
-  const req = {
-    headers: {
-      "x-forwarded-for": "190.181.45.12, 10.0.0.1",
-    },
-    socket: {
-      remoteAddress: "127.0.0.1",
-    },
-  } as unknown as IncomingMessage & { headers: Record<string, string | string[] | undefined> };
+type FakeReq = IncomingMessage & { headers: Record<string, string | string[] | undefined> };
 
-  const ip = getClientIp(req);
-  assert.strictEqual(ip, "190.181.45.12");
+test("Bitácora Utils: getClientIp ignora x-forwarded-for por defecto (anti-spoofing)", () => {
+  const req = {
+    headers: { "x-forwarded-for": "6.6.6.6", "x-real-ip": "7.7.7.7" },
+    socket: { remoteAddress: "192.168.1.100" },
+  } as unknown as FakeReq;
+
+  assert.strictEqual(getClientIp(req, 0), "192.168.1.100");
 });
 
-test("Bitácora Utils: getClientIp recurre a x-real-ip o socket", () => {
-  const reqWithRealIp = {
-    headers: {
-      "x-real-ip": "181.115.12.3",
-    },
-  } as unknown as IncomingMessage & { headers: Record<string, string | string[] | undefined> };
-  assert.strictEqual(getClientIp(reqWithRealIp), "181.115.12.3");
+test("Bitácora Utils: getClientIp con proxys de confianza cuenta desde la derecha", () => {
+  const req = {
+    headers: { "x-forwarded-for": "6.6.6.6, 190.181.45.12, 10.0.0.1" },
+    socket: { remoteAddress: "127.0.0.1" },
+  } as unknown as FakeReq;
 
-  const reqFallback = {
-    headers: {},
-    socket: {
-      remoteAddress: "192.168.1.100",
-    },
-  } as unknown as IncomingMessage & { headers: Record<string, string | string[] | undefined> };
-  assert.strictEqual(getClientIp(reqFallback), "192.168.1.100");
+  // 1 proxy de confianza: la última entrada es la que él agregó
+  assert.strictEqual(getClientIp(req, 1), "10.0.0.1");
+  assert.strictEqual(getClientIp(req, 2), "190.181.45.12");
+  // Más saltos que entradas: cae al socket
+  assert.strictEqual(getClientIp(req, 9), "127.0.0.1");
+});
+
+test("Bitácora Utils: getClientIp sin socket devuelve 'desconocida'", () => {
+  const req = { headers: {} } as unknown as FakeReq;
+  assert.strictEqual(getClientIp(req, 0), "desconocida");
 });
 
 test("Bitácora Utils: getClientUserAgent extrae el user-agent correctamente", () => {
