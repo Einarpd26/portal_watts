@@ -1,13 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createServerClientForReqRes } from '@/lib/supabase/server';
 import { registrarBitacora } from '@/lib/bitacora';
-import { registrarFalloLogin, registrarExitoLogin } from '@/lib/lockout';
+import { registrarExitoLogin } from '@/lib/lockout';
 import { normalizeRolesArray } from '@/utils/roleUtils';
 import { logger } from '@/lib/logger';
 
+// Solo eventos que requieren una sesión válida. INICIO_SESION y LOGIN_FALLIDO los registra
+// /api/auth/login en el servidor: aceptarlos aquí permitiría falsificar auditoría y
+// resetear o disparar bloqueos de cuentas ajenas.
+const ACCIONES_PERMITIDAS = ['CIERRE_SESION', 'RECUPERACION_PASSWORD', 'LOGIN_RECHAZADO'] as const;
+
 type LogAuthBody = {
-  accion: 'INICIO_SESION' | 'CIERRE_SESION' | 'LOGIN_FALLIDO' | 'RECUPERACION_PASSWORD';
-  email?: string;
+  accion: (typeof ACCIONES_PERMITIDAS)[number];
   razon?: string;
   detalles?: Record<string, unknown>;
 };
@@ -18,57 +22,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { accion, email, razon, detalles } = req.body as LogAuthBody;
+    const { accion, razon, detalles } = req.body as LogAuthBody;
 
-    if (!accion || !['INICIO_SESION', 'CIERRE_SESION', 'LOGIN_FALLIDO', 'RECUPERACION_PASSWORD'].includes(accion)) {
+    if (!accion || !ACCIONES_PERMITIDAS.includes(accion)) {
       return res.status(400).json({ error: 'Acción de autenticación inválida' });
     }
 
     const supabase = createServerClientForReqRes(req, res);
     const { data: { user } } = await supabase.auth.getUser();
 
+    // Sin sesión no hay identidad confiable: el email nunca se toma del body
+    if (!user) {
+      return res.status(401).json({ error: 'No autenticado' });
+    }
+
     let idPersona: number | null = null;
-    let userEmail = (email?.trim().toLowerCase()) || (user?.email?.toLowerCase()) || 'desconocido@carameloswatts.com';
+    let userEmail = user.email?.toLowerCase() ?? 'desconocido@carameloswatts.com';
     let userRol: string | null = null;
 
-    if (user) {
-      const { data: persona } = await supabase
-        .from('personas')
-        .select(`
-          id, email,
-          usuario_roles (
-            roles ( codigo )
-          )
-        `)
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
+    const { data: persona } = await supabase
+      .from('personas')
+      .select(`
+        id, email,
+        usuario_roles (
+          roles ( codigo )
+        )
+      `)
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
 
-      if (persona) {
-        idPersona = persona.id;
-        userEmail = persona.email || user.email || userEmail;
-        const rolesArray = normalizeRolesArray(persona.usuario_roles);
-        userRol = rolesArray[0]?.roles?.codigo ?? null;
-      }
+    if (persona) {
+      idPersona = persona.id;
+      userEmail = persona.email || user.email || userEmail;
+      const rolesArray = normalizeRolesArray(persona.usuario_roles);
+      userRol = rolesArray[0]?.roles?.codigo ?? null;
     }
 
-    // Procesar política de intentos fallidos y restablecimiento de login
-    if (accion === 'LOGIN_FALLIDO') {
-      const { evaluation, mensaje } = await registrarFalloLogin(userEmail, req);
-      return res.status(200).json({
-        success: true,
-        lockout: evaluation,
-        mensaje,
-      });
-    }
-
-    if (accion === 'INICIO_SESION' || accion === 'RECUPERACION_PASSWORD') {
-      // Login o restablecimiento exitoso: restablece contadores de intentos fallidos
+    // Procesar restablecimiento de intentos tras recuperación exitosa
+    if (accion === 'RECUPERACION_PASSWORD') {
       await registrarExitoLogin(userEmail);
     }
 
     let descripcion = '';
-    if (accion === 'INICIO_SESION') {
-      descripcion = 'Inicio de sesión exitoso en el portal';
+    if (accion === 'LOGIN_RECHAZADO') {
+      descripcion = 'Inicio de sesión rechazado tras validar el perfil de la cuenta';
     } else if (accion === 'RECUPERACION_PASSWORD') {
       descripcion = 'Contraseña restablecida exitosamente mediante flujo de recuperación';
     } else {
@@ -78,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await registrarBitacora(
       {
         id_persona: idPersona,
-        auth_user_id: user?.id ?? null,
+        auth_user_id: user.id,
         usuario_email: userEmail,
         usuario_rol: userRol,
         modulo: 'AUTENTICACION',

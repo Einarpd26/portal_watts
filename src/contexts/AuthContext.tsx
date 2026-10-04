@@ -4,6 +4,8 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { useRouter } from 'next/router';
 import type { UserSession } from '@/types';
 import { createClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
+import { logAuthEvent } from '@/utils/logAuthEvent';
 
 export type RefreshUserResult = {
   success: boolean;
@@ -46,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           errorData = await response.json();
         } catch (jsonErr) {
-          console.error('Error parseando respuesta JSON de /api/auth/me:', jsonErr);
+          logger.error('Error parseando respuesta JSON de /api/auth/me:', jsonErr);
         }
 
         setUser(null);
@@ -58,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
     } catch (error) {
-      console.error('Error obteniendo la sesión:', error);
+      logger.error('Error obteniendo la sesión:', error);
       setUser(null);
       return { success: false, error: 'Error de conexión con el servidor de autenticación' };
     }
@@ -70,27 +72,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       // Registrar cierre de sesión en bitácora antes de invalidar la sesión
-      await fetch('/api/auth/log-event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          accion: 'CIERRE_SESION',
-          email: user?.email,
-        }),
-      }).catch((logErr: unknown) => {
-        console.error('Error registrando cierre de sesión en bitácora:', logErr);
-      });
+      await logAuthEvent({ accion: 'CIERRE_SESION' });
 
       const supabase = createClient();
       await supabase.auth.signOut();
     } catch (error) {
-      console.error('Error cerrando sesión:', error);
+      logger.error('Error cerrando sesión:', error);
     } finally {
       setUser(null);
       setIsLoading(false);
       await router.replace('/login');
     }
-  }, [router, user?.email]);
+  }, [router]);
 
   useEffect(() => {
     const supabase = createClient();

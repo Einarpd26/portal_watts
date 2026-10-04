@@ -84,63 +84,41 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      // 1. Pre-verificación de bloqueo de cuenta (OWASP 3 intentos: 15m, 1h, permanente)
-      try {
-        const lockoutRes = await fetch("/api/auth/check-lockout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: validation.trimmedEmail }),
-        });
-        if (lockoutRes.ok) {
-          const lockoutData = await lockoutRes.json();
-          if (lockoutData.locked) {
-            setFormError(lockoutData.evaluation?.mensaje ?? "Cuenta bloqueada.");
-            setLoading(false);
-            return;
-          }
-        }
-      } catch (checkErr: unknown) {
-        logger.error("Error comprobando bloqueo previo de cuenta:", checkErr);
-      }
-
-      const supabase = createClient();
-
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: validation.trimmedEmail,
-        password,
+      // 1. Login server-side: bloqueo, contraseña y conteo de intentos se deciden en el servidor
+      const loginRes = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: validation.trimmedEmail, password }),
       });
 
-      if (authError) {
-        let errorMsg =
-          LOGIN_ERROR_MESSAGES[authError.code ?? ""] ??
-          LOGIN_ERROR_MESSAGES[authError.message ?? ""] ??
-          "Ocurrió un error al iniciar sesión. Inténtalo de nuevo.";
-
-        // Registrar intento fallido en bitácora y aplicar política de bloqueo
-        const logData = await logAuthEvent({
-          accion: "LOGIN_FALLIDO",
-          email: validation.trimmedEmail,
-          razon: authError.code ?? authError.message ?? "Credenciales inválidas",
-        });
-        if (logData?.mensaje) {
-          errorMsg = logData.mensaje;
+      if (!loginRes.ok) {
+        let body: { error?: string; code?: string } = {};
+        try {
+          body = (await loginRes.json()) as { error?: string; code?: string };
+        } catch (parseErr: unknown) {
+          logger.error("Respuesta de /api/auth/login sin JSON válido:", parseErr);
         }
-
-        setFormError(errorMsg);
+        const isCredentialOrLock = body.code === "invalid_credentials" || body.code === "account_locked";
+        setFormError(
+          isCredentialOrLock
+            ? body.error ?? "Correo o contraseña incorrectos."
+            : LOGIN_ERROR_MESSAGES[body.code ?? ""] ??
+                "Ocurrió un error al iniciar sesión. Inténtalo de nuevo."
+        );
         setLoading(false);
         return;
       }
+
+      const supabase = createClient();
 
       // CU-01 Flujo A2 / A3: Verificación de estado de cuenta y permisos
       const result = await refreshUser();
       if (!result.success) {
         // Registrar rechazo de cuenta en bitácora
-        logAuthEvent({
-          accion: "LOGIN_FALLIDO",
-          email: validation.trimmedEmail,
+        // Se registra mientras la sesión aún existe (el servidor deriva la identidad de ella)
+        await logAuthEvent({
+          accion: "LOGIN_RECHAZADO",
           razon: result.error ?? "Verificación de perfil fallida",
-        }).catch((logErr: unknown) => {
-          logger.error("Error registrando rechazo de perfil en bitácora:", logErr);
         });
 
         // Destruir la cookie de Supabase Auth para no dejar sesión zombie
@@ -156,14 +134,6 @@ export function LoginPage() {
         }
         return;
       }
-
-      // Registrar inicio de sesión exitoso en bitácora de auditoría
-      logAuthEvent({
-        accion: "INICIO_SESION",
-        email: validation.trimmedEmail,
-      }).catch((logErr: unknown) => {
-        logger.error("Error registrando inicio de sesión en bitácora:", logErr);
-      });
 
       // Redirección directa según rol
       const rol = result.user?.rol_codigo;

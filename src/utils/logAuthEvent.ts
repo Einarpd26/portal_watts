@@ -1,16 +1,13 @@
 import { logger } from "@/lib/logger";
 
 export interface LogAuthEventParams {
-  accion: "INICIO_SESION" | "CIERRE_SESION" | "LOGIN_FALLIDO" | "RECUPERACION_PASSWORD";
-  email?: string;
+  accion: "CIERRE_SESION" | "RECUPERACION_PASSWORD" | "LOGIN_RECHAZADO";
   razon?: string;
   detalles?: Record<string, unknown>;
 }
 
 export interface LogAuthEventResponse {
   success?: boolean;
-  lockout?: unknown;
-  mensaje?: string;
   error?: string;
 }
 

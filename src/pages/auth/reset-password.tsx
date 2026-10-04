@@ -139,7 +139,6 @@ export function ResetPasswordPage() {
       // Registrar auditoría de recuperación exitosa y restablecer bloqueos previos
       await logAuthEvent({
         accion: "RECUPERACION_PASSWORD",
-        email: otpEmail.trim() || undefined,
       });
 
       setPasswordState("success");
