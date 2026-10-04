@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCallerAuth } from '@/utils/requireCallerAuth';
-import { createServerClientForReqRes } from '@/lib/supabase/server';
+import { createAdminClient, createServerClientForReqRes } from '@/lib/supabase/server';
 import { evaluarEstadoBloqueo } from '@/utils/lockoutUtils';
 import { normalizeRolesArray } from '@/utils/roleUtils';
 import { logger } from '@/lib/logger';
@@ -51,8 +51,9 @@ export default async function handler(
     }
 
     const emails = rows.map((p) => p.email?.trim().toLowerCase()).filter(Boolean) as string[];
+    // intentos_login solo es accesible con service role (sin privilegios para authenticated)
     const { data: intentosData } = emails.length > 0
-      ? await supabase
+      ? await createAdminClient()
           .from('intentos_login')
           .select('email, intentos_fallidos, bloqueos_acumulados, bloqueado_hasta, es_permanente')
           .in('email', emails)
