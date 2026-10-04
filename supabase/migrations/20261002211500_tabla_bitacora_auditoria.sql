@@ -41,27 +41,8 @@ SET permisos = array_append(permisos, 'bitacora:consultar')
 WHERE codigo IN ('GERENCIA_COMERCIAL', 'FISCALIZADOR')
   AND NOT ('bitacora:consultar' = ANY(permisos));
 
--- 4. SEGURIDAD A NIVEL DE FILAS (RLS)
+-- 4. ACCESO
+-- Lectura y escritura solo con service role (API Routes). Sin policies (ADR-001 §E): sin
+-- privilegios para anon ni authenticated (ver migración capa1).
 ALTER TABLE public.bitacora ENABLE ROW LEVEL SECURITY;
-
--- Política de lectura: Solo usuarios autorizados (GERENCIA_COMERCIAL o FISCALIZADOR)
-CREATE POLICY "Permitir consulta de bitacora a roles autorizados"
-    ON public.bitacora
-    FOR SELECT
-    TO authenticated
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.usuario_roles ur
-            JOIN public.roles r ON r.id = ur.id_rol
-            JOIN public.personas p ON p.id = ur.id_persona
-            WHERE p.auth_user_id = auth.uid()
-            AND ('bitacora:consultar' = ANY(r.permisos) OR r.codigo IN ('GERENCIA_COMERCIAL', 'FISCALIZADOR'))
-        )
-    );
-
--- Política de inserción: El backend (API Routes o triggers) insertan eventos
-CREATE POLICY "Permitir insercion de eventos en bitacora"
-    ON public.bitacora
-    FOR INSERT
-    TO authenticated, anon
-    WITH CHECK (true);
+REVOKE ALL ON public.bitacora FROM authenticated;

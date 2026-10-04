@@ -164,3 +164,16 @@ CREATE INDEX IF NOT EXISTS usuario_roles_id_persona_idx
 
 CREATE INDEX IF NOT EXISTS usuario_roles_id_rol_idx
     ON public.usuario_roles (id_rol);
+
+-- ==============================================================================
+-- Privilegios mínimos para los roles de PostgREST (sin policies, ADR-001 §E)
+-- Toda escritura pasa por las API Routes con service role; `authenticated` conserva
+-- SELECT (perfil, roles y catálogos) y `anon` no accede a tablas. Las policies por
+-- fila se definirán al estabilizar las reglas de negocio.
+-- ==============================================================================
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public FROM authenticated;
+
+-- Las tablas creadas en migraciones posteriores nacen con los mismos privilegios
+ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLES FROM authenticated;

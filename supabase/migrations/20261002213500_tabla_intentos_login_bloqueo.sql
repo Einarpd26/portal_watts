@@ -31,23 +31,8 @@ COMMENT ON COLUMN public.intentos_login.es_permanente IS 'Indica si la cuenta qu
 CREATE INDEX IF NOT EXISTS idx_intentos_login_email ON public.intentos_login (email);
 CREATE INDEX IF NOT EXISTS idx_intentos_login_bloqueado_hasta ON public.intentos_login (bloqueado_hasta);
 
--- 3. SEGURIDAD A NIVEL DE FILAS (RLS)
+-- 3. ACCESO
+-- Solo service role (API Routes). Sin policies (ADR-001 §E): sin
+-- privilegios para anon ni authenticated (ver migración capa1).
 ALTER TABLE public.intentos_login ENABLE ROW LEVEL SECURITY;
-
--- Lectura para usuarios autenticados con permiso de cuentas
-CREATE POLICY "Permitir consulta de intentos a administradores"
-    ON public.intentos_login
-    FOR SELECT
-    TO authenticated
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.usuario_roles ur
-            JOIN public.roles r ON r.id = ur.id_rol
-            JOIN public.personas p ON p.id = ur.id_persona
-            WHERE p.auth_user_id = auth.uid()
-            AND ('cuentas:gestionar' = ANY(r.permisos) OR r.codigo IN ('GERENCIA_COMERCIAL', 'FISCALIZADOR'))
-        )
-    );
-
--- Modificación solo permitida a través del service role (backend / API routes)
--- Las API Routes de Next.js utilizan el cliente service role para gestionar los intentos de login.
+REVOKE ALL ON public.intentos_login FROM authenticated;
