@@ -322,13 +322,12 @@ export function useGestionUsuarios(): UseGestionUsuariosReturn {
 
   const submitUnlock = useCallback(
     async (userToUnlock: UsuarioActivo) => {
-      if (!userToUnlock.email) return;
       setIsSubmitting(true);
       try {
         const res = await fetch('/api/admin/unlock-user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: userToUnlock.email }),
+          body: JSON.stringify({ id_persona: userToUnlock.id_persona }),
         });
 
         if (res.ok) {

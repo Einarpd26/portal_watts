@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCallerAuth } from '@/utils/requireCallerAuth';
+import { createAdminClient } from '@/lib/supabase/server';
 import { desbloquearCuentaAdmin } from '@/lib/lockout';
 import { logger } from '@/lib/logger';
 
@@ -12,20 +13,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const caller = await requireCallerAuth(req, res, 'cuentas:gestionar');
   if (!caller) return;
 
-  const { email } = req.body as { email?: string };
-  if (!email || typeof email !== 'string') {
-    return res.status(400).json({ error: 'El email del usuario a desbloquear es requerido' });
+  // 2. El cliente indica a quién desbloquear por id; el correo lo resuelve el servidor
+  const { id_persona } = req.body as { id_persona?: unknown };
+  if (typeof id_persona !== 'number' || !Number.isInteger(id_persona)) {
+    return res.status(400).json({ error: 'El id del colaborador a desbloquear es requerido' });
   }
 
   try {
-    const success = await desbloquearCuentaAdmin(email, caller, req);
+    const supabaseAdmin = createAdminClient();
+
+    const { data: persona, error: personaError } = await supabaseAdmin
+      .from('personas')
+      .select('id, email, auth_user_id, usuario_roles ( id_sucursal )')
+      .eq('id', id_persona)
+      .maybeSingle();
+
+    if (personaError) {
+      logger.error('Error consultando persona en unlock-user:', personaError);
+      return res.status(500).json({ error: 'Error interno al desbloquear usuario' });
+    }
+    if (!persona) {
+      return res.status(404).json({ error: 'Colaborador no encontrado' });
+    }
+    if (!persona.auth_user_id || !persona.email) {
+      return res.status(400).json({ error: 'Este colaborador no tiene acceso digital' });
+    }
+
+    // 3. Alcance territorial (CU-02 A2): un alcance SUCURSAL solo administra su propia sede.
+    //    Sin sucursal asignada no se puede acotar, así que se deniega.
+    if (caller.alcance_tipo === 'SUCURSAL') {
+      const roles = Array.isArray(persona.usuario_roles)
+        ? persona.usuario_roles
+        : persona.usuario_roles
+          ? [persona.usuario_roles]
+          : [];
+      const enAlcance =
+        caller.id_sucursal !== null && roles.some((r) => r.id_sucursal === caller.id_sucursal);
+
+      if (!enAlcance) {
+        return res.status(403).json({ error: 'No tenés permiso para desbloquear este usuario' });
+      }
+    }
+
+    const success = await desbloquearCuentaAdmin(persona.email, caller, req);
     if (!success) {
       return res.status(500).json({ error: 'No fue posible desbloquear la cuenta' });
     }
 
     return res.status(200).json({
       success: true,
-      message: `La cuenta ${email} fue desbloqueada exitosamente`,
+      message: `La cuenta ${persona.email} fue desbloqueada exitosamente`,
     });
   } catch (err: unknown) {
     logger.error('Error en unlock-user:', err);
