@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createAdminClient } from '@/lib/supabase/server';
 import { registrarBitacora } from '@/lib/bitacora';
+import { getPasswordChangeState } from '@/utils/passwordChange';
 import { logger } from '@/lib/logger';
 
 export type ForgotPasswordResponse = {
@@ -31,7 +32,7 @@ export default async function handler(
     // 1. Verificar si la persona existe y su estado laboral
     const { data: persona, error: personaError } = await supabaseAdmin
       .from('personas')
-      .select('id, email, fecha_baja')
+      .select('id, email, fecha_baja, auth_user_id')
       .eq('email', normalizedEmail)
       .maybeSingle();
 
@@ -44,7 +45,20 @@ export default async function handler(
     // Si no existe o tiene fecha_baja respondemos success: true para no filtrar existencia
     // de cuentas. El estado de bloqueo de login NO impide recuperar: es la vía de escape
     // del titular cuando alguien le provocó fallos a propósito.
-    if (!persona || persona.fecha_baja !== null) {
+    if (!persona || persona.fecha_baja !== null || !persona.auth_user_id) {
+      return res.status(200).json({ success: true });
+    }
+
+    // CU-01 A4.2: si la contraseña temporal venció sin usarse, el acceso solo lo restablece
+    // un administrador (CU-02). Se responde igual, sin enviar el correo.
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(
+      persona.auth_user_id
+    );
+    if (authError) {
+      logger.error('[forgot-password] Error consultando cuenta de autenticación:', authError);
+      return res.status(500).json({ error: 'Error al verificar la cuenta de usuario.' });
+    }
+    if (getPasswordChangeState(authData.user?.app_metadata) === 'expired') {
       return res.status(200).json({ success: true });
     }
 
