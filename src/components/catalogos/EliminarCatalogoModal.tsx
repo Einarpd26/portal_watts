@@ -1,4 +1,7 @@
+"use client";
+
 import Button from '@/components/ui/Button';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 import type { CatalogoItem } from '@/types';
 
 interface EliminarCatalogoModalProps {
@@ -16,6 +19,9 @@ export default function EliminarCatalogoModal({
   onConfirm,
   onCancel,
 }: EliminarCatalogoModalProps) {
+  // Esc equivale a Cancelar (salvo mientras se envía)
+  useEscapeKey(onCancel, item !== null && !isSubmitting);
+
   if (!item) return null;
 
   return (

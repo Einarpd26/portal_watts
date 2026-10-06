@@ -1,6 +1,9 @@
+"use client";
+
 import React from 'react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { todayBolivia } from '@/utils/boliviaTime';
 import type { PersonaConAsignacion } from '@/types';
 import type { BajaForm } from '@/hooks/useGestionPersonal';
@@ -22,6 +25,9 @@ export default function DarDeBajaModal({
   onConfirm,
   onCancel,
 }: DarDeBajaModalProps) {
+  // Esc equivale a Cancelar (salvo mientras se envía)
+  useEscapeKey(onCancel, persona !== null && !isSubmitting);
+
   if (!persona) return null;
 
   const hasAccount = persona.auth_user_id !== null;

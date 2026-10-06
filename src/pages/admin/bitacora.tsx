@@ -9,6 +9,7 @@ import Input from '@/components/ui/Input';
 import { ACCIONES_BITACORA, formatToUtcString } from '@/utils/bitacoraUtils';
 import { cn } from '@/utils/cn';
 import { logger } from '@/lib/logger';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 import type { PageWithLayout } from '@/types';
 
 interface BitacoraRow {
@@ -112,6 +113,9 @@ const BitacoraPage: PageWithLayout = () => {
 
   // Modal de detalles
   const [selectedEvent, setSelectedEvent] = useState<BitacoraRow | null>(null);
+
+  // Esc cierra el detalle del evento, igual que su botón de cerrar
+  useEscapeKey(() => setSelectedEvent(null), selectedEvent !== null);
 
   // Guardia de permisos (bitacora:consultar)
   useEffect(() => {

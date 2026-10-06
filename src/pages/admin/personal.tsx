@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +11,7 @@ import Button from '@/components/ui/Button';
 import DarDeBajaModal from '@/components/personal/DarDeBajaModal';
 import AppLayout from '@/components/layout/AppLayout';
 import { logger } from '@/lib/logger';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 import type { PageWithLayout } from '@/types';
 
 const GestionPersonalPage: PageWithLayout = () => {
@@ -49,6 +52,9 @@ const GestionPersonalPage: PageWithLayout = () => {
   } = useGestionPersonal();
 
   const isEditing = editingId !== null;
+
+  // Esc cierra el modal de alta/edición, igual que Cancelar (salvo mientras se envía)
+  useEscapeKey(closeModal, isModalOpen && !isSubmitting);
 
   if (authLoading || !user) return null;
   if (!user.permisos.includes('personal:gestionar')) return null;

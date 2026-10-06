@@ -1,5 +1,8 @@
+"use client";
+
 import React from 'react';
 import Button from '@/components/ui/Button';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 interface ConfirmAccesoModalProps {
   open: boolean;
@@ -16,6 +19,9 @@ export default function ConfirmAccesoModal({
   onConfirm,
   onCancel,
 }: ConfirmAccesoModalProps) {
+  // Esc equivale a Cancelar (salvo mientras se envía)
+  useEscapeKey(onCancel, open && preview !== null && !isSubmitting);
+
   if (!open || !preview) return null;
 
   return (

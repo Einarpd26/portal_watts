@@ -1,5 +1,8 @@
+"use client";
+
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 import type { CatalogoForm } from '@/hooks/useGestionCatalogos';
 import type { CatalogoErrors } from '@/utils/catalogoValidation';
 
@@ -28,6 +31,9 @@ export default function CatalogoFormModal({
   onSubmit,
   onCancel,
 }: CatalogoFormModalProps) {
+  // Esc equivale a Cancelar (salvo mientras se envía)
+  useEscapeKey(onCancel, open && !isSubmitting);
+
   if (!open) return null;
 
   return (

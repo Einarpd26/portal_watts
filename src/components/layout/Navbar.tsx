@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { logger } from "@/lib/logger";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 import {
   DASHBOARD_TAB,
   HELP_LINK,
@@ -203,6 +204,9 @@ export default function Navbar() {
   const managementItems = MANAGEMENT_GROUP.filter((item) => hasPermission(permisos, item));
 
   const closeDrawer = () => setIsDrawerOpen(false);
+
+  // Esc cierra el menú lateral móvil
+  useEscapeKey(closeDrawer, isDrawerOpen);
 
   // Iniciales para el avatar de marca (ej. "EP").
   const initials = `${user?.nombres?.[0] ?? ""}${user?.apellidos?.[0] ?? ""}`.toUpperCase();

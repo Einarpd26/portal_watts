@@ -1,5 +1,8 @@
+"use client";
+
 import React from 'react';
 import Button from '@/components/ui/Button';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 import type { UsuarioActivo } from '@/types';
 
 interface RevocarAccesoModalProps {
@@ -17,6 +20,9 @@ export default function RevocarAccesoModal({
   onConfirm,
   onCancel,
 }: RevocarAccesoModalProps) {
+  // Esc equivale a Cancelar (salvo mientras se envía)
+  useEscapeKey(onCancel, open && user !== null && !isSubmitting);
+
   if (!open || !user) return null;
 
   return (
