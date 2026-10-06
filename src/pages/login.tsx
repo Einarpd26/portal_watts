@@ -98,7 +98,10 @@ export function LoginPage() {
         } catch (parseErr: unknown) {
           logger.error("Respuesta de /api/auth/login sin JSON válido:", parseErr);
         }
-        const isCredentialOrLock = body.code === "invalid_credentials" || body.code === "account_locked";
+        const isCredentialOrLock =
+          body.code === "invalid_credentials" ||
+          body.code === "account_locked" ||
+          body.code === "ip_rate_limited";
         setFormError(
           isCredentialOrLock
             ? body.error ?? "Correo o contraseña incorrectos."

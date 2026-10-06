@@ -15,6 +15,41 @@ import type { UserSession } from '@/types';
 const UMBRAL_ATAQUE_DISTRIBUIDO = 3;
 const VENTANA_ATAQUE_DISTRIBUIDO_MS = 60 * 60 * 1000;
 
+// Tope de fallos por IP (sumando todos los correos) en una ventana corta. El login
+// llama a Supabase Auth desde el servidor, y su rate limit por IP (`sign_in_sign_ups`,
+// 30 cada 5 min) se comparte entre todos los usuarios: sin este tope, quien pruebe
+// correos distintos desde nuestra API agotaría ese presupuesto y dejaría sin login a todos.
+// Se mantiene por debajo de ese límite para que una sola IP no pueda agotarlo sola.
+export const LIMITE_FALLOS_POR_IP = 15;
+export const VENTANA_LIMITE_IP_MS = 5 * 60 * 1000;
+
+/**
+ * Indica si una IP superó el tope de fallos recientes (sin importar el correo).
+ * Ante un error de consulta no bloquea: el bloqueo por par sigue vigente.
+ */
+export async function ipExcedioLimiteDeFallos(ip: string): Promise<boolean> {
+  try {
+    const supabase = createAdminClient();
+    const desde = new Date(Date.now() - VENTANA_LIMITE_IP_MS).toISOString();
+    const { data, error } = await supabase
+      .from('intentos_login')
+      .select('intentos_fallidos')
+      .eq('ip', ip)
+      .gte('ultimo_intento', desde);
+
+    if (error) {
+      logger.error('Error consultando el tope de fallos por IP:', error);
+      return false;
+    }
+
+    const total = (data ?? []).reduce((acc, r) => acc + r.intentos_fallidos, 0);
+    return total >= LIMITE_FALLOS_POR_IP;
+  } catch (err: unknown) {
+    logger.error('Excepción consultando el tope de fallos por IP:', err);
+    return false;
+  }
+}
+
 /**
  * Consulta el estado de bloqueo del par (email, ip).
  * El bloqueo es por par: quien provoca fallos se bloquea a sí mismo, no al titular

@@ -1,7 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createServerClientForReqRes } from '@/lib/supabase/server';
 import { registrarBitacora } from '@/lib/bitacora';
-import { registrarFalloLogin, registrarExitoLogin, verificarBloqueoCuenta } from '@/lib/lockout';
+import {
+  ipExcedioLimiteDeFallos,
+  registrarFalloLogin,
+  registrarExitoLogin,
+  verificarBloqueoCuenta,
+} from '@/lib/lockout';
 import { validateLoginForm } from '@/utils/authValidation';
 import { getClientIp } from '@/utils/bitacoraUtils';
 import { logger } from '@/lib/logger';
@@ -49,6 +54,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         error: estado.mensaje ?? 'Cuenta bloqueada.',
         code: 'account_locked',
         lockout: estado,
+      });
+    }
+
+    // 1b. Tope por IP: protege el presupuesto compartido de Supabase Auth (ver lockout.ts)
+    if (await ipExcedioLimiteDeFallos(ip)) {
+      return res.status(429).json({
+        error: 'Demasiados intentos fallidos desde esta red. Espera unos minutos e inténtalo de nuevo.',
+        code: 'ip_rate_limited',
       });
     }
 

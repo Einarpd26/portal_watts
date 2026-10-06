@@ -207,6 +207,10 @@ anonymous_users = 30
 # Number of sessions that can be refreshed in a 5 minute interval per IP address.
 token_refresh = 150
 # Number of sign up and sign-in requests that can be made in a 5 minute interval per IP address (excludes anonymous users).
+# Es la barrera contra fuerza bruta directa a Supabase Auth (que evade el bloqueo por par de la app):
+# no subir sin revisar ADR-001 §G. El login de la app llama desde el servidor, por lo que comparte
+# este presupuesto entre todos los usuarios (la app lo acota con LIMITE_FALLOS_POR_IP).
+# En hosted se configura en Dashboard > Authentication > Rate Limits.
 sign_in_sign_ups = 30
 # Number of OTP / Magic link verifications that can be made in a 5 minute interval per IP address.
 token_verifications = 30
