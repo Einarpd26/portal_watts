@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createServerClientForReqRes } from '@/lib/supabase/server';
+import { createAdminClient, createServerClientForReqRes } from '@/lib/supabase/server';
+import { getPasswordChangeState, isRecoverySession } from '@/utils/passwordChange';
 import { registrarBitacora } from '@/lib/bitacora';
 import { registrarExitoLogin } from '@/lib/lockout';
 import { normalizeRolesArray } from '@/utils/roleUtils';
@@ -61,6 +62,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Procesar restablecimiento de intentos tras recuperación exitosa
     if (accion === 'RECUPERACION_PASSWORD') {
       await registrarExitoLogin(userEmail);
+
+      // Quien recupera su contraseña por correo ya definió una propia: se baja la marca de
+      // cambio obligatorio de la temporal vigente. Solo si la sesión nació de la recuperación
+      // (amr), no de un login con contraseña: si no, cualquiera con una temporal podría
+      // llamar a este endpoint para saltarse el cambio obligatorio. Una temporal vencida
+      // no se rehabilita (CU-01 A4.2).
+      if (getPasswordChangeState(user.app_metadata) === 'required') {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (isRecoverySession(session?.access_token)) {
+          const { error: clearError } = await createAdminClient().auth.admin.updateUserById(user.id, {
+            app_metadata: { must_change_password: false, temp_password_expires_at: null },
+          });
+          if (clearError) {
+            logger.error('Error limpiando el cambio obligatorio tras la recuperación:', clearError);
+          }
+        }
+      }
     }
 
     let descripcion = '';

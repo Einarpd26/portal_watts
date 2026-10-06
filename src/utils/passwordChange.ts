@@ -17,6 +17,40 @@ export function getPasswordChangeState(
   return 'required';
 }
 
+// Métodos `amr` que GoTrue asigna a una sesión creada al verificar un enlace o código de
+// recuperación. Una sesión de login normal lleva `password`.
+const RECOVERY_AMR_METHODS = ['recovery', 'otp', 'magiclink'];
+
+/**
+ * Indica si el access token proviene de una recuperación de contraseña por correo
+ * (enlace o código de 6 dígitos) y no de un login con contraseña. Falla cerrado: ante un
+ * token ilegible o sin `amr`, devuelve false. El token debe haberse validado antes con
+ * `auth.getUser()`; aquí solo se lee su payload.
+ */
+export function isRecoverySession(accessToken: string | undefined): boolean {
+  if (!accessToken) return false;
+
+  try {
+    const payload = accessToken.split('.')[1];
+    if (!payload) return false;
+
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    const { amr } = JSON.parse(json) as { amr?: unknown };
+    if (!Array.isArray(amr)) return false;
+
+    const methods = amr.map((entry) =>
+      typeof entry === 'string' ? entry : (entry as { method?: unknown })?.method
+    );
+
+    return (
+      !methods.includes('password') &&
+      methods.some((m) => typeof m === 'string' && RECOVERY_AMR_METHODS.includes(m))
+    );
+  } catch {
+    return false;
+  }
+}
+
 // Códigos que devuelven las API routes mientras el cambio esté pendiente
 export const PASSWORD_CHANGE_REQUIRED = 'PASSWORD_CHANGE_REQUIRED';
 export const TEMP_PASSWORD_EXPIRED = 'TEMP_PASSWORD_EXPIRED';
