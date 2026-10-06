@@ -76,3 +76,24 @@ export function construirFiltroBitacoraSucursal(idsPersona: number[], emails: st
 
   return clauses.length > 0 ? clauses.join(',') : null;
 }
+
+/** Acciones que registra la bitácora (filtro del panel de consulta y tipado de los emisores). */
+export const ACCIONES_BITACORA = [
+  'INICIO_SESION',
+  'CIERRE_SESION',
+  'LOGIN_FALLIDO',
+  'LOGIN_RECHAZADO',
+  'BLOQUEO_TEMPORAL_15M',
+  'BLOQUEO_TEMPORAL_1H',
+  'BLOQUEO_PERMANENTE',
+  'DESBLOQUEO_CUENTA',
+  'ALERTA_ATAQUE_DISTRIBUIDO',
+  'SOLICITUD_RECUPERACION_PASSWORD',
+  'RECUPERACION_PASSWORD',
+  'CAMBIO_PASSWORD',
+  'CREAR_PERSONAL',
+  'EDITAR_PERSONAL',
+  'BAJA_PERSONAL',
+  'INVITAR_USUARIO',
+  'REVOCAR_ACCESO',
+] as const;

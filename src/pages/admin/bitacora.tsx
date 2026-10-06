@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import AppLayout from '@/components/layout/AppLayout';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import { formatToUtcString } from '@/utils/bitacoraUtils';
+import { ACCIONES_BITACORA, formatToUtcString } from '@/utils/bitacoraUtils';
 import { cn } from '@/utils/cn';
 import type { PageWithLayout } from '@/types';
 
@@ -36,18 +36,7 @@ interface BitacoraApiResponse {
 }
 
 const MODULOS = ['TODOS', 'AUTENTICACION', 'ACCESOS', 'PERSONAL', 'SISTEMA'];
-const ACCIONES = [
-  'TODAS',
-  'INICIO_SESION',
-  'CIERRE_SESION',
-  'LOGIN_FALLIDO',
-  'CREAR_PERSONAL',
-  'EDITAR_PERSONAL',
-  'BAJA_PERSONAL',
-  'INVITAR_USUARIO',
-  'REVOCAR_ACCESO',
-  'CAMBIO_PASSWORD',
-];
+const ACCIONES = ['TODAS', ...ACCIONES_BITACORA];
 
 function getModuloBadgeClasses(modulo: string): string {
   switch (modulo) {
@@ -71,7 +60,17 @@ function getAccionBadgeClasses(accion: string): string {
     case 'CIERRE_SESION':
       return 'bg-slate-100 text-slate-700';
     case 'LOGIN_FALLIDO':
+    case 'LOGIN_RECHAZADO':
       return 'bg-red-100 text-red-800';
+    case 'BLOQUEO_TEMPORAL_15M':
+    case 'BLOQUEO_TEMPORAL_1H':
+    case 'BLOQUEO_PERMANENTE':
+    case 'ALERTA_ATAQUE_DISTRIBUIDO':
+      return 'bg-orange-100 text-orange-800';
+    case 'DESBLOQUEO_CUENTA':
+    case 'SOLICITUD_RECUPERACION_PASSWORD':
+    case 'RECUPERACION_PASSWORD':
+      return 'bg-violet-100 text-violet-800';
     case 'CREAR_PERSONAL':
     case 'INVITAR_USUARIO':
       return 'bg-sky-100 text-sky-800';
