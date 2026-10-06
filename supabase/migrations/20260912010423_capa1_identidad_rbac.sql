@@ -29,6 +29,10 @@ CREATE TABLE IF NOT EXISTS public.sucursales (
 
 COMMENT ON TABLE public.sucursales IS 'Sucursales operativas territoriales de Caramelos Watts.';
 
+-- Nombre único sin distinguir mayúsculas: evita sucursales duplicadas ("Santa Cruz" / "santa cruz")
+CREATE UNIQUE INDEX IF NOT EXISTS sucursales_nombre_sucursal_lower_key
+    ON public.sucursales (lower(nombre_sucursal));
+
 CREATE TRIGGER trg_sucursales_updated_at
     BEFORE UPDATE ON public.sucursales
     FOR EACH ROW
