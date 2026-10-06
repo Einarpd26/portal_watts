@@ -8,6 +8,7 @@ import Alert from '@/components/ui/Alert';
 import Button from '@/components/ui/Button';
 import DarDeBajaModal from '@/components/personal/DarDeBajaModal';
 import AppLayout from '@/components/layout/AppLayout';
+import { logger } from '@/lib/logger';
 import type { PageWithLayout } from '@/types';
 
 const GestionPersonalPage: PageWithLayout = () => {
@@ -16,7 +17,9 @@ const GestionPersonalPage: PageWithLayout = () => {
 
   useEffect(() => {
     if (!authLoading && user && !user.permisos.includes('personal:gestionar')) {
-      void router.replace('/dashboard');
+      router.replace('/dashboard').catch((navErr: unknown) => {
+        logger.error('Error redirigiendo usuario sin permisos:', navErr);
+      });
     }
   }, [authLoading, user, router]);
 
@@ -47,15 +50,6 @@ const GestionPersonalPage: PageWithLayout = () => {
 
   const isEditing = editingId !== null;
 
-  // Auto-open modal when navigated from the navbar "+" button (?new=1)
-  useEffect(() => {
-    if (router.isReady && router.query.new === '1' && !authLoading && user) {
-      openModal();
-      void router.replace('/admin/personal', undefined, { shallow: true });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router.isReady, router.query.new, authLoading, user]);
-
   if (authLoading || !user) return null;
   if (!user.permisos.includes('personal:gestionar')) return null;
 
@@ -63,18 +57,21 @@ const GestionPersonalPage: PageWithLayout = () => {
     <div className="min-h-full bg-gray-50">
       {/* Page header — brand gradient */}
       <header className="px-6 pt-6">
-        <div className="mx-auto flex max-w-6xl items-center gap-3">
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary-50">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
-              <circle cx="9" cy="8" r="3" />
-              <path strokeLinecap="round" d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
-              <path strokeLinecap="round" d="M16 5.5a3 3 0 0 1 0 6M21 20c0-2.6-1.7-4.9-4-5.6" />
-            </svg>
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary-50">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+                <circle cx="9" cy="8" r="3" />
+                <path strokeLinecap="round" d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+                <path strokeLinecap="round" d="M16 5.5a3 3 0 0 1 0 6M21 20c0-2.6-1.7-4.9-4-5.6" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">Gestión de Personal Comercial</h1>
+              <p className="text-sm text-gray-500 mt-0.5">Registro y administración de colaboradores</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">Gestión de Personal Comercial</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Registro y administración de colaboradores</p>
-          </div>
+          <Button onClick={openModal}>Nueva persona</Button>
         </div>
       </header>
 
@@ -177,10 +174,7 @@ const GestionPersonalPage: PageWithLayout = () => {
             className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white shadow-2xl"
           >
             {/* Modal header */}
-            <div
-              style={{ background: 'linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%)' }}
-              className="rounded-t-2xl px-6 py-4"
-            >
+            <div className="rounded-t-2xl bg-gradient-to-br from-red-900 to-red-600 px-6 py-4">
               <h2 id="modal-title" className="text-base font-bold text-white">
                 {isEditing ? 'Editar colaborador' : 'Registrar nuevo colaborador'}
               </h2>

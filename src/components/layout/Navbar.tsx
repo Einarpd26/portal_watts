@@ -161,21 +161,7 @@ function DesktopNavGroup({ items }: { items: NavItem[] }) {
     <>
       <GroupDivider />
       {items.map((item) => (
-        <span key={item.href} className="inline-flex items-center gap-1">
-          <NavLink item={item} styles={DESKTOP_TAB} showIcon iconSize="h-3.5 w-3.5" />
-          {item.action && item.available && (
-            <Link
-              href={item.action.href}
-              title={item.action.label}
-              aria-label={item.action.label}
-              className="mb-2 flex h-4 w-4 items-center justify-center rounded border border-white/20 text-white/50 transition hover:border-white/40 hover:text-white"
-            >
-              <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
-                <path d="M12 4v16M4 12h16" />
-              </svg>
-            </Link>
-          )}
-        </span>
+        <NavLink key={item.href} item={item} styles={DESKTOP_TAB} showIcon iconSize="h-3.5 w-3.5" />
       ))}
     </>
   );
@@ -198,24 +184,7 @@ function MobileNavGroup({
         {label}
       </p>
       {items.map((item) => (
-        <div key={item.href} className="flex items-center gap-1">
-          <div className="flex-1">
-            <NavLink item={item} styles={MOBILE_ITEM} onNavigate={onNavigate} showIcon />
-          </div>
-          {item.action && item.available && (
-            <Link
-              href={item.action.href}
-              title={item.action.label}
-              aria-label={item.action.label}
-              onClick={onNavigate}
-              className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-            >
-              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
-                <path d="M12 4v16M4 12h16" />
-              </svg>
-            </Link>
-          )}
-        </div>
+        <NavLink key={item.href} item={item} styles={MOBILE_ITEM} onNavigate={onNavigate} showIcon />
       ))}
     </div>
   );
