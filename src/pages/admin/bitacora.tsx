@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { ACCIONES_BITACORA, formatToUtcString } from '@/utils/bitacoraUtils';
 import { cn } from '@/utils/cn';
+import { logger } from '@/lib/logger';
 import type { PageWithLayout } from '@/types';
 
 interface BitacoraRow {
@@ -73,12 +74,18 @@ function getAccionBadgeClasses(accion: string): string {
       return 'bg-violet-100 text-violet-800';
     case 'CREAR_PERSONAL':
     case 'INVITAR_USUARIO':
+    case 'CREAR_SUCURSAL':
+    case 'CREAR_CARGO':
       return 'bg-sky-100 text-sky-800';
     case 'EDITAR_PERSONAL':
+    case 'EDITAR_SUCURSAL':
+    case 'EDITAR_CARGO':
     case 'CAMBIO_PASSWORD':
       return 'bg-amber-100 text-amber-800';
     case 'BAJA_PERSONAL':
     case 'REVOCAR_ACCESO':
+    case 'ELIMINAR_SUCURSAL':
+    case 'ELIMINAR_CARGO':
       return 'bg-rose-100 text-rose-800';
     default:
       return 'bg-gray-100 text-gray-700';
@@ -109,7 +116,9 @@ const BitacoraPage: PageWithLayout = () => {
   // Guardia de permisos (bitacora:consultar)
   useEffect(() => {
     if (!authLoading && user && !user.permisos.includes('bitacora:consultar')) {
-      void router.replace('/dashboard');
+      router.replace('/dashboard').catch((navErr: unknown) => {
+        logger.error('Error redirigiendo usuario sin permisos:', navErr);
+      });
     }
   }, [authLoading, user, router]);
 
@@ -139,7 +148,7 @@ const BitacoraPage: PageWithLayout = () => {
       setPage(json.pagination.page);
       setTotalPages(json.pagination.totalPages);
     } catch (err: unknown) {
-      console.error('Error cargando bitácora:', err);
+      logger.error('Error cargando bitácora:', err);
       setFetchError('No fue posible cargar los eventos de la bitácora. Inténtalo nuevamente.');
     } finally {
       setLoading(false);

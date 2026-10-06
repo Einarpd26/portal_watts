@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { logger } from "@/lib/logger";
 import {
   DASHBOARD_TAB,
   HELP_LINK,
@@ -59,10 +60,11 @@ const NAV_ICONS: Record<string, ReactNode> = {
       <path d="m9 14 2 2 4-4" />
     </svg>
   ),
-  "/cuentas": (
+  "/admin/catalogos": (
     <svg className="h-full w-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M4 3h16v18l-3-2-3 2-3-2-3 2-3-2V3Z" />
-      <path d="M9 9h6M9 13h6" />
+      <path d="m12 3 9 5-9 5-9-5 9-5Z" />
+      <path d="m3 13 9 5 9-5" />
+      <path d="m3 17.5 9 5 9-5" />
     </svg>
   ),
   "/territorio": (
@@ -241,14 +243,14 @@ export default function Navbar() {
     try {
       await logout();
     } catch (err: unknown) {
-      console.error("Error cerrando sesión:", err);
+      logger.error("Error cerrando sesión:", err);
       setIsLoggingOut(false);
     }
   };
 
   const onLogoutClick = () => {
     handleLogout().catch((err: unknown) => {
-      console.error("Error no controlado al cerrar sesión:", err);
+      logger.error("Error no controlado al cerrar sesión:", err);
     });
   };
 

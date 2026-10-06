@@ -153,3 +153,13 @@ export type PageWithLayout = NextPage & {
 export type AppPropsWithLayout = AppProps & {
   Component: PageWithLayout;
 };
+
+// 9. Catálogos maestros editables (sucursales y cargos) normalizados para la UI
+export interface CatalogoItem {
+  id: number;
+  nombre: string;
+  descripcion: string | null;
+  /** Cantidad de registros que lo referencian; mayor a 0 impide eliminarlo */
+  referencias: number;
+  created_at: string;
+}

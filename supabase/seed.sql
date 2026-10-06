@@ -35,7 +35,8 @@ VALUES
             'territorio:gestionar',
             'planificacion:asignar',
             'mapa:consultar',
-            'bitacora:consultar'
+            'bitacora:consultar',
+            'catalogos:gestionar'
         ]
     ),
     (
