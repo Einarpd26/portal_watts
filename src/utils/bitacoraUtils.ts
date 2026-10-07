@@ -77,6 +77,18 @@ export function construirFiltroBitacoraSucursal(idsPersona: number[], emails: st
   return clauses.length > 0 ? clauses.join(',') : null;
 }
 
+/**
+ * Neutraliza un término de búsqueda libre antes de interpolarlo en un filtro `or` de PostgREST.
+ * Sin esto, caracteres con significado en la gramática de filtros (`,`, `(`, `)`, `"`, `\`) o en los
+ * patrones LIKE (`%`, `_`, `*`) permitirían inyectar condiciones o comodines en la consulta. Se
+ * eliminan para que el término se trate como texto literal dentro del `ilike`. Devuelve null si,
+ * tras limpiarlo, no queda nada que buscar.
+ */
+export function sanitizarTerminoBusqueda(termino: string): string | null {
+  const limpio = termino.replace(/[,()"\\%_*]/g, '').trim();
+  return limpio.length > 0 ? limpio : null;
+}
+
 export type AlcanceBitacora =
   | { tipo: 'global' }
   | { tipo: 'denegado' }

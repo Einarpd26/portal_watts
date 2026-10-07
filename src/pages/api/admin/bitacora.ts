@@ -1,8 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { createAdminClient } from '@/lib/supabase/server';
-import { resolverAlcanceBitacora } from '@/utils/bitacoraUtils';
+import { resolverAlcanceBitacora, sanitizarTerminoBusqueda } from '@/utils/bitacoraUtils';
 import { logger } from '@/lib/logger';
+
+// Solo se aceptan fechas con formato calendario YYYY-MM-DD; cualquier otra cosa se ignora.
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -86,15 +89,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     query = query.eq('accion', accion);
   }
 
-  if (search) {
-    query = query.or(`usuario_email.ilike.%${search}%,descripcion.ilike.%${search}%`);
+  const terminoBusqueda = search ? sanitizarTerminoBusqueda(search) : null;
+  if (terminoBusqueda) {
+    query = query.or(`usuario_email.ilike.%${terminoBusqueda}%,descripcion.ilike.%${terminoBusqueda}%`);
   }
 
-  if (fechaDesde) {
+  if (fechaDesde && DATE_RE.test(fechaDesde)) {
     query = query.gte('created_at', `${fechaDesde}T00:00:00.000Z`);
   }
 
-  if (fechaHasta) {
+  if (fechaHasta && DATE_RE.test(fechaHasta)) {
     query = query.lte('created_at', `${fechaHasta}T23:59:59.999Z`);
   }
 

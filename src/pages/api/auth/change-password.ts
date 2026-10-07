@@ -4,6 +4,7 @@ import { createAdminClient, createServerClientForReqRes } from '@/lib/supabase/s
 import { validatePassword } from '@/utils/passwordPolicy';
 import { getPasswordChangeState, TEMP_PASSWORD_EXPIRED } from '@/utils/passwordChange';
 import { registrarBitacora } from '@/lib/bitacora';
+import { logger } from '@/lib/logger';
 
 // CU-01 A3 — Cambio obligatorio de la contraseña temporal en el primer inicio de sesión
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -47,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 
   if (updateError) {
-    console.error('Error cambiando contraseña:', updateError);
+    logger.error('Error cambiando contraseña:', updateError);
     return res.status(500).json({ error: 'No se pudo actualizar la contraseña' });
   }
 

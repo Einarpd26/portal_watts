@@ -6,7 +6,27 @@ import {
   formatToUtcString,
   getClientIp,
   getClientUserAgent,
+  sanitizarTerminoBusqueda,
 } from "../src/utils/bitacoraUtils.ts";
+
+test("búsqueda: un término normal se conserva", () => {
+  assert.strictEqual(sanitizarTerminoBusqueda("gerencia"), "gerencia");
+  assert.strictEqual(sanitizarTerminoBusqueda("  juan perez  "), "juan perez");
+});
+
+test("búsqueda: se eliminan los caracteres que romperían el filtro PostgREST o LIKE", () => {
+  // Intento de inyectar una condición extra con coma y de usar comodines LIKE
+  assert.strictEqual(
+    sanitizarTerminoBusqueda("x,id.gt.0"),
+    "xid.gt.0"
+  );
+  assert.strictEqual(sanitizarTerminoBusqueda('a%_*b"()'), "ab");
+});
+
+test("búsqueda: un término que queda vacío tras limpiarlo devuelve null", () => {
+  assert.strictEqual(sanitizarTerminoBusqueda("%_*"), null);
+  assert.strictEqual(sanitizarTerminoBusqueda("   "), null);
+});
 
 test("Bitácora UTC 0: formatToUtcString formatea correctamente en UTC", () => {
   // Fecha fija en UTC: 2026-10-02T21:15:00.000Z

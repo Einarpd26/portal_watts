@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import type { UserSession } from '@/types';
 import type { Json } from '@/types/database';
 import { getClientIp, getClientUserAgent, formatToUtcString } from '@/utils/bitacoraUtils';
+import { logger } from '@/lib/logger';
 
 export { getClientIp, getClientUserAgent, formatToUtcString };
 
@@ -70,13 +71,13 @@ export async function registrarBitacora(
     });
 
     if (error) {
-      console.error('Error insertando evento en bitácora:', error);
+      logger.error('Error insertando evento en bitácora:', error);
       return false;
     }
 
     return true;
   } catch (err: unknown) {
-    console.error('Excepción no controlada en registrarBitacora:', err);
+    logger.error('Excepción no controlada en registrarBitacora:', err);
     return false;
   }
 }
