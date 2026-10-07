@@ -57,7 +57,8 @@ VALUES
         'Planificación semanal de itinerarios de visita y supervisión de rutas',
         ARRAY[
             'planificacion:asignar',
-            'mapa:consultar'
+            'mapa:consultar',
+            'rutas:gestionar'
         ]
     ),
     (
@@ -222,3 +223,103 @@ BEGIN
     UPDATE public.personas SET auth_user_id = u_vendedor WHERE ci = '7483921';
 END $$;
 
+-- ------------------------------------------------------------------------------
+-- 8. TERRITORIO (Módulo 2): personal de la sucursal 2, zonas, supervisores y rutas
+-- ------------------------------------------------------------------------------
+-- Personal de Interdepartamental: permite probar el alcance por sucursal (un fiscalizador
+-- de Santa Cruz no debe administrar a estas personas, y viceversa). Misma contraseña estándar.
+INSERT INTO public.personas (ci, nombres, apellidos, email, telefono, direccion)
+VALUES
+    ('5900101', 'Lucía', 'Rojas Vaca', 'fiscalizador.int@carameloswatts.com', '75566778', 'Av. Heroínas #300, Cochabamba'),
+    ('5900102', 'Pedro', 'Salvatierra Mamani', 'supervisor.int@carameloswatts.com', '76677889', 'Av. Ayacucho #120, Cochabamba')
+ON CONFLICT (ci) DO NOTHING;
+
+INSERT INTO public.asignaciones_laborales (id_persona, id_cargo, id_sucursal, fecha_inicio, estado)
+SELECT p.id, c.id, s.id, '2026-01-01'::date, 'activo'
+FROM public.personas p
+CROSS JOIN public.cargos c
+CROSS JOIN public.sucursales s
+WHERE s.nombre_sucursal = 'Interdepartamental'
+  AND (   (p.ci = '5900101' AND c.nombre_cargo = 'Fiscalizador')
+       OR (p.ci = '5900102' AND c.nombre_cargo = 'Supervisor'))
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.usuario_roles (id_persona, id_rol, alcance_tipo, id_sucursal)
+SELECT p.id, r.id, 'SUCURSAL', s.id
+FROM public.personas p, public.roles r, public.sucursales s
+WHERE s.nombre_sucursal = 'Interdepartamental'
+  AND (   (p.ci = '5900101' AND r.codigo = 'FISCALIZADOR')
+       OR (p.ci = '5900102' AND r.codigo = 'SUPERVISOR'))
+ON CONFLICT DO NOTHING;
+
+DO $$
+DECLARE
+    pwd_hash text := extensions.crypt('Password123!', extensions.gen_salt('bf'));
+    u_fiscalizador_int uuid := '00000000-0000-0000-0000-000000000005';
+    u_supervisor_int uuid := '00000000-0000-0000-0000-000000000006';
+BEGIN
+    INSERT INTO auth.users (
+        id, instance_id, email, encrypted_password, email_confirmed_at,
+        raw_app_meta_data, raw_user_meta_data, aud, role, created_at, updated_at,
+        confirmation_token, recovery_token, email_change_token_new, email_change,
+        email_change_token_current, phone_change_token, phone_change, reauthentication_token
+    )
+    VALUES
+        (u_fiscalizador_int, '00000000-0000-0000-0000-000000000000', 'fiscalizador.int@carameloswatts.com', pwd_hash, now(), '{"provider":"email","providers":["email"]}', '{"email_verified":true}', 'authenticated', 'authenticated', now(), now(), '', '', '', '', '', '', '', ''),
+        (u_supervisor_int, '00000000-0000-0000-0000-000000000000', 'supervisor.int@carameloswatts.com', pwd_hash, now(), '{"provider":"email","providers":["email"]}', '{"email_verified":true}', 'authenticated', 'authenticated', now(), now(), '', '', '', '', '', '', '', '')
+    ON CONFLICT (id) DO UPDATE SET
+        encrypted_password = EXCLUDED.encrypted_password,
+        email_confirmed_at = EXCLUDED.email_confirmed_at;
+
+    INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+    VALUES
+        (gen_random_uuid(), u_fiscalizador_int, jsonb_build_object('sub', u_fiscalizador_int::text, 'email', 'fiscalizador.int@carameloswatts.com'), 'email', u_fiscalizador_int::text, now(), now(), now()),
+        (gen_random_uuid(), u_supervisor_int, jsonb_build_object('sub', u_supervisor_int::text, 'email', 'supervisor.int@carameloswatts.com'), 'email', u_supervisor_int::text, now(), now(), now())
+    ON CONFLICT (provider_id, provider) DO NOTHING;
+
+    UPDATE public.personas SET auth_user_id = u_fiscalizador_int WHERE ci = '5900101';
+    UPDATE public.personas SET auth_user_id = u_supervisor_int WHERE ci = '5900102';
+END $$;
+
+-- Zonas. ZC (Santa Cruz) queda sin supervisor a propósito, para probar CU-07.
+INSERT INTO public.zonas (codigo_zona, zona, descripcion_zona, canal_venta, id_sucursal)
+SELECT z.codigo, z.nombre, z.descripcion, 'Minorista', s.id
+FROM (VALUES
+    ('ZN', 'Zona Norte',     'Norte de Santa Cruz de la Sierra',                    'Santa Cruz'),
+    ('ZS', 'Zona Sur',       'Sur de Santa Cruz de la Sierra',                      'Santa Cruz'),
+    ('ZC', 'Zona Centro',    'Centro de Santa Cruz (sin supervisor, prueba de CU-07)', 'Santa Cruz'),
+    ('ZO', 'Zona Occidental', 'Cobertura de Cochabamba',                            'Interdepartamental')
+) AS z(codigo, nombre, descripcion, sucursal)
+JOIN public.sucursales s ON s.nombre_sucursal = z.sucursal
+ON CONFLICT (codigo_zona, id_sucursal) DO NOTHING;
+
+-- Supervisor de zona: Daniel Acosta (Santa Cruz) tiene ZN y ZS; Pedro Salvatierra tiene ZO.
+INSERT INTO public.supervisor_zonas (id_supervisor, id_zona)
+SELECT p.id, z.id
+FROM public.personas p
+JOIN public.zonas z ON (p.ci = '6394812' AND z.codigo_zona IN ('ZN', 'ZS'))
+                    OR (p.ci = '5900102' AND z.codigo_zona = 'ZO')
+ON CONFLICT (id_zona) DO NOTHING;
+
+-- Rutas: cuadrícula contigua de ~1,1 km sobre Santa Cruz (fila norte -> ZN, fila sur -> ZS)
+-- y dos rutas contiguas sobre Cochabamba (ZO). Comparten bordes: la regla de no
+-- superposición (interiores) las acepta.
+INSERT INTO public.rutas (codigo_ruta, ruta, descripcion_ruta, localizacion, id_zona)
+SELECT r.codigo, r.nombre, r.descripcion,
+       ST_MakeEnvelope(r.x0, r.y0, r.x0 + 0.01, r.y0 + 0.01, 4326),
+       z.id
+FROM (VALUES
+    ('R-N1', 'Ruta Norte 1', 'Sector norte, primera cuadra', -63.20, -17.79, 'ZN', 'Santa Cruz'),
+    ('R-N2', 'Ruta Norte 2', 'Sector norte, segunda cuadra', -63.19, -17.79, 'ZN', 'Santa Cruz'),
+    ('R-N3', 'Ruta Norte 3', 'Sector norte, tercera cuadra', -63.18, -17.79, 'ZN', 'Santa Cruz'),
+    ('R-N4', 'Ruta Norte 4', 'Sector norte, cuarta cuadra',  -63.17, -17.79, 'ZN', 'Santa Cruz'),
+    ('R-S1', 'Ruta Sur 1',   'Sector sur, primera cuadra',    -63.20, -17.80, 'ZS', 'Santa Cruz'),
+    ('R-S2', 'Ruta Sur 2',   'Sector sur, segunda cuadra',    -63.19, -17.80, 'ZS', 'Santa Cruz'),
+    ('R-S3', 'Ruta Sur 3',   'Sector sur, tercera cuadra',    -63.18, -17.80, 'ZS', 'Santa Cruz'),
+    ('R-S4', 'Ruta Sur 4',   'Sector sur, cuarta cuadra',     -63.17, -17.80, 'ZS', 'Santa Cruz'),
+    ('R-O1', 'Ruta Occidental 1', 'Cochabamba, sector 1',     -66.17, -17.40, 'ZO', 'Interdepartamental'),
+    ('R-O2', 'Ruta Occidental 2', 'Cochabamba, sector 2',     -66.16, -17.40, 'ZO', 'Interdepartamental')
+) AS r(codigo, nombre, descripcion, x0, y0, zona, sucursal)
+JOIN public.sucursales s ON s.nombre_sucursal = r.sucursal
+JOIN public.zonas z ON z.codigo_zona = r.zona AND z.id_sucursal = s.id
+ON CONFLICT (codigo_ruta, id_zona) DO NOTHING;

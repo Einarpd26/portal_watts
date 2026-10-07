@@ -181,3 +181,12 @@ REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public FROM auth
 -- Las tablas creadas en migraciones posteriores nacen con los mismos privilegios
 ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM anon;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLES FROM authenticated;
+
+-- Funciones: por defecto cualquier rol puede ejecutarlas (incluida la clave pública, vía /rpc).
+-- Aquí se revoca la ejecución de las funciones existentes y los permisos que Supabase concede por
+-- esquema a anon y authenticated. El permiso global de PUBLIC sobre una función NUEVA no se quita con
+-- ALTER DEFAULT PRIVILEGES: cada migración que cree una función debe hacer REVOKE EXECUTE ... FROM
+-- PUBLIC, anon, authenticated, y la prueba supabase/tests/database/territorio.test.sql lo verifica
+-- (ADR-002 §3). Solo el service role invoca funciones.
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC, anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated;

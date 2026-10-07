@@ -280,6 +280,47 @@ export type Database = {
         }
         Relationships: []
       }
+      rutas: {
+        Row: {
+          codigo_ruta: string
+          created_at: string
+          descripcion_ruta: string | null
+          id: number
+          id_zona: number
+          localizacion: unknown
+          ruta: string
+          updated_at: string
+        }
+        Insert: {
+          codigo_ruta: string
+          created_at?: string
+          descripcion_ruta?: string | null
+          id?: never
+          id_zona: number
+          localizacion: unknown
+          ruta: string
+          updated_at?: string
+        }
+        Update: {
+          codigo_ruta?: string
+          created_at?: string
+          descripcion_ruta?: string | null
+          id?: never
+          id_zona?: number
+          localizacion?: unknown
+          ruta?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rutas_id_zona_fkey"
+            columns: ["id_zona"]
+            isOneToOne: false
+            referencedRelation: "zonas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sucursales: {
         Row: {
           created_at: string
@@ -303,6 +344,42 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      supervisor_zonas: {
+        Row: {
+          created_at: string
+          id: number
+          id_supervisor: number
+          id_zona: number
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          id_supervisor: number
+          id_zona: number
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          id_supervisor?: number
+          id_zona?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supervisor_zonas_id_supervisor_fkey"
+            columns: ["id_supervisor"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_zonas_id_zona_fkey"
+            columns: ["id_zona"]
+            isOneToOne: true
+            referencedRelation: "zonas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       usuario_roles: {
         Row: {
@@ -346,6 +423,47 @@ export type Database = {
           },
           {
             foreignKeyName: "usuario_roles_id_sucursal_fkey"
+            columns: ["id_sucursal"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zonas: {
+        Row: {
+          canal_venta: string | null
+          codigo_zona: string
+          created_at: string
+          descripcion_zona: string | null
+          id: number
+          id_sucursal: number
+          updated_at: string
+          zona: string
+        }
+        Insert: {
+          canal_venta?: string | null
+          codigo_zona: string
+          created_at?: string
+          descripcion_zona?: string | null
+          id?: never
+          id_sucursal: number
+          updated_at?: string
+          zona: string
+        }
+        Update: {
+          canal_venta?: string | null
+          codigo_zona?: string
+          created_at?: string
+          descripcion_zona?: string | null
+          id?: never
+          id_sucursal?: number
+          updated_at?: string
+          zona?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zonas_id_sucursal_fkey"
             columns: ["id_sucursal"]
             isOneToOne: false
             referencedRelation: "sucursales"
