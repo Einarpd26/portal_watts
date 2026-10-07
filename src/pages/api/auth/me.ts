@@ -3,6 +3,7 @@ import { createServerClientForReqRes } from '@/lib/supabase/server';
 import { todayBolivia } from '@/utils/boliviaTime';
 import { getPasswordChangeState, TEMP_PASSWORD_EXPIRED } from '@/utils/passwordChange';
 import type { AlcanceTipo, RolActivo } from '@/types';
+import { logger } from '@/lib/logger';
 
 export default async function handler(
   req: NextApiRequest,
@@ -53,7 +54,7 @@ export default async function handler(
       .single();
 
     if (dbError || !persona) {
-      console.error('Error fetching persona:', dbError);
+      logger.error('Error fetching persona:', dbError);
       return res.status(403).json({ error: 'Usuario sin perfil asignado' });
     }
 
@@ -102,7 +103,7 @@ export default async function handler(
     // 6. Devolver la información del usuario
     return res.status(200).json({ user: userSession });
   } catch (err) {
-    console.error('Error en /api/auth/me:', err);
+    logger.error('Error en /api/auth/me:', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }

@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import type { AppPropsWithLayout } from "@/types";
+import { logger } from "@/lib/logger";
 
 // Tipografía corporativa Plus Jakarta Sans (tokens-de-marca.md §3).
 // Se define en el Custom App para que toda la app consuma la variable
@@ -24,7 +25,7 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch((err) => {
-        console.error("Error registrando el service worker:", err);
+        logger.error("Error registrando el service worker:", err);
       });
     }
   }, []);

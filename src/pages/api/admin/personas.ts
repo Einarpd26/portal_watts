@@ -2,6 +2,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { PersonaConAsignacion } from '@/types';
+import { logger } from '@/lib/logger';
+import { enAlcanceDeSucursal } from '@/utils/sucursalScope';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -25,20 +27,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .order('apellidos');
 
   if (error) {
-    console.error('Error fetching personas:', error);
+    logger.error('Error fetching personas:', error);
     return res.status(500).json({ error: 'Error al obtener colaboradores' });
   }
 
   let rows = data ?? [];
 
-  // FISCALIZADOR: filtrar solo personas con asignación activa en su sucursal
-  if (caller.alcance_tipo === 'SUCURSAL') {
-    rows = rows.filter((p) =>
-      p.asignaciones_laborales?.some(
-        (a) => a.estado === 'activo' && (a.sucursales as { id: number } | null)?.id === caller.id_sucursal
-      )
-    );
-  }
+  // Alcance territorial: el FISCALIZADOR solo ve personas con asignación activa en su sucursal.
+  // GLOBAL conserva todas las filas (el helper devuelve true para cualquier sucursal).
+  rows = rows.filter((p) =>
+    enAlcanceDeSucursal(
+      caller,
+      (p.asignaciones_laborales ?? [])
+        .filter((a) => a.estado === 'activo')
+        .map((a) => (a.sucursales as { id: number } | null)?.id ?? null)
+    )
+  );
 
   const personas: PersonaConAsignacion[] = rows.map((p) => {
     const active = p.asignaciones_laborales?.find((a) => a.estado === 'activo');

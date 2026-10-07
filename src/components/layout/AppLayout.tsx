@@ -4,6 +4,7 @@ import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "./Navbar";
+import { logger } from "@/lib/logger";
 
 // Layout compartido de las pantallas internas (tokens-de-marca.md §5.3).
 // Variante A: navbar de un solo nivel agrupado por dominio (Operación/Gestión).
@@ -21,7 +22,7 @@ export default function AppLayout({ children, flush = false }: { children: React
   useEffect(() => {
     if (!isLoading && !user) {
       router.replace("/login").catch((err: unknown) => {
-        console.error("Error redirigiendo a login:", err);
+        logger.error("Error redirigiendo a login:", err);
       });
     }
   }, [isLoading, user, router]);

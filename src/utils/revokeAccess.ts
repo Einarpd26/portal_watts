@@ -1,4 +1,5 @@
 import type { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -13,7 +14,7 @@ export async function revokeAccess(
 ): Promise<boolean> {
   const { error } = await supabase.auth.admin.deleteUser(persona.auth_user_id);
   if (error) {
-    console.error('Error eliminando usuario de auth.users:', error);
+    logger.error('Error eliminando usuario de auth.users:', error);
     return false;
   }
 

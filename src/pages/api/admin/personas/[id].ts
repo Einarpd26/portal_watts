@@ -3,6 +3,8 @@ import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { todayBolivia } from '@/utils/boliviaTime';
 import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
+import { logger } from '@/lib/logger';
+import { enAlcanceDeSucursal } from '@/utils/sucursalScope';
 
 type EditBody = {
   ci?: string;
@@ -44,11 +46,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const active = persona.asignaciones_laborales?.find((a) => a.estado === 'activo') ?? null;
 
-  // FISCALIZADOR: solo opera sobre su sucursal, de origen y de destino
-  if (caller.alcance_tipo === 'SUCURSAL') {
-    if (active?.id_sucursal !== caller.id_sucursal || id_sucursal !== caller.id_sucursal) {
-      return res.status(403).json({ error: 'Solo podés editar personal de tu sucursal' });
-    }
+  // FISCALIZADOR: solo opera sobre su sucursal, tanto de origen (asignación vigente)
+  // como de destino (la sucursal a la que se reasigna).
+  const origenEnAlcance = enAlcanceDeSucursal(caller, [active?.id_sucursal ?? null]);
+  const destinoEnAlcance = enAlcanceDeSucursal(caller, [id_sucursal]);
+  if (!origenEnAlcance || !destinoEnAlcance) {
+    return res.status(403).json({ error: 'Solo podés editar personal de tu sucursal' });
   }
 
   // CI único (excluyendo a la propia persona)
@@ -68,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .eq('id', id);
 
   if (updError) {
-    console.error('Error actualizando persona:', updError);
+    logger.error('Error actualizando persona:', updError);
     return res.status(500).json({ error: 'Error al actualizar el colaborador' });
   }
 
@@ -85,7 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .update({ estado: 'inactivo', fecha_fin: inicio })
         .eq('id', active.id);
       if (closeError) {
-        console.error('Error cerrando asignación:', closeError);
+        logger.error('Error cerrando asignación:', closeError);
         return res.status(500).json({ error: 'Error al actualizar la asignación laboral' });
       }
     }
@@ -99,7 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     if (insError) {
-      console.error('Error creando nueva asignación:', insError);
+      logger.error('Error creando nueva asignación:', insError);
       if (active) {
         await supabase.from('asignaciones_laborales').update({ estado: 'activo', fecha_fin: null }).eq('id', active.id);
       }

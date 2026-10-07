@@ -3,6 +3,8 @@ import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { todayBolivia } from '@/utils/boliviaTime';
 import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
+import { logger } from '@/lib/logger';
+import { enAlcanceDeSucursal } from '@/utils/sucursalScope';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -25,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // FISCALIZADOR: solo puede registrar en su propia sucursal
-  if (caller.alcance_tipo === 'SUCURSAL' && id_sucursal !== caller.id_sucursal) {
+  if (!enAlcanceDeSucursal(caller, [id_sucursal])) {
     return res.status(403).json({ error: 'Solo podés registrar personal en tu sucursal' });
   }
 
@@ -55,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .single();
 
   if (personaError || !persona) {
-    console.error('Error creando persona:', personaError);
+    logger.error('Error creando persona:', personaError);
     return res.status(500).json({ error: 'Error al crear el colaborador' });
   }
 
@@ -71,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (asignError) {
     // Rollback: eliminar la persona recién creada
     await supabase.from('personas').delete().eq('id', persona.id);
-    console.error('Error creando asignación, rollback ejecutado:', asignError);
+    logger.error('Error creando asignación, rollback ejecutado:', asignError);
     return res.status(500).json({ error: 'Error al crear la asignación laboral' });
   }
 

@@ -4,6 +4,8 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { todayBolivia } from '@/utils/boliviaTime';
 import { revokeAccess } from '@/utils/revokeAccess';
 import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
+import { logger } from '@/lib/logger';
+import { enAlcanceDeSucursal } from '@/utils/sucursalScope';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -47,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const active = persona.asignaciones_laborales?.find((a) => a.estado === 'activo') ?? null;
 
-  if (caller.alcance_tipo === 'SUCURSAL' && active?.id_sucursal !== caller.id_sucursal) {
+  if (!enAlcanceDeSucursal(caller, [active?.id_sucursal ?? null])) {
     return res.status(403).json({ error: 'Solo podés dar de baja personal de tu sucursal' });
   }
 
@@ -57,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { error: bajaError } = await supabase.from('personas').update({ fecha_baja }).eq('id', id);
   if (bajaError) {
-    console.error('Error registrando baja:', bajaError);
+    logger.error('Error registrando baja:', bajaError);
     return res.status(500).json({ error: 'Error al registrar la baja' });
   }
 
@@ -67,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .update({ estado: 'inactivo', fecha_fin: fecha_baja })
       .eq('id', active.id);
     if (closeError) {
-      console.error('Error cerrando asignación en la baja:', closeError);
+      logger.error('Error cerrando asignación en la baja:', closeError);
       await supabase.from('personas').update({ fecha_baja: null }).eq('id', id);
       return res.status(500).json({ error: 'Error al finalizar la asignación laboral' });
     }
