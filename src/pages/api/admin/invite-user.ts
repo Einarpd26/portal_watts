@@ -3,6 +3,8 @@ import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { generateTempPassword, tempPasswordExpiry } from '@/utils/tempPassword';
 import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
+import { puedeOtorgarAcceso } from '@/utils/grantAuthority';
+import { logger } from '@/lib/logger';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -35,14 +37,37 @@ export default async function handler(
     return res.status(400).json({ error: 'El email no tiene un formato válido' });
   }
 
-  // 3. Gate: FISCALIZADOR solo puede crear usuarios en su sucursal
-  if (caller.alcance_tipo === 'SUCURSAL') {
-    if (!id_sucursal || id_sucursal !== caller.id_sucursal) {
-      return res.status(403).json({ error: 'Solo podés crear accesos para tu sucursal' });
-    }
+  const supabaseAdmin = createAdminClient();
+
+  // 3. Autoridad de otorgamiento (ADR-001 §C/§D): nadie otorga privilegios que no posee
+  // ni un alcance mayor que el suyo. Se resuelve a partir de los permisos del rol solicitado,
+  // antes de crear nada, para que un Fiscalizador no pueda conferir el rol GERENCIA_COMERCIAL
+  // (que incluye `catalogos:gestionar`, un privilegio nacional que el Fiscalizador no tiene).
+  const { data: rol, error: rolFetchError } = await supabaseAdmin
+    .from('roles')
+    .select('id, codigo, permisos')
+    .eq('id', id_rol)
+    .maybeSingle();
+
+  if (rolFetchError || !rol) {
+    return res.status(400).json({ error: 'El rol indicado no existe' });
   }
 
-  const supabaseAdmin = createAdminClient();
+  const decision = puedeOtorgarAcceso(
+    { alcance_tipo: caller.alcance_tipo, id_sucursal: caller.id_sucursal, permisos: caller.permisos },
+    { alcance_tipo, id_sucursal: id_sucursal ?? null, permisos: rol.permisos ?? [] }
+  );
+  if (!decision.ok) {
+    if (decision.motivo === 'ALCANCE_INVALIDO') {
+      return res.status(400).json({
+        error: 'El alcance del acceso es incoherente: GLOBAL no lleva sucursal y SUCURSAL la exige.',
+      });
+    }
+    if (decision.motivo === 'ESCALA_PRIVILEGIOS') {
+      return res.status(403).json({ error: 'No podés otorgar un rol con más privilegios que los tuyos' });
+    }
+    return res.status(403).json({ error: 'Solo podés crear accesos para tu sucursal' });
+  }
 
   // 4. Verificar que la persona existe, no tiene cuenta y no está dada de baja
   const { data: persona, error: personaError } = await supabaseAdmin
@@ -106,7 +131,7 @@ export default async function handler(
   if (personaUpdateError) {
     // Rollback: eliminar el usuario de auth.users
     await supabaseAdmin.auth.admin.deleteUser(newAuthId);
-    console.error('Error vinculando persona, rollback ejecutado:', personaUpdateError);
+    logger.error('Error vinculando persona, rollback ejecutado:', personaUpdateError);
     return res.status(500).json({ error: 'Error al vincular la cuenta con el colaborador' });
   }
 
@@ -127,7 +152,7 @@ export default async function handler(
       .update({ auth_user_id: null })
       .eq('id', id_persona);
     await supabaseAdmin.auth.admin.deleteUser(newAuthId);
-    console.error('Error insertando rol, rollback ejecutado:', rolError);
+    logger.error('Error insertando rol, rollback ejecutado:', rolError);
     return res.status(500).json({ error: 'Error al asignar el rol al usuario' });
   }
 
