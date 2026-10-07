@@ -131,3 +131,9 @@ portal_watts/
 
 * **Commits:** Seguir [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`).
 * **Seguridad:** Nunca commitear archivos `.env` con credenciales reales ni exponer la `SUPABASE_SERVICE_ROLE_KEY` en el navegador. Toda consulta restringida debe gobernarse mediante políticas de **Row Level Security (RLS)**.
+
+---
+
+## 7. Despliegue
+
+La configuración de correo (SMTP), de redirects y de límites de Auth en Supabase Cloud está documentada en [`docs/despliegue.md`](docs/despliegue.md).
