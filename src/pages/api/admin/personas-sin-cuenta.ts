@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { createServerClientForReqRes } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 import type { PersonaSinCuenta } from '@/types';
 
 export default async function handler(
@@ -13,6 +14,13 @@ export default async function handler(
 
   const caller = await requireCallerAuth(req, res, 'cuentas:gestionar');
   if (!caller) return;
+
+  // Alcance territorial: un SUCURSAL sin sede asignada no puede acotarse, así que se deniega
+  // (sin esto el listado quedaría sin filtrar y mostraría a todo el personal)
+  const idSucursalAlcance = caller.alcance_tipo === 'SUCURSAL' ? caller.id_sucursal : undefined;
+  if (idSucursalAlcance === null) {
+    return res.status(403).json({ error: 'Sin sucursal asignada' });
+  }
 
   try {
     const supabase = createServerClientForReqRes(req, res);
@@ -32,14 +40,14 @@ export default async function handler(
       .eq('asignaciones_laborales.estado', 'activo');
 
     // FISCALIZADOR solo ve personas de su propia sucursal
-    if (caller.alcance_tipo === 'SUCURSAL' && caller.id_sucursal !== null) {
-      query = query.eq('asignaciones_laborales.id_sucursal', caller.id_sucursal);
+    if (idSucursalAlcance !== undefined) {
+      query = query.eq('asignaciones_laborales.id_sucursal', idSucursalAlcance);
     }
 
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching personas sin cuenta:', error);
+      logger.error('Error fetching personas sin cuenta:', error);
       return res.status(500).json({ error: 'Error al obtener colaboradores' });
     }
 
@@ -62,7 +70,7 @@ export default async function handler(
 
     return res.status(200).json({ personas });
   } catch (err) {
-    console.error('Error en /api/admin/personas-sin-cuenta:', err);
+    logger.error('Error en /api/admin/personas-sin-cuenta:', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }

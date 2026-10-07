@@ -19,6 +19,13 @@ export default async function handler(
   const caller = await requireCallerAuth(req, res, 'cuentas:gestionar');
   if (!caller) return;
 
+  // Alcance territorial: un SUCURSAL sin sede asignada no puede acotarse, así que se deniega
+  // (sin esto el listado quedaría sin filtrar y mostraría todas las cuentas)
+  const idSucursalAlcance = caller.alcance_tipo === 'SUCURSAL' ? caller.id_sucursal : undefined;
+  if (idSucursalAlcance === null) {
+    return res.status(403).json({ error: 'Sin sucursal asignada' });
+  }
+
   try {
     const supabase = createServerClientForReqRes(req, res);
 
@@ -42,11 +49,10 @@ export default async function handler(
     let rows = data ?? [];
 
     // FISCALIZADOR solo ve usuarios de su propia sucursal
-    if (caller.alcance_tipo === 'SUCURSAL' && caller.id_sucursal !== null) {
-      const sucursalId = caller.id_sucursal;
+    if (idSucursalAlcance !== undefined) {
       rows = rows.filter((p) => {
         const ur = normalizeRolesArray(p.usuario_roles);
-        return ur.some((r) => r.id_sucursal === sucursalId);
+        return ur.some((r) => r.id_sucursal === idSucursalAlcance);
       });
     }
 

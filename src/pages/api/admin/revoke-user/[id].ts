@@ -3,11 +3,21 @@ import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { revokeAccess } from '@/utils/revokeAccess';
 import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
+import { enAlcanceDeSucursal } from '@/utils/sucursalScope';
+import { logger } from '@/lib/logger';
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  try {
+    await revocarAcceso(req, res);
+  } catch (err: unknown) {
+    logger.error('Error en /api/admin/revoke-user:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Ocurrió un error inesperado al revocar el acceso.' });
+    }
+  }
+}
+
+async function revocarAcceso(req: NextApiRequest, res: NextApiResponse): Promise<void> {
   if (req.method !== 'DELETE') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -47,16 +57,13 @@ export default async function handler(
   }
 
   // 4. Gate: FISCALIZADOR solo puede revocar usuarios de su sucursal
-  if (caller.alcance_tipo === 'SUCURSAL' && caller.id_sucursal !== null) {
+  if (caller.alcance_tipo === 'SUCURSAL') {
     const { data: urData } = await supabaseAdmin
       .from('usuario_roles')
       .select('id_sucursal')
       .eq('id_persona', id);
 
-    const urArray = urData ?? [];
-    const isInScope = urArray.some((r) => r.id_sucursal === caller.id_sucursal);
-
-    if (!isInScope) {
+    if (!enAlcanceDeSucursal(caller, (urData ?? []).map((r) => r.id_sucursal))) {
       return res.status(403).json({ error: 'No tenés permiso para revocar este usuario' });
     }
   }
