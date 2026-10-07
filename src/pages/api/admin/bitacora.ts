@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { createAdminClient } from '@/lib/supabase/server';
-import { construirFiltroBitacoraSucursal } from '@/utils/bitacoraUtils';
+import { resolverAlcanceBitacora } from '@/utils/bitacoraUtils';
 import { logger } from '@/lib/logger';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -31,50 +31,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Alcance territorial (ADR-001 §E): con alcance SUCURSAL solo se ve la actividad del
   // personal de la propia sede. Sin sede asignada no se puede acotar, así que se deniega.
-  if (caller.alcance_tipo === 'SUCURSAL') {
-    if (caller.id_sucursal === null) {
-      return res.status(403).json({ error: 'Sin sucursal asignada' });
-    }
+  let alcance;
+  try {
+    alcance = await resolverAlcanceBitacora(caller, {
+      personalDeSucursal: async (idSucursal) => {
+        const [porRol, porAsignacion] = await Promise.all([
+          supabase.from('usuario_roles').select('id_persona').eq('id_sucursal', idSucursal),
+          supabase
+            .from('asignaciones_laborales')
+            .select('id_persona')
+            .eq('id_sucursal', idSucursal)
+            .eq('estado', 'activo'),
+        ]);
+        const errorPersonal = porRol.error ?? porAsignacion.error;
+        if (errorPersonal) throw errorPersonal;
 
-    const [{ data: porRol, error: rolError }, { data: porAsignacion, error: asigError }] = await Promise.all([
-      supabase.from('usuario_roles').select('id_persona').eq('id_sucursal', caller.id_sucursal),
-      supabase
-        .from('asignaciones_laborales')
-        .select('id_persona')
-        .eq('id_sucursal', caller.id_sucursal)
-        .eq('estado', 'activo'),
-    ]);
+        const ids = [
+          ...new Set([...(porRol.data ?? []), ...(porAsignacion.data ?? [])].map((r) => r.id_persona)),
+        ];
+        if (ids.length === 0) return { ids, emails: [] };
 
-    if (rolError || asigError) {
-      logger.error('Error resolviendo personal de la sucursal para bitácora:', rolError ?? asigError);
-      return res.status(500).json({ error: 'Error al consultar la bitácora de auditoría' });
-    }
+        const personas = await supabase.from('personas').select('email').in('id', ids);
+        if (personas.error) throw personas.error;
 
-    const idsPersona = [
-      ...new Set([...(porRol ?? []), ...(porAsignacion ?? [])].map((r) => r.id_persona)),
-    ];
+        const emails = (personas.data ?? [])
+          .map((p) => p.email?.trim().toLowerCase())
+          .filter((e): e is string => Boolean(e));
+        return { ids, emails };
+      },
+    });
+  } catch (err: unknown) {
+    logger.error('Error resolviendo el personal de la sucursal para la bitácora:', err);
+    return res.status(500).json({ error: 'Error al consultar la bitácora de auditoría' });
+  }
 
-    const { data: personas, error: personasError } = idsPersona.length > 0
-      ? await supabase.from('personas').select('email').in('id', idsPersona)
-      : { data: [], error: null };
-
-    if (personasError) {
-      logger.error('Error resolviendo correos de la sucursal para bitácora:', personasError);
-      return res.status(500).json({ error: 'Error al consultar la bitácora de auditoría' });
-    }
-
-    const emails = (personas ?? [])
-      .map((p) => p.email?.trim().toLowerCase())
-      .filter((e): e is string => Boolean(e));
-
-    const filtroSucursal = construirFiltroBitacoraSucursal(idsPersona, emails);
-    if (!filtroSucursal) {
-      return res.status(200).json({
-        data: [],
-        pagination: { page, limit, total: 0, totalPages: 1 },
-      });
-    }
-    query = query.or(filtroSucursal);
+  if (alcance.tipo === 'denegado') {
+    return res.status(403).json({ error: 'Sin sucursal asignada' });
+  }
+  if (alcance.tipo === 'vacio') {
+    return res.status(200).json({
+      data: [],
+      pagination: { page, limit, total: 0, totalPages: 1 },
+    });
+  }
+  if (alcance.tipo === 'filtro') {
+    query = query.or(alcance.filtro);
   }
 
   if (modulo && modulo !== 'TODOS') {

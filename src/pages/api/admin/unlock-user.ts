@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { desbloquearCuentaAdmin } from '@/lib/lockout';
+import { enAlcanceDeSucursal } from '@/utils/sucursalScope';
 import { logger } from '@/lib/logger';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -41,18 +42,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 3. Alcance territorial (CU-02 A2): un alcance SUCURSAL solo administra su propia sede.
     //    Sin sucursal asignada no se puede acotar, así que se deniega.
-    if (caller.alcance_tipo === 'SUCURSAL') {
-      const roles = Array.isArray(persona.usuario_roles)
-        ? persona.usuario_roles
-        : persona.usuario_roles
-          ? [persona.usuario_roles]
-          : [];
-      const enAlcance =
-        caller.id_sucursal !== null && roles.some((r) => r.id_sucursal === caller.id_sucursal);
-
-      if (!enAlcance) {
-        return res.status(403).json({ error: 'No tenés permiso para desbloquear este usuario' });
-      }
+    const roles = Array.isArray(persona.usuario_roles)
+      ? persona.usuario_roles
+      : persona.usuario_roles
+        ? [persona.usuario_roles]
+        : [];
+    if (!enAlcanceDeSucursal(caller, roles.map((r) => r.id_sucursal))) {
+      return res.status(403).json({ error: 'No tienes permiso para desbloquear este usuario' });
     }
 
     const success = await desbloquearCuentaAdmin(persona.email, caller, req);

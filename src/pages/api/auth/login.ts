@@ -10,17 +10,9 @@ import {
 import { validateLoginForm } from '@/utils/authValidation';
 import { getClientIp } from '@/utils/bitacoraUtils';
 import { logger } from '@/lib/logger';
-import type { LockoutEvaluation } from '@/utils/lockoutUtils';
+import { procesarLogin, type LoginResponse } from '@/utils/loginFlow';
 
-export type LoginResponse = {
-  success?: boolean;
-  error?: string;
-  code?: string;
-  lockout?: LockoutEvaluation;
-};
-
-// Solo estos códigos de GoTrue cuentan como intento fallido de contraseña.
-const CREDENTIAL_ERROR_CODES = ['invalid_credentials', 'invalid_grant'];
+export type { LoginResponse };
 
 /**
  * Inicio de sesión del lado servidor (CU-01).
@@ -47,60 +39,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   const ip = getClientIp(req);
 
   try {
-    // 1. Bloqueo vigente: se rechaza ANTES de verificar la contraseña
-    const estado = await verificarBloqueoCuenta(cleanEmail, ip);
-    if (estado.bloqueado) {
-      return res.status(423).json({
-        error: estado.mensaje ?? 'Cuenta bloqueada.',
-        code: 'account_locked',
-        lockout: estado,
-      });
-    }
-
-    // 1b. Tope por IP: protege el presupuesto compartido de Supabase Auth (ver lockout.ts)
-    if (await ipExcedioLimiteDeFallos(ip)) {
-      return res.status(429).json({
-        error: 'Demasiados intentos fallidos desde esta red. Espera unos minutos e inténtalo de nuevo.',
-        code: 'ip_rate_limited',
-      });
-    }
-
-    // 2. Verificación de credenciales (escribe las cookies de sesión en la respuesta)
     const supabase = createServerClientForReqRes(req, res);
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email: cleanEmail,
-      password,
-    });
 
-    if (authError || !data.user) {
-      const code = authError?.code ?? 'unknown';
-
-      if (CREDENTIAL_ERROR_CODES.includes(code)) {
-        const { evaluation, mensaje } = await registrarFalloLogin(cleanEmail, ip, req);
-        return res.status(evaluation.bloqueado ? 423 : 401).json({
-          error: mensaje,
-          code: evaluation.bloqueado ? 'account_locked' : 'invalid_credentials',
-          lockout: evaluation,
-        });
-      }
-
-      return res.status(401).json({ error: authError?.message ?? 'No fue posible iniciar sesión.', code });
-    }
-
-    // 3. Éxito real: reinicia contadores y audita
-    await registrarExitoLogin(cleanEmail, ip);
-    await registrarBitacora(
+    const outcome = await procesarLogin(
       {
-        auth_user_id: data.user.id,
-        usuario_email: cleanEmail,
-        modulo: 'AUTENTICACION',
-        accion: 'INICIO_SESION',
-        descripcion: 'Inicio de sesión exitoso en el portal',
+        verificarBloqueo: verificarBloqueoCuenta,
+        ipExcedioLimite: ipExcedioLimiteDeFallos,
+        // Escribe las cookies de sesión en la respuesta
+        iniciarSesion: async (correo, clave) => {
+          const { data, error } = await supabase.auth.signInWithPassword({ email: correo, password: clave });
+          return {
+            userId: error || !data.user ? null : data.user.id,
+            errorCode: error?.code ?? null,
+            errorMessage: error?.message ?? null,
+          };
+        },
+        registrarFallo: (correo, direccion) => registrarFalloLogin(correo, direccion, req),
+        registrarExito: registrarExitoLogin,
+        auditarInicio: async (userId, correo) => {
+          await registrarBitacora(
+            {
+              auth_user_id: userId,
+              usuario_email: correo,
+              modulo: 'AUTENTICACION',
+              accion: 'INICIO_SESION',
+              descripcion: 'Inicio de sesión exitoso en el portal',
+            },
+            req
+          );
+        },
       },
-      req
+      cleanEmail,
+      password,
+      ip
     );
 
-    return res.status(200).json({ success: true });
+    return res.status(outcome.status).json(outcome.body);
   } catch (err: unknown) {
     logger.error('Error en /api/auth/login:', err);
     return res.status(500).json({ error: 'Ocurrió un error inesperado al iniciar sesión.' });

@@ -77,6 +77,36 @@ export function construirFiltroBitacoraSucursal(idsPersona: number[], emails: st
   return clauses.length > 0 ? clauses.join(',') : null;
 }
 
+export type AlcanceBitacora =
+  | { tipo: 'global' }
+  | { tipo: 'denegado' }
+  | { tipo: 'vacio' }
+  | { tipo: 'filtro'; filtro: string };
+
+export interface PersonalDeSucursal {
+  ids: number[];
+  emails: string[];
+}
+
+/**
+ * Decide qué porción de la bitácora puede consultar el solicitante (ADR-001 §E):
+ * - alcance global: toda;
+ * - alcance SUCURSAL sin sede asignada: se deniega, porque no se puede acotar;
+ * - alcance SUCURSAL sin personal en la sede: no hay nada que mostrar;
+ * - alcance SUCURSAL con personal: el filtro `or` de PostgREST de su sede.
+ */
+export async function resolverAlcanceBitacora(
+  solicitante: { alcance_tipo: string; id_sucursal: number | null },
+  deps: { personalDeSucursal: (idSucursal: number) => Promise<PersonalDeSucursal> }
+): Promise<AlcanceBitacora> {
+  if (solicitante.alcance_tipo !== 'SUCURSAL') return { tipo: 'global' };
+  if (solicitante.id_sucursal === null) return { tipo: 'denegado' };
+
+  const personal = await deps.personalDeSucursal(solicitante.id_sucursal);
+  const filtro = construirFiltroBitacoraSucursal(personal.ids, personal.emails);
+  return filtro ? { tipo: 'filtro', filtro } : { tipo: 'vacio' };
+}
+
 /** Acciones que registra la bitácora (filtro del panel de consulta y tipado de los emisores). */
 export const ACCIONES_BITACORA = [
   'INICIO_SESION',
