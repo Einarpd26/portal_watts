@@ -36,7 +36,8 @@ VALUES
             'planificacion:asignar',
             'mapa:consultar',
             'bitacora:consultar',
-            'catalogos:gestionar'
+            'catalogos:gestionar',
+            'rutas:gestionar'
         ]
     ),
     (

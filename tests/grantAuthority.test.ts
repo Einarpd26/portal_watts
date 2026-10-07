@@ -11,7 +11,9 @@ const PERMISOS_GERENCIA = [
   "mapa:consultar",
   "bitacora:consultar",
   "catalogos:gestionar",
+  "rutas:gestionar",
 ];
+const PERMISOS_SUPERVISOR = ["planificacion:asignar", "mapa:consultar", "rutas:gestionar"];
 const PERMISOS_FISCALIZADOR = [
   "cuentas:gestionar",
   "personal:gestionar",
@@ -102,4 +104,23 @@ test("coherencia: alcance GLOBAL con id_sucursal es incoherente (invariante ADR-
     permisos: PERMISOS_VENDEDOR,
   });
   assert.deepEqual(r, { ok: false, motivo: "ALCANCE_INVALIDO" });
+});
+
+
+test("Gerencia puede otorgar el rol SUPERVISOR (posee todos sus permisos, incluido rutas:gestionar)", () => {
+  const r = puedeOtorgarAcceso(gerencia, {
+    alcance_tipo: "SUCURSAL",
+    id_sucursal: 1,
+    permisos: PERMISOS_SUPERVISOR,
+  });
+  assert.deepEqual(r, { ok: true });
+});
+
+test("Fiscalizador NO puede otorgar el rol SUPERVISOR (no posee planificacion:asignar ni rutas:gestionar)", () => {
+  const r = puedeOtorgarAcceso(fiscalizadorScz, {
+    alcance_tipo: "SUCURSAL",
+    id_sucursal: 1,
+    permisos: PERMISOS_SUPERVISOR,
+  });
+  assert.deepEqual(r, { ok: false, motivo: "ESCALA_PRIVILEGIOS" });
 });
