@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { validatePassword } from "@/utils/passwordPolicy";
 import { logAuthEvent } from "@/utils/logAuthEvent";
@@ -30,41 +30,6 @@ export function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordState, setPasswordState] = useState<PasswordState>("idle");
-
-  // Detección automática: si el usuario llega mediante el enlace directo en su correo,
-  // Supabase Auth procesa el token de recuperación y emite el evento PASSWORD_RECOVERY.
-  useEffect(() => {
-    const supabase = createClient();
-
-    supabase.auth
-      .getSession()
-      .then(({ data: { session } }) => {
-        if (session) {
-          setStep("password");
-          if (session.user?.email) {
-            setOtpEmail(session.user.email);
-          }
-        }
-      })
-      .catch((err: unknown) => {
-        logger.error("Error verificando sesión en reset-password:", err);
-      });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
-        setStep("password");
-        if (session?.user?.email) {
-          setOtpEmail(session.user.email);
-        }
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
 
   const handleVerifyOtp = async (e: FormEvent) => {
     e.preventDefault();
@@ -97,7 +62,9 @@ export function ResetPasswordPage() {
 
       setStep("password");
     } catch (err: unknown) {
-      logger.error("Error verificando OTP de recuperación:", err);
+      // Un código incorrecto o vencido es un caso esperado, no un fallo del sistema: se registra
+      // como aviso y sin el objeto de error (console.error con un Error abre el overlay de Next en desarrollo)
+      logger.warn("Código de recuperación rechazado:", err instanceof Error ? err.message : String(err));
       setError("Código inválido o expirado. Verifica el código e inténtalo de nuevo.");
     } finally {
       setIsVerifyingOtp(false);

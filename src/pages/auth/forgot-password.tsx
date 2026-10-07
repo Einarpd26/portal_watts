@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useState, type FormEvent } from "react";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
@@ -11,6 +12,7 @@ import { logger } from "@/lib/logger";
 type ForgotState = "idle" | "loading" | "sent" | "error";
 
 export function ForgotPasswordPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [state, setState] = useState<ForgotState>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -65,8 +67,19 @@ export function ForgotPasswordPage() {
       {state === "sent" ? (
         <div className="w-full space-y-4">
           <Alert state="success" title="¡Solicitud procesada!">
-            Si existe una cuenta activa para <strong>{email}</strong>, recibirás un enlace o código de recuperación. Revisa tu bandeja de entrada y spam.
+            Si existe una cuenta activa para <strong>{email}</strong>, recibirás un correo con un código de 6 dígitos y un enlace al formulario donde ingresarlo. Revisa tu bandeja de entrada y spam.
           </Alert>
+          <Button
+            type="button"
+            size="lg"
+            onClick={() => {
+              router.push("/auth/reset-password").catch((navErr: unknown) => {
+                logger.error("Error navegando al formulario de código:", navErr);
+              });
+            }}
+          >
+            Ya tengo mi código
+          </Button>
           <Button
             type="button"
             variant="secondary"
