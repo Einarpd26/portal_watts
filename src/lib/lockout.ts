@@ -323,10 +323,11 @@ export async function desbloquearCuentaAdmin(
   const nowIso = new Date().toISOString();
 
   try {
+    // Limpia TODOS los pares (email, ip) de la cuenta. Un upsert insertaría una fila nueva con
+    // ip 'desconocida' en lugar de levantar los bloqueos existentes.
     const { error } = await supabase
       .from('intentos_login')
-      .upsert({
-        email: cleanEmail,
+      .update({
         intentos_fallidos: 0,
         bloqueado_hasta: null,
         bloqueos_acumulados: 0,
@@ -334,7 +335,8 @@ export async function desbloquearCuentaAdmin(
         ultimo_desbloqueo: nowIso,
         desbloqueado_por: adminSession.email,
         ultimo_intento: nowIso,
-      }, { onConflict: 'email,ip' });
+      })
+      .eq('email', cleanEmail);
 
     if (error) {
       logger.error('Error desbloqueando cuenta en base de datos:', error);
