@@ -476,7 +476,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      ruta_evaluar: {
+        Args: { p_excluir_id?: number; p_geojson: string }
+        Returns: Json
+      }
+      ruta_guardar: {
+        Args: {
+          p_codigo_ruta: string
+          p_descripcion_ruta?: string
+          p_geojson?: string
+          p_id?: number
+          p_id_zona: number
+          p_ruta: string
+        }
+        Returns: Json
+      }
+      rutas_listar: {
+        Args: { p_id_sucursal?: number; p_ids_zona?: number[] }
+        Returns: {
+          codigo_ruta: string
+          descripcion_ruta: string
+          geojson: Json
+          id: number
+          id_zona: number
+          ruta: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
