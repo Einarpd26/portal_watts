@@ -1,380 +1,195 @@
 "use client";
 
-import { useRef } from 'react';
+import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { useGestionRutas, type Evaluacion } from '@/hooks/useGestionRutas';
+import { useGestionRutas } from '@/hooks/useGestionRutas';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { ListaRutas } from '@/components/territorio/ListaRutas';
+import { FormularioRuta } from '@/components/territorio/FormularioRuta';
+import { BarraModoMapa } from '@/components/territorio/BarraModoMapa';
+import { LeyendaMapa } from '@/components/territorio/LeyendaMapa';
 import Alert from '@/components/ui/Alert';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
-import Select from '@/components/ui/Select';
 import { cn } from '@/utils/cn';
+import { coloresPorZona } from '@/utils/coloresTerritorio';
+import { estadoDelPoligono } from '@/utils/estadoPoligono';
 import { logger } from '@/lib/logger';
 
 // MapLibre necesita WebGL y el navegador: solo se carga en el cliente y solo en esta pestaña (ADR-002 §4)
-const MapaTerritorial = dynamic(() => import('@/components/territorio/MapaTerritorial').then((m) => m.MapaTerritorial), {
-  ssr: false,
-  loading: () => <div className="h-full w-full animate-pulse bg-gray-100" aria-label="Cargando mapa" />,
-});
+const MapaTerritorial = dynamic(
+  () => import('@/components/territorio/MapaTerritorial').then((m) => m.MapaTerritorial),
+  { ssr: false, loading: () => <div className="h-full w-full animate-pulse bg-gray-100" aria-label="Cargando mapa" /> }
+);
 
-const formatoArea = (m2: number) =>
-  m2 >= 10_000 ? `${(m2 / 10_000).toLocaleString('es-BO', { maximumFractionDigits: 1 })} ha` : `${Math.round(m2)} m²`;
+// El contenedor que pasa a pantalla completa incluye las capas flotantes (leyenda y barra)
+const ID_PANTALLA_COMPLETA = 'mapa-rutas';
 
-function ResultadoValidacion({ evaluacion }: { evaluacion: Evaluacion }) {
-  if (evaluacion.valida) {
-    return (
-      <Alert state="success">
-        Polígono válido
-        {evaluacion.vertices !== null ? ` · ${evaluacion.vertices - 1} vértices` : ''}
-        {evaluacion.area_m2 !== null ? ` · ${formatoArea(evaluacion.area_m2)}` : ''}. Revisa la vista previa en el
-        mapa antes de guardar.
-      </Alert>
-    );
-  }
-  return (
-    <Alert state="error">
-      {/* Alert envuelve su contenido en un <p>: solo se admite contenido en línea */}
-      <span className="block">{evaluacion.motivo ?? 'El archivo no es válido.'}</span>
-      {evaluacion.conflictos.map((c, i) => (
-        <span key={c.id ?? `fuera-${i}`} className="mt-1 block text-sm">
-          • {c.fuera_de_alcance ? 'Otra ruta fuera de tus zonas' : c.codigo_ruta} · {formatoArea(c.area_m2)} en común
-        </span>
-      ))}
-    </Alert>
-  );
-}
+const accion = (promesa: Promise<void>, contexto: string) => {
+  promesa.catch((err: unknown) => {
+    logger.error(`Error no controlado al ${contexto}:`, err);
+  });
+};
 
-/** Pestaña de rutas (CU-05): mapa, lista por zona e importación de GeoJSON con vista previa */
+/**
+ * Pestaña de rutas (CU-05) con el diseño de perfil-ruta de inventory-manager: panel lateral fijo
+ * y mapa a pantalla completa. El panel tiene la lista o los datos de la ruta; el polígono se
+ * maneja en el mapa con una barra flotante.
+ */
 export function RutasPanel() {
-  const {
-    zonas,
-    rutasVisibles,
-    contornos,
-    isLoading,
-    isExportando,
-    isEvaluando,
-    isSubmitting,
-    filtroZona,
-    setFiltroZona,
-    seleccionId,
-    setSeleccionId,
-    editor,
-    form,
-    setForm,
-    formErrors,
-    archivoNombre,
-    evaluacion,
-    puedeGuardar,
-    openCrear,
-    openEditar,
-    closeEditor,
-    elegirArchivo,
-    quitarArchivo,
-    dibujo,
-    verticesVecinos,
-    iniciarDibujo,
-    reiniciarDibujo,
-    detenerDibujo,
-    alCambiarDibujo,
-    exportar,
-    submit,
-    toast,
-    clearToast,
-  } = useGestionRutas();
-
-  const archivoRef = useRef<HTMLInputElement>(null);
+  const g = useGestionRutas();
+  const [busqueda, setBusqueda] = useState('');
+  // En pantallas angostas se ve el panel o el mapa, no ambos
+  const [vistaMovil, setVistaMovil] = useState<'lista' | 'mapa'>('lista');
 
   // Esc equivale a Cancelar (salvo mientras se envía)
-  useEscapeKey(closeEditor, editor !== null && !isSubmitting);
+  useEscapeKey(g.closeEditor, g.editor !== null && !g.isSubmitting);
 
-  const editando = editor?.ruta ?? null;
-  const zonaDe = (id: number) => zonas.find((z) => z.id === id);
-  const sinZonas = !isLoading && zonas.length === 0;
+  const coloresZona = useMemo(() => coloresPorZona(g.zonas), [g.zonas]);
 
-  const accion = (promesa: Promise<void>, contexto: string) => {
-    promesa.catch((err: unknown) => {
-      logger.error(`Error no controlado al ${contexto}:`, err);
-    });
-  };
+  const rutasFiltradas = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return g.rutasVisibles;
+    return g.rutasVisibles.filter((r) => r.codigo_ruta.toLowerCase().includes(q) || r.ruta.toLowerCase().includes(q));
+  }, [busqueda, g.rutasVisibles]);
+
+  const estado = estadoDelPoligono({
+    editando: g.editor?.ruta != null,
+    dibujando: g.dibujo !== null,
+    dibujoConPoligono: g.dibujo?.poligonoInicial != null,
+    isEvaluando: g.isEvaluando,
+    evaluacion: g.evaluacion,
+  });
+
+  const guardar = () => accion(g.submit(), 'guardar la ruta');
+  const zonaFiltrada = g.zonas.find((z) => z.id === g.filtroZona);
 
   return (
-    <>
-      {toast && (
-        <div className="mx-auto max-w-7xl px-6 pt-4">
-          <Alert state={toast.type} onClose={clearToast}>
-            {toast.message}
+    <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+      {/* El aviso flota: si empujara el contenido, el mapa saltaría al ocultarse */}
+      {g.toast && (
+        <div className="fixed left-1/2 top-24 z-50 w-[min(92vw,28rem)] -translate-x-1/2 shadow-lg">
+          <Alert state={g.toast.type} onClose={g.clearToast}>
+            {g.toast.message}
           </Alert>
         </div>
       )}
 
-      <div className="mx-auto grid max-w-7xl gap-4 px-6 py-6 lg:grid-cols-[24rem_1fr]">
-        <section className="flex max-h-[calc(100vh-14rem)] min-h-[24rem] flex-col overflow-hidden rounded-card bg-white shadow-card">
-          {editor ? (
-            <form
-              noValidate
-              className="flex min-h-0 flex-1 flex-col"
-              onSubmit={(e) => {
-                e.preventDefault();
-                submit().catch((err: unknown) => {
-                  logger.error('Error no controlado al guardar la ruta:', err);
-                });
-              }}
-            >
-              <div className="border-b border-gray-100 px-5 py-4">
-                <h2 className="text-base font-bold text-gray-900">
-                  {editando ? `Editar ${editando.codigo_ruta}` : 'Nueva ruta'}
-                </h2>
-              </div>
-
-              <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
-                {editando ? (
-                  <div>
-                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-widest text-gray-500">Zona</p>
-                    <p className="text-sm text-gray-900">
-                      {zonaDe(editando.id_zona)?.codigo_zona} — {zonaDe(editando.id_zona)?.zona}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-500">Para cambiar la zona usa el traslado de rutas.</p>
-                  </div>
-                ) : (
-                  <Select
-                    label="Zona"
-                    placeholder="Seleccionar zona"
-                    value={form.id_zona ?? ''}
-                    onChange={(e) => setForm({ ...form, id_zona: e.target.value ? Number(e.target.value) : null })}
-                    error={formErrors.id_zona}
-                    disabled={isSubmitting}
-                  >
-                    {zonas.map((z) => (
-                      <option key={z.id} value={z.id}>
-                        {z.codigo_zona} — {z.zona}
-                      </option>
-                    ))}
-                  </Select>
-                )}
-
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">
-                    {editando ? 'Polígono (opcional: déjalo como está o cámbialo)' : 'Polígono'}
-                  </p>
-                  {dibujo ? (
-                    <div className="space-y-2 rounded-input border border-success-200 bg-success-50 p-3 text-xs text-gray-700">
-                      <p>
-                        {dibujo.poligonoInicial
-                          ? 'Arrastra los vértices para ajustarlos; arrastra un punto intermedio para agregar uno; clic derecho sobre un vértice para quitarlo.'
-                          : 'Haz clic en el mapa para agregar vértices y cierra el polígono haciendo clic en el primero (o con Enter). Luego puedes ajustar los vértices.'}
-                      </p>
-                      <p>Los vértices de las rutas vecinas atraen el cursor: úsalos para compartir el borde sin superponerte.</p>
-                      <div className="flex flex-wrap gap-2">
-                        <Button type="button" variant="secondary" size="sm" onClick={reiniciarDibujo} disabled={isSubmitting}>
-                          Empezar de nuevo
-                        </Button>
-                        <Button type="button" variant="secondary" size="sm" onClick={detenerDibujo} disabled={isSubmitting}>
-                          Dejar de dibujar
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      className="w-full"
-                      disabled={isSubmitting}
-                      onClick={() => accion(iniciarDibujo(), 'iniciar el dibujo')}
-                    >
-                      {editando ? 'Editar el polígono en el mapa' : 'Dibujar en el mapa'}
-                    </Button>
-                  )}
-                  {/* El resultado va junto al dibujo para que se vea sin desplazar el panel */}
-                  {isEvaluando && <p className="text-sm text-gray-500">Validando el polígono…</p>}
-                  {evaluacion && !isEvaluando && <ResultadoValidacion evaluacion={evaluacion} />}
-                  <p className="pt-1 text-xs text-gray-500">o importa un archivo GeoJSON:</p>
-                  <input
-                    ref={archivoRef}
-                    type="file"
-                    accept=".geojson,.json,application/geo+json,application/json"
-                    aria-label="Archivo GeoJSON de la ruta"
-                    disabled={isSubmitting}
-                    className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-btn file:border file:border-gray-200 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-bold file:text-gray-800 hover:file:bg-gray-50"
-                    onChange={(e) => {
-                      const archivo = e.target.files?.[0];
-                      if (archivo) accion(elegirArchivo(archivo), 'leer el archivo GeoJSON');
-                    }}
-                  />
-                  <p className="text-xs text-gray-500">Un Polygon con coordenadas [longitud, latitud], de hasta 512 KB.</p>
-                  {archivoNombre && (
-                    <button
-                      type="button"
-                      className="mt-1 text-xs font-semibold text-primary-600 hover:underline"
-                      onClick={() => {
-                        quitarArchivo();
-                        if (archivoRef.current) archivoRef.current.value = '';
-                      }}
-                    >
-                      Quitar {archivoNombre}
-                    </button>
-                  )}
-                </div>
-
-                {editando && (
-                  <button
-                    type="button"
-                    className="text-xs font-semibold text-primary-600 hover:underline disabled:opacity-50"
-                    disabled={isExportando}
-                    onClick={() => accion(exportar({ tipo: 'ruta', id: editando.id }), 'exportar la ruta')}
-                  >
-                    Exportar el polígono guardado (GeoJSON)
-                  </button>
-                )}
-                <Input
-                  label="Código"
-                  value={form.codigo_ruta}
-                  onChange={(e) => setForm({ ...form, codigo_ruta: e.target.value })}
-                  error={formErrors.codigo_ruta}
-                  disabled={isSubmitting}
-                  placeholder="R-N5"
-                />
-                <Input
-                  label="Nombre de la ruta"
-                  value={form.ruta}
-                  onChange={(e) => setForm({ ...form, ruta: e.target.value })}
-                  error={formErrors.ruta}
-                  disabled={isSubmitting}
-                />
-                <Input
-                  label="Descripción (opcional)"
-                  value={form.descripcion_ruta}
-                  onChange={(e) => setForm({ ...form, descripcion_ruta: e.target.value })}
-                  error={formErrors.descripcion_ruta}
-                  disabled={isSubmitting}
-                />
-
-              </div>
-
-              <div className="flex justify-end gap-3 border-t border-gray-100 px-5 py-4">
-                <Button type="button" variant="secondary" onClick={closeEditor} disabled={isSubmitting}>
-                  Cancelar
-                </Button>
-                <Button type="submit" isLoading={isSubmitting} disabled={!puedeGuardar}>
-                  Guardar ruta
-                </Button>
-              </div>
-            </form>
-          ) : (
-            <>
-              <div className="space-y-3 border-b border-gray-100 px-5 py-4">
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-base font-bold text-gray-900">Rutas</h2>
-                  <span className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-gray-100 px-2 text-xs font-semibold text-gray-600">
-                    {rutasVisibles.length}
-                  </span>
-                </div>
-                {zonas.length > 1 && (
-                  <Select
-                    label="Zona"
-                    compact
-                    value={filtroZona ?? ''}
-                    onChange={(e) => setFiltroZona(e.target.value ? Number(e.target.value) : null)}
-                  >
-                    <option value="">Todas mis zonas</option>
-                    {zonas.map((z) => (
-                      <option key={z.id} value={z.id}>
-                        {z.codigo_zona} — {z.zona}
-                      </option>
-                    ))}
-                  </Select>
-                )}
-                <div className="flex gap-2">
-                  <Button onClick={openCrear} disabled={sinZonas} className="flex-1">
-                    Nueva ruta
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    disabled={sinZonas || isExportando}
-                    title={filtroZona === null ? 'Exportar todas tus zonas y rutas' : 'Exportar esta zona con su contorno y sus rutas'}
-                    onClick={() =>
-                      accion(
-                        exportar(filtroZona === null ? { tipo: 'todo' } : { tipo: 'zona', id: filtroZona }),
-                        'exportar el territorio'
-                      )
-                    }
-                  >
-                    Exportar
-                  </Button>
-                </div>
-              </div>
-
-              <ul className="flex-1 divide-y divide-gray-100 overflow-y-auto" aria-label="Rutas">
-                {isLoading &&
-                  Array.from({ length: 4 }, (_, i) => (
-                    <li key={i} className="px-5 py-3" aria-hidden="true">
-                      <div className="h-4 w-32 animate-pulse rounded bg-gray-100" />
-                    </li>
-                  ))}
-                {sinZonas && (
-                  <li className="px-5 py-6 text-sm text-gray-500">
-                    No tienes zonas asignadas. Pide a la Gerencia o al Fiscalizador que te asigne una (CU-07).
-                  </li>
-                )}
-                {!isLoading && !sinZonas && rutasVisibles.length === 0 && (
-                  <li className="px-5 py-6 text-sm text-gray-500">Aún no hay rutas en esta zona.</li>
-                )}
-                {rutasVisibles.map((r) => (
-                  <li
-                    key={r.id}
-                    className={cn(
-                      'flex items-center justify-between gap-2 px-5 py-3',
-                      r.id === seleccionId && 'bg-primary-50'
-                    )}
-                  >
-                    <button
-                      type="button"
-                      className="min-w-0 flex-1 text-left"
-                      aria-pressed={r.id === seleccionId}
-                      onClick={() => setSeleccionId(r.id === seleccionId ? null : r.id)}
-                    >
-                      <p className="truncate text-sm font-semibold text-gray-900">
-                        {r.codigo_ruta} · {r.ruta}
-                      </p>
-                      <p className="truncate text-xs text-gray-500">
-                        Zona {zonaDe(r.id_zona)?.codigo_zona ?? '—'}
-                        {r.descripcion_ruta ? ` · ${r.descripcion_ruta}` : ''}
-                      </p>
-                    </button>
-                    <Button variant="secondary" size="sm" onClick={() => openEditar(r)}>
-                      Editar
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </section>
-
-        <section
-          aria-label="Mapa de rutas"
-          className="relative h-[28rem] overflow-hidden rounded-card bg-white shadow-card lg:h-[calc(100vh-14rem)] lg:min-h-[24rem]"
-        >
-          <p className="pointer-events-none absolute bottom-8 left-2 z-10 rounded bg-white/90 px-2 py-1 text-xs text-gray-600 shadow-sm">
-            Línea gris discontinua: contorno de la zona (unión de sus rutas)
-          </p>
-          <MapaTerritorial
-            rutas={rutasVisibles}
-            seleccionId={seleccionId}
-            onSeleccionar={setSeleccionId}
-            // Mientras se dibuja, el propio dibujo es la vista previa
-            vistaPrevia={dibujo ? null : (evaluacion?.geojson ?? null)}
-            vistaPreviaInvalida={evaluacion !== null && !evaluacion.valida}
-            conflictos={evaluacion?.conflictos ?? []}
-            contornos={contornos}
-            dibujo={
-              dibujo
-                ? { ...dibujo, verticesVecinos, onCambio: alCambiarDibujo }
-                : null
-            }
-          />
-        </section>
+      <div className="flex shrink-0 border-b border-gray-200 bg-white p-2 lg:hidden" role="group" aria-label="Vista">
+        {(['lista', 'mapa'] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            aria-pressed={vistaMovil === v}
+            onClick={() => setVistaMovil(v)}
+            className={cn(
+              'flex-1 rounded-lg py-1.5 text-sm font-semibold',
+              vistaMovil === v ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-50'
+            )}
+          >
+            {v === 'lista' ? (g.editor ? 'Datos' : 'Lista') : 'Mapa'}
+          </button>
+        ))}
       </div>
-    </>
+
+      <aside
+        className={cn(
+          'min-h-0 w-full shrink-0 flex-col border-gray-200 bg-white lg:flex lg:w-80 lg:border-r',
+          vistaMovil === 'lista' ? 'flex flex-1 lg:flex-none' : 'hidden'
+        )}
+      >
+        {g.editor ? (
+          <FormularioRuta
+            editando={g.editor.ruta}
+            zonas={g.zonas}
+            form={g.form}
+            setForm={g.setForm}
+            errors={g.formErrors}
+            estado={estado}
+            isSubmitting={g.isSubmitting}
+            puedeGuardar={g.puedeGuardar}
+            onGuardar={guardar}
+            onCancelar={g.closeEditor}
+          />
+        ) : (
+          <ListaRutas
+            rutas={rutasFiltradas}
+            zonas={g.zonas}
+            coloresZona={coloresZona}
+            isLoading={g.isLoading}
+            filtroZona={g.filtroZona}
+            onFiltroZona={g.setFiltroZona}
+            busqueda={busqueda}
+            onBusqueda={setBusqueda}
+            seleccionId={g.seleccionId}
+            onSeleccionar={g.setSeleccionId}
+            onNueva={() => {
+              g.openCrear();
+              setVistaMovil('mapa');
+            }}
+            onEditar={g.openEditar}
+            onExportar={(r) => accion(g.exportar({ tipo: 'ruta', id: r.id }), 'exportar la ruta')}
+            isExportando={g.isExportando}
+          />
+        )}
+      </aside>
+
+      <section
+        id={ID_PANTALLA_COMPLETA}
+        aria-label="Mapa de rutas"
+        className={cn('relative min-h-0 flex-1 bg-gray-100 lg:block', vistaMovil === 'mapa' ? 'block' : 'hidden')}
+      >
+        <MapaTerritorial
+          rutas={g.rutasVisibles}
+          seleccionId={g.seleccionId}
+          onSeleccionar={g.setSeleccionId}
+          // Mientras se dibuja, el propio dibujo es la vista previa
+          vistaPrevia={g.dibujo ? null : (g.evaluacion?.geojson ?? null)}
+          vistaPreviaInvalida={g.evaluacion !== null && !g.evaluacion.valida}
+          conflictos={g.evaluacion?.conflictos ?? []}
+          contornos={g.contornos}
+          coloresZona={coloresZona}
+          idPantallaCompleta={ID_PANTALLA_COMPLETA}
+          dibujo={g.dibujo ? { ...g.dibujo, verticesVecinos: g.verticesVecinos, onCambio: g.alCambiarDibujo } : null}
+        />
+
+        <LeyendaMapa zonas={g.zonas} coloresZona={coloresZona} />
+
+        {!g.editor && g.zonas.length > 0 && (
+          <button
+            type="button"
+            disabled={g.isExportando}
+            onClick={() =>
+              accion(
+                g.exportar(g.filtroZona === null ? { tipo: 'todo' } : { tipo: 'zona', id: g.filtroZona }),
+                'exportar el territorio'
+              )
+            }
+            className="absolute left-2 top-2 z-10 flex items-center gap-1.5 rounded-full border border-gray-200 bg-white/95 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm backdrop-blur-sm hover:bg-white disabled:opacity-50"
+          >
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
+              <path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14" />
+            </svg>
+            {zonaFiltrada ? `Exportar zona ${zonaFiltrada.codigo_zona}` : 'Exportar todo'}
+          </button>
+        )}
+
+        {!g.isLoading && !g.editor && g.zonas.length > 0 && g.rutasVisibles.length === 0 && (
+          <p className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-full border border-amber-200 bg-white/90 px-3 py-1 text-xs text-amber-700 shadow-sm">
+            Esta zona todavía no tiene rutas
+          </p>
+        )}
+
+        {g.editor && (
+          <BarraModoMapa
+            estado={estado}
+            isSubmitting={g.isSubmitting}
+            puedeGuardar={g.puedeGuardar}
+            onDibujar={() => accion(g.iniciarDibujo(), 'iniciar el dibujo')}
+            onImportar={(archivo) => accion(g.elegirArchivo(archivo), 'leer el archivo GeoJSON')}
+            onDescartar={g.detenerDibujo}
+            onGuardar={guardar}
+          />
+        )}
+      </section>
+    </div>
   );
 }

@@ -12,11 +12,12 @@ import {
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import { verticeMasCercano, type Posicion } from '@/utils/ajusteVertices';
+import { COLOR_PROPUESTA } from '@/utils/coloresTerritorio';
 import { logger } from '@/lib/logger';
 import type { PoligonoRuta } from '@/types';
 
-// Terra Draw recibe colores hexadecimales, no clases de Tailwind: green-600 y blanco
-const COLOR_DIBUJO = '#16a34a';
+// Terra Draw recibe colores hexadecimales, no clases de Tailwind: el verde de la propuesta y blanco
+const COLOR_DIBUJO = COLOR_PROPUESTA;
 const COLOR_PUNTO = '#ffffff';
 
 interface CapaDibujoProps {

@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "./Navbar";
 import { logger } from "@/lib/logger";
+import { cn } from "@/utils/cn";
 
 // Layout compartido de las pantallas internas (tokens-de-marca.md §5.3).
 // Variante A: navbar de un solo nivel agrupado por dominio (Operación/Gestión).
@@ -13,7 +14,17 @@ import { logger } from "@/lib/logger";
 //
 // flush=true: sin padding en <main>. Usar en páginas admin que tienen su propio
 // header de gradiente full-width (admin/usuarios, admin/personal).
-export default function AppLayout({ children, flush = false }: { children: ReactNode; flush?: boolean }) {
+// fullHeight=true: la pantalla no crece con el contenido; <main> ocupa el alto restante bajo el
+// navbar y desplaza por dentro. Lo usan las páginas con mapa, que deben llenar la ventana.
+export default function AppLayout({
+  children,
+  flush = false,
+  fullHeight = false,
+}: {
+  children: ReactNode;
+  flush?: boolean;
+  fullHeight?: boolean;
+}) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
@@ -39,9 +50,11 @@ export default function AppLayout({ children, flush = false }: { children: React
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-100">
+    <div className={cn("flex flex-col bg-gray-100", fullHeight ? "h-dvh" : "min-h-screen")}>
       <Navbar />
-      <main className={`flex-1${flush ? "" : " p-6"}`}>{children}</main>
+      <main className={cn("flex-1", !flush && "p-6", fullHeight && "flex min-h-0 flex-col overflow-y-auto")}>
+        {children}
+      </main>
     </div>
   );
 }

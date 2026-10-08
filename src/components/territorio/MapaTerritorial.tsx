@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { setWorkerUrl } from 'maplibre-gl';
-import { Layer, Map, NavigationControl, Source } from '@vis.gl/react-maplibre';
-import type { MapLayerMouseEvent, MapRef } from '@vis.gl/react-maplibre';
+import { FullscreenControl, Layer, Map, NavigationControl, Source } from '@vis.gl/react-maplibre';
+import type { MapEvent, MapLayerMouseEvent, MapRef } from '@vis.gl/react-maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { CapaDibujo } from '@/components/territorio/CapaDibujo';
 import type { Posicion } from '@/utils/ajusteVertices';
+import { COLOR_CONFLICTO, COLOR_INVALIDO, COLOR_PROPUESTA, PALETA_ZONAS } from '@/utils/coloresTerritorio';
 import type { ConflictoRuta, ContornoZona, PoligonoRuta, RutaItem } from '@/types';
 
 // MapLibre 6 no resuelve solo la URL de su worker bajo el empaquetador: se sirve desde public/maplibre/
@@ -15,13 +16,6 @@ setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
 
 // Mapa base de OpenFreeMap (ADR-002 D5); el proveedor definitivo se decide antes de producción
 const ESTILO_BASE = 'https://tiles.openfreemap.org/styles/liberty';
-
-// Las capas de MapLibre no leen clases de Tailwind: son los tonos de la paleta del portal
-const COLOR_RUTA = '#2563eb'; // blue-600
-const COLOR_SELECCION = '#dc2626'; // primary-600
-const COLOR_VISTA_PREVIA = '#16a34a'; // green-600
-const COLOR_CONFLICTO = '#f59e0b'; // amber-500
-const COLOR_ZONA = '#4b5563'; // gray-600
 
 const VISTA_INICIAL = { longitude: -63.18, latitude: -17.78, zoom: 11 };
 
@@ -37,6 +31,10 @@ interface MapaTerritorialProps {
   conflictos: ConflictoRuta[];
   /** Contorno de cada zona, derivado de sus rutas (ADR-002 D6) */
   contornos: ContornoZona[];
+  /** Color de cada zona: sus rutas y su contorno se pintan con él */
+  coloresZona: globalThis.Map<number, string>;
+  /** Elemento que pasa a pantalla completa (incluye las capas flotantes sobre el mapa) */
+  idPantallaCompleta: string;
   /** Dibujo o edición del polígono en curso; null si no se está dibujando */
   dibujo: {
     clave: number;
@@ -78,8 +76,12 @@ export function MapaTerritorial({
   vistaPreviaInvalida,
   conflictos,
   contornos,
+  coloresZona,
+  idPantallaCompleta,
   dibujo,
 }: MapaTerritorialProps) {
+  const colorDe = useCallback((idZona: number) => coloresZona.get(idZona) ?? PALETA_ZONAS[0], [coloresZona]);
+
   const mapaRef = useRef<MapRef>(null);
 
   const datosRutas = useMemo(
@@ -87,10 +89,10 @@ export function MapaTerritorial({
       coleccion(
         rutas.map((r) => ({
           poligono: r.geojson,
-          propiedades: { id: r.id, codigo: r.codigo_ruta, seleccionada: r.id === seleccionId },
+          propiedades: { id: r.id, color: colorDe(r.id_zona), seleccionada: r.id === seleccionId },
         }))
       ),
-    [rutas, seleccionId]
+    [rutas, seleccionId, colorDe]
   );
   const datosConflictos = useMemo(
     () =>
@@ -102,9 +104,9 @@ export function MapaTerritorial({
   const datosContornos = useMemo<GeoJSON.FeatureCollection>(
     () => ({
       type: 'FeatureCollection',
-      features: contornos.map((c) => ({ type: 'Feature', properties: { id_zona: c.id_zona }, geometry: c.geojson })),
+      features: contornos.map((c) => ({ type: 'Feature', properties: { color: colorDe(c.id_zona) }, geometry: c.geojson })),
     }),
-    [contornos]
+    [contornos, colorDe]
   );
   const datosVistaPrevia = useMemo(
     () => coleccion(vistaPrevia ? [{ poligono: vistaPrevia, propiedades: {} }] : []),
@@ -122,14 +124,33 @@ export function MapaTerritorial({
     return cajaDe(elegida ? [elegida.geojson] : rutas.map((r) => r.geojson));
   }, [dibujando, poligonoDibujo, vistaPrevia, conflictos, rutas, seleccionId]);
 
+  // Al salir del dibujo o de una previsualización (Descartar, Guardar) el mapa se queda donde
+  // está: el usuario venía trabajando en esa área y un salto de vista lo desorienta
+  const modo = dibujando ? 'dibujo' : vistaPrevia ? 'previsualizacion' : 'normal';
+  const modoAnterior = useRef(modo);
+  const encuadrar = useCallback(
+    (duracion: number) => {
+      if (!cajaEncuadre) return;
+      const [oeste, sur, este, norte] = cajaEncuadre;
+      mapaRef.current?.fitBounds([[oeste, sur], [este, norte]], { padding: 48, duration: duracion, maxZoom: 16 });
+    },
+    [cajaEncuadre]
+  );
   useEffect(() => {
-    if (!cajaEncuadre) return;
-    const [oeste, sur, este, norte] = cajaEncuadre;
-    mapaRef.current?.fitBounds(
-      [[oeste, sur], [este, norte]],
-      { padding: 48, duration: 600, maxZoom: 16 }
-    );
-  }, [cajaEncuadre]);
+    const veniaEditando = modoAnterior.current !== 'normal';
+    modoAnterior.current = modo;
+    if (modo === 'normal' && veniaEditando) return;
+    encuadrar(600);
+  }, [encuadrar, modo]);
+
+  // En pantallas angostas el mapa puede montarse oculto (ancho 0): el encuadre calculado así
+  // queda corrido, así que al hacerse visible se vuelve a encuadrar
+  const anchoAnterior = useRef(0);
+  const alRedimensionar = (e: MapEvent) => {
+    const ancho = e.target.getContainer().clientWidth;
+    if (anchoAnterior.current === 0 && ancho > 0) encuadrar(0);
+    anchoAnterior.current = ancho;
+  };
 
   const alHacerClic = (e: MapLayerMouseEvent) => {
     const id = e.features?.[0]?.properties?.id;
@@ -145,15 +166,18 @@ export function MapaTerritorial({
       // Mientras se dibuja, los clics son del dibujo y no seleccionan rutas
       interactiveLayerIds={dibujo ? [] : ['rutas-relleno']}
       onClick={alHacerClic}
+      onResize={alRedimensionar}
       cursor="auto"
     >
-      <NavigationControl position="top-right" showCompass={false} />
+      {/* Arriba quedan la leyenda y las herramientas; los controles del mapa van abajo a la derecha */}
+      <NavigationControl position="bottom-right" showCompass={false} />
+      <FullscreenControl position="bottom-right" containerId={idPantallaCompleta} />
 
       <Source id="contornos" type="geojson" data={datosContornos}>
         <Layer
           id="contornos-borde"
           type="line"
-          paint={{ 'line-color': COLOR_ZONA, 'line-width': 2, 'line-dasharray': [4, 2], 'line-opacity': 0.8 }}
+          paint={{ 'line-color': ['get', 'color'], 'line-width': 2.5, 'line-dasharray': [4, 2], 'line-opacity': 0.9 }}
         />
       </Source>
 
@@ -162,16 +186,17 @@ export function MapaTerritorial({
           id="rutas-relleno"
           type="fill"
           paint={{
-            'fill-color': ['case', ['get', 'seleccionada'], COLOR_SELECCION, COLOR_RUTA],
-            'fill-opacity': ['case', ['get', 'seleccionada'], 0.35, 0.18],
+            'fill-color': ['get', 'color'],
+            'fill-opacity': ['case', ['get', 'seleccionada'], 0.45, 0.12],
           }}
         />
         <Layer
           id="rutas-borde"
           type="line"
           paint={{
-            'line-color': ['case', ['get', 'seleccionada'], COLOR_SELECCION, COLOR_RUTA],
-            'line-width': ['case', ['get', 'seleccionada'], 3, 1.5],
+            'line-color': ['get', 'color'],
+            'line-width': ['case', ['get', 'seleccionada'], 3, 2],
+            'line-opacity': ['case', ['get', 'seleccionada'], 1, 0.8],
           }}
         />
       </Source>
@@ -185,13 +210,13 @@ export function MapaTerritorial({
         <Layer
           id="vista-previa-relleno"
           type="fill"
-          paint={{ 'fill-color': vistaPreviaInvalida ? COLOR_SELECCION : COLOR_VISTA_PREVIA, 'fill-opacity': 0.3 }}
+          paint={{ 'fill-color': vistaPreviaInvalida ? COLOR_INVALIDO : COLOR_PROPUESTA, 'fill-opacity': 0.3 }}
         />
         <Layer
           id="vista-previa-borde"
           type="line"
           paint={{
-            'line-color': vistaPreviaInvalida ? COLOR_SELECCION : COLOR_VISTA_PREVIA,
+            'line-color': vistaPreviaInvalida ? COLOR_INVALIDO : COLOR_PROPUESTA,
             'line-width': 3,
             'line-dasharray': [2, 1],
           }}

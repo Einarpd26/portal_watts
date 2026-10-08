@@ -70,19 +70,16 @@ export interface UseGestionRutasReturn {
   form: RutaForm;
   setForm: (form: RutaForm) => void;
   formErrors: RutaErrors;
-  archivoNombre: string | null;
   evaluacion: Evaluacion | null;
   puedeGuardar: boolean;
   openCrear: () => void;
   openEditar: (ruta: RutaItem) => void;
   closeEditor: () => void;
   elegirArchivo: (archivo: File) => Promise<void>;
-  quitarArchivo: () => void;
   // Dibujo en el mapa (ADR-002 D6)
   dibujo: Dibujo | null;
   verticesVecinos: Posicion[];
   iniciarDibujo: () => Promise<void>;
-  reiniciarDibujo: () => void;
   detenerDibujo: () => void;
   alCambiarDibujo: (poligono: PoligonoRuta) => void;
   // Respaldo
@@ -106,7 +103,6 @@ export function useGestionRutas(): UseGestionRutasReturn {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [form, setFormState] = useState<RutaForm>(FORM_VACIO);
   const [formErrors, setFormErrors] = useState<RutaErrors>({});
-  const [archivoNombre, setArchivoNombre] = useState<string | null>(null);
   const [textoGeoJson, setTextoGeoJson] = useState<string | null>(null);
   const [evaluacion, setEvaluacion] = useState<Evaluacion | null>(null);
   const [dibujo, setDibujo] = useState<Dibujo | null>(null);
@@ -193,7 +189,6 @@ export function useGestionRutas(): UseGestionRutasReturn {
 
   const limpiarPoligono = useCallback(() => {
     evaluacionActual.current += 1;
-    setArchivoNombre(null);
     setTextoGeoJson(null);
     setEvaluacion(null);
     setIsEvaluando(false);
@@ -291,7 +286,6 @@ export function useGestionRutas(): UseGestionRutasReturn {
       // Importar reemplaza al dibujo: un solo origen del polígono a la vez
       setDibujo(null);
       evaluacionActual.current += 1;
-      setArchivoNombre(archivo.name);
       setEvaluacion(null);
       // El tamaño se revisa antes de leer el archivo completo en memoria
       if (archivo.size > GEOJSON_MAX_BYTES) {
@@ -327,12 +321,6 @@ export function useGestionRutas(): UseGestionRutasReturn {
     claveDibujo.current += 1;
     setDibujo({ clave: claveDibujo.current, poligonoInicial });
   }, [editor, limpiarPoligono, leerError, showToast]);
-
-  const reiniciarDibujo = useCallback(() => {
-    limpiarPoligono();
-    claveDibujo.current += 1;
-    setDibujo({ clave: claveDibujo.current, poligonoInicial: null });
-  }, [limpiarPoligono]);
 
   const detenerDibujo = useCallback(() => {
     limpiarPoligono();
@@ -421,9 +409,9 @@ export function useGestionRutas(): UseGestionRutasReturn {
   return {
     zonas, rutas, rutasVisibles, contornos: contornosVisibles, isLoading, isEvaluando, isSubmitting, isExportando,
     filtroZona, setFiltroZona, seleccionId, setSeleccionId,
-    editor, form, setForm, formErrors, archivoNombre, evaluacion, puedeGuardar,
-    openCrear, openEditar, closeEditor, elegirArchivo, quitarArchivo: limpiarPoligono,
-    dibujo, verticesVecinos, iniciarDibujo, reiniciarDibujo, detenerDibujo, alCambiarDibujo,
+    editor, form, setForm, formErrors, evaluacion, puedeGuardar,
+    openCrear, openEditar, closeEditor, elegirArchivo,
+    dibujo, verticesVecinos, iniciarDibujo, detenerDibujo, alCambiarDibujo,
     exportar, submit, toast, clearToast,
   };
 }

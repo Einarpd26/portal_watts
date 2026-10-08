@@ -43,41 +43,48 @@ const TerritorioPage: PageWithLayout = () => {
   ];
 
   return (
-    <div className="min-h-full bg-gray-50">
-      <header className="px-6 pt-6">
-        <div className="mx-auto max-w-7xl">
-          <h1 className="text-xl font-extrabold tracking-tight text-gray-900">Territorio</h1>
-          <p className="mt-0.5 text-sm text-gray-500">Zonas, supervisores y rutas comerciales</p>
-
-          {pestanas.length > 1 && (
-            <div role="tablist" aria-label="Secciones de territorio" className="mt-4 flex gap-6 border-b border-gray-200">
-              {pestanas.map((p) => (
-                <button
-                  key={p.id}
-                  role="tab"
-                  type="button"
-                  aria-selected={activa === p.id}
-                  onClick={() => setElegida(p.id)}
-                  className={cn(
-                    '-mb-px border-b-2 pb-2 text-sm font-semibold transition-colors',
-                    activa === p.id
-                      ? 'border-primary-600 text-primary-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-800'
-                  )}
-                >
-                  {p.etiqueta}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+    <div className="flex min-h-0 flex-1 flex-col bg-gray-50">
+      {/* Encabezado de una sola fila: el espacio vertical es para el mapa */}
+      <header className="flex shrink-0 items-end gap-6 border-b border-gray-200 bg-white px-4 lg:px-6">
+        <h1 className="py-3 text-base font-extrabold tracking-tight text-gray-900">Territorio</h1>
+        {pestanas.length > 1 && (
+          <div role="tablist" aria-label="Secciones de territorio" className="flex gap-5">
+            {pestanas.map((p) => (
+              <button
+                key={p.id}
+                role="tab"
+                type="button"
+                aria-selected={activa === p.id}
+                onClick={() => setElegida(p.id)}
+                className={cn(
+                  '-mb-px border-b-2 pb-3 text-sm font-semibold transition-colors',
+                  activa === p.id
+                    ? 'border-primary-600 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-800'
+                )}
+              >
+                {p.etiqueta}
+              </button>
+            ))}
+          </div>
+        )}
       </header>
 
-      {activa === 'zonas' ? <ZonasPanel /> : <RutasPanel />}
+      {activa === 'zonas' ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <ZonasPanel />
+        </div>
+      ) : (
+        <RutasPanel />
+      )}
     </div>
   );
 };
 
-TerritorioPage.getLayout = (page) => <AppLayout flush>{page}</AppLayout>;
+TerritorioPage.getLayout = (page) => (
+  <AppLayout flush fullHeight>
+    {page}
+  </AppLayout>
+);
 
 export default TerritorioPage;
