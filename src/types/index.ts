@@ -189,3 +189,43 @@ export interface SupervisorCandidato {
   nombre: string;
   id_sucursal: number;
 }
+
+// 11. Rutas comerciales (CU-05)
+export interface PoligonoRuta {
+  type: 'Polygon';
+  coordinates: number[][][];
+}
+
+export interface RutaItem {
+  id: number;
+  codigo_ruta: string;
+  ruta: string;
+  descripcion_ruta: string | null;
+  id_zona: number;
+  /** Polígono simplificado para el mapa (~1 m) */
+  geojson: PoligonoRuta;
+}
+
+/** Zona en la que el solicitante puede operar rutas */
+export interface ZonaDeRuta {
+  id: number;
+  codigo_zona: string;
+  zona: string;
+  id_sucursal: number;
+  sucursal_nombre: string;
+}
+
+/** Ruta existente con la que se superpone la propuesta (A1). Fuera de alcance no se detalla. */
+export interface ConflictoRuta {
+  id: number | null;
+  codigo_ruta: string | null;
+  area_m2: number;
+  geojson: PoligonoRuta | null;
+  fuera_de_alcance: boolean;
+}
+
+export type ErrorGeometriaRuta = 'geojson_invalido' | 'no_poligono' | 'geometria_invalida' | 'superposicion';
+
+export type RutaEvaluacion =
+  | { ok: true; geojson: PoligonoRuta; vertices: number; area_m2: number; conflictos: ConflictoRuta[] }
+  | { ok: false; error: ErrorGeometriaRuta; detalle?: string; conflictos?: ConflictoRuta[] };
