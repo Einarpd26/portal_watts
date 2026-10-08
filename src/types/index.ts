@@ -215,6 +215,29 @@ export interface ZonaDeRuta {
   sucursal_nombre: string;
 }
 
+export interface MultiPoligonoGeoJson {
+  type: 'MultiPolygon';
+  coordinates: number[][][][];
+}
+
+/** Contorno de una zona: unión de los polígonos de sus rutas (ADR-002 D6). No se guarda ni se edita. */
+export interface ContornoZona {
+  id_zona: number;
+  geojson: PoligonoRuta | MultiPoligonoGeoJson;
+}
+
+/** Ruta con su polígono completo, tal como se exporta para el respaldo */
+export interface RutaExportable {
+  id: number;
+  codigo_ruta: string;
+  ruta: string;
+  descripcion_ruta: string | null;
+  id_zona: number;
+  codigo_zona: string;
+  zona: string;
+  geojson: PoligonoRuta;
+}
+
 /** Ruta existente con la que se superpone la propuesta (A1). Fuera de alcance no se detalla. */
 export interface ConflictoRuta {
   id: number | null;

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
-import { guardarRuta, listarRutas } from '@/lib/rutas';
+import { contornosDeZonas, guardarRuta, listarRutas } from '@/lib/rutas';
 import { geoJsonComoTexto, resolverContextoRutas, responderFalloGuardado } from '@/lib/rutasApi';
 import { interpretarGeoJson, validarRuta } from '@/utils/rutaValidation';
 import { logger } from '@/lib/logger';
@@ -20,9 +20,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     if (req.method === 'GET') {
-      const rutas = await listarRutas([...idsZona]);
-      if (!rutas.ok) return res.status(500).json({ error: 'No se pudieron obtener las rutas.' });
-      return res.status(200).json({ zonas, rutas: rutas.data });
+      const [rutas, contornos] = await Promise.all([listarRutas([...idsZona]), contornosDeZonas([...idsZona], false)]);
+      if (!rutas.ok || !contornos.ok) return res.status(500).json({ error: 'No se pudieron obtener las rutas.' });
+      return res.status(200).json({ zonas, rutas: rutas.data, contornos: contornos.data });
     }
 
     const cuerpo = (req.body ?? {}) as Record<string, unknown>;

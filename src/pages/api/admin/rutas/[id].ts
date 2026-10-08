@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
-import { guardarRuta, obtenerRuta } from '@/lib/rutas';
+import { exportarRutas, guardarRuta, obtenerRuta } from '@/lib/rutas';
 import { geoJsonComoTexto, resolverContextoRutas, responderFalloGuardado } from '@/lib/rutasApi';
 import { interpretarGeoJson, validarRuta } from '@/utils/rutaValidation';
 import { logger } from '@/lib/logger';
@@ -8,10 +8,11 @@ import { logger } from '@/lib/logger';
 // Next exige un literal estático: el archivo GeoJSON (512 KB, GEOJSON_MAX_BYTES) viaja dentro del JSON
 export const config = { api: { bodyParser: { sizeLimit: '700kb' } } };
 
-// Rutas comerciales (CU-05): edición de datos y reemplazo opcional del polígono. La ruta no cambia
-// de zona aquí: el traslado es CU-06.
+// Rutas comerciales (CU-05): consulta con el polígono completo (para editarlo en el mapa sin perder
+// el detalle que el listado simplifica), edición de datos y reemplazo opcional del polígono. La
+// ruta no cambia de zona aquí: el traslado es CU-06.
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'PATCH') {
+  if (req.method !== 'GET' && req.method !== 'PATCH') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -33,6 +34,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     if (!idsZona.has(ruta.data.id_zona)) {
       return res.status(403).json({ error: 'Solo puedes administrar rutas de tus zonas asignadas' });
+    }
+
+    if (req.method === 'GET') {
+      const completa = await exportarRutas([ruta.data.id_zona], id);
+      if (!completa.ok || completa.data.length === 0) {
+        return res.status(500).json({ error: 'No se pudo consultar la ruta.' });
+      }
+      return res.status(200).json({ ruta: completa.data[0] });
     }
 
     const cuerpo = (req.body ?? {}) as Record<string, unknown>;

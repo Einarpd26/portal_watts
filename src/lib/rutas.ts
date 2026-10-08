@@ -1,6 +1,15 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import type { Json } from '@/types/database';
-import type { ConflictoRuta, ErrorGeometriaRuta, PoligonoRuta, RutaEvaluacion, RutaItem, ZonaDeRuta } from '@/types';
+import type {
+  ConflictoRuta,
+  ContornoZona,
+  ErrorGeometriaRuta,
+  PoligonoRuta,
+  RutaEvaluacion,
+  RutaExportable,
+  RutaItem,
+  ZonaDeRuta,
+} from '@/types';
 import type { AlcanceRutas } from '@/utils/rutaScope';
 import type { RutaNormalizada } from '@/utils/rutaValidation';
 
@@ -79,6 +88,37 @@ export async function listarRutas(idsZona: number[]): Promise<RutaResultado<Ruta
     ok: true,
     data: (data ?? []).map((r) => ({ ...r, geojson: r.geojson as unknown as PoligonoRuta })),
   };
+}
+
+/** Tolerancia de simplificación del contorno que se dibuja en el mapa (~1 m, como las rutas) */
+const TOLERANCIA_MAPA = 0.00001;
+
+/**
+ * Contorno de cada zona, derivado de la unión de sus rutas (ADR-002 D6). `completo` lo devuelve
+ * sin simplificar, para el respaldo; si no, simplificado para el mapa.
+ */
+export async function contornosDeZonas(idsZona: number[], completo: boolean): Promise<RutaResultado<ContornoZona[]>> {
+  if (idsZona.length === 0) return { ok: true, data: [] };
+  const { data, error } = await createAdminClient().rpc('zonas_contorno', {
+    p_ids_zona: idsZona,
+    p_tolerancia: completo ? 0 : TOLERANCIA_MAPA,
+  });
+  if (error) return { ok: false, error: 'error' };
+  return {
+    ok: true,
+    data: (data ?? []).map((c) => ({ id_zona: c.id_zona, geojson: c.geojson as unknown as ContornoZona['geojson'] })),
+  };
+}
+
+/** Rutas con su polígono completo para el respaldo; `idRuta` acota a una sola */
+export async function exportarRutas(idsZona: number[], idRuta: number | null): Promise<RutaResultado<RutaExportable[]>> {
+  if (idsZona.length === 0) return { ok: true, data: [] };
+  const { data, error } = await createAdminClient().rpc('rutas_exportar', {
+    p_ids_zona: idsZona,
+    p_id_ruta: idRuta ?? undefined,
+  });
+  if (error) return { ok: false, error: 'error' };
+  return { ok: true, data: (data ?? []).map((r) => ({ ...r, geojson: r.geojson as unknown as PoligonoRuta })) };
 }
 
 /** Datos mínimos de una ruta con la sucursal de su zona, para decidir el alcance */
