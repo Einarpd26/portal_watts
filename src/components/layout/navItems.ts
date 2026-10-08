@@ -13,6 +13,8 @@ export type NavItem = {
   href: string;
   /** Permisos atómicos requeridos (recurso:accion). Vacío = siempre visible. */
   requiredPermissions: string[];
+  /** Si se define, basta con tener uno de estos permisos (además de los requeridos). */
+  anyPermissions?: string[];
   /** false = el módulo aún no tiene página: se muestra deshabilitado ("Próximamente"), nunca cae en 404. */
   available: boolean;
 };
@@ -39,7 +41,14 @@ export const MANAGEMENT_GROUP: NavItem[] = [
   { label: "Accesos", href: "/admin/usuarios", requiredPermissions: ["cuentas:gestionar"], available: true },
   { label: "Bitácora", href: "/admin/bitacora", requiredPermissions: ["bitacora:consultar"], available: true },
   { label: "Catálogos", href: "/admin/catalogos", requiredPermissions: ["catalogos:gestionar"], available: true },
-  { label: "Territorio", href: "/territorio", requiredPermissions: ["territorio:gestionar"], available: true },
+  {
+    label: "Territorio",
+    href: "/territorio",
+    requiredPermissions: [],
+    // Zonas (territorio:gestionar) o rutas (rutas:gestionar, el Supervisor): la página muestra solo lo que le corresponde
+    anyPermissions: ["territorio:gestionar", "rutas:gestionar"],
+    available: true,
+  },
 ];
 
 // Link de ayuda: siempre visible al final del nav (tokens-de-marca.md §5.3).
@@ -52,5 +61,7 @@ export const HELP_LINK: NavItem = {
 
 /** ¿La lista de permisos del usuario habilita este item? */
 export function hasPermission(permisos: string[], item: NavItem): boolean {
-  return item.requiredPermissions.every((p) => permisos.includes(p));
+  const cumpleRequeridos = item.requiredPermissions.every((p) => permisos.includes(p));
+  const cumpleAlguno = !item.anyPermissions || item.anyPermissions.some((p) => permisos.includes(p));
+  return cumpleRequeridos && cumpleAlguno;
 }

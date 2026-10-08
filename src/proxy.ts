@@ -112,8 +112,9 @@ export const config = {
   matcher: [
     /*
      * Ignora archivos estáticos e internos de Next.js para no gastar recursos
-     * evaluando imágenes, CSS, o el endpoint /api (tu API ya se cuida sola)
+     * evaluando imágenes, CSS, o el endpoint /api (tu API ya se cuida sola).
+     * maplibre/ es el worker del mapa: si el proxy lo atiende responde 307 al login (ADR-002 §4).
      */
-    '/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|api).*)',
+    '/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.json|maplibre/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|api).*)',
   ],
 };

@@ -1,136 +1,79 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
-import { useGestionTerritorio } from '@/hooks/useGestionTerritorio';
-import ZonaTable from '@/components/territorio/ZonaTable';
-import ZonaFormModal from '@/components/territorio/ZonaFormModal';
-import SupervisorZonaModal from '@/components/territorio/SupervisorZonaModal';
-import EliminarZonaModal from '@/components/territorio/EliminarZonaModal';
-import Alert from '@/components/ui/Alert';
-import Button from '@/components/ui/Button';
+import { ZonasPanel } from '@/components/territorio/ZonasPanel';
+import { RutasPanel } from '@/components/territorio/RutasPanel';
 import AppLayout from '@/components/layout/AppLayout';
+import { cn } from '@/utils/cn';
 import { logger } from '@/lib/logger';
 import type { PageWithLayout } from '@/types';
 
-const PERMISO = 'territorio:gestionar';
+const PERMISO_ZONAS = 'territorio:gestionar';
+const PERMISO_RUTAS = 'rutas:gestionar';
+
+type Pestana = 'zonas' | 'rutas';
 
 const TerritorioPage: PageWithLayout = () => {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const [elegida, setElegida] = useState<Pestana | null>(null);
 
-  // Auth guard: solo quien tiene el permiso de territorio
+  const puedeZonas = user?.permisos.includes(PERMISO_ZONAS) ?? false;
+  const puedeRutas = user?.permisos.includes(PERMISO_RUTAS) ?? false;
+
+  // Auth guard: solo quien gestiona zonas o rutas
   useEffect(() => {
-    if (!authLoading && user && !user.permisos.includes(PERMISO)) {
+    if (!authLoading && user && !puedeZonas && !puedeRutas) {
       router.replace('/dashboard').catch((navErr: unknown) => {
         logger.error('Error redirigiendo usuario sin permisos:', navErr);
       });
     }
-  }, [authLoading, user, router]);
-
-  const {
-    zonas,
-    supervisores,
-    sucursales,
-    isLoading,
-    isSubmitting,
-    formModal,
-    form,
-    setForm,
-    formErrors,
-    openCrear,
-    openEditar,
-    closeForm,
-    submitForm,
-    deleteTarget,
-    openEliminar,
-    closeEliminar,
-    submitEliminar,
-    supervisorTarget,
-    supervisorSeleccion,
-    setSupervisorSeleccion,
-    openSupervisor,
-    closeSupervisor,
-    submitSupervisor,
-    toast,
-    clearToast,
-  } = useGestionTerritorio();
+  }, [authLoading, user, puedeZonas, puedeRutas, router]);
 
   if (authLoading || !user) return null;
-  if (!user.permisos.includes(PERMISO)) return null;
+  if (!puedeZonas && !puedeRutas) return null;
+
+  // Cada pestaña exige su propio permiso; la elegida se corrige si el permiso no alcanza
+  const activa: Pestana = elegida === 'rutas' && puedeRutas ? 'rutas' : puedeZonas ? 'zonas' : 'rutas';
+  const pestanas: Array<{ id: Pestana; etiqueta: string }> = [
+    ...(puedeZonas ? [{ id: 'zonas' as const, etiqueta: 'Zonas' }] : []),
+    ...(puedeRutas ? [{ id: 'rutas' as const, etiqueta: 'Rutas' }] : []),
+  ];
 
   return (
     <div className="min-h-full bg-gray-50">
       <header className="px-6 pt-6">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-extrabold tracking-tight text-gray-900">Territorio</h1>
-            <p className="mt-0.5 text-sm text-gray-500">Zonas comerciales y sus supervisores</p>
-          </div>
-          <Button onClick={openCrear}>Nueva zona</Button>
+        <div className="mx-auto max-w-7xl">
+          <h1 className="text-xl font-extrabold tracking-tight text-gray-900">Territorio</h1>
+          <p className="mt-0.5 text-sm text-gray-500">Zonas, supervisores y rutas comerciales</p>
+
+          {pestanas.length > 1 && (
+            <div role="tablist" aria-label="Secciones de territorio" className="mt-4 flex gap-6 border-b border-gray-200">
+              {pestanas.map((p) => (
+                <button
+                  key={p.id}
+                  role="tab"
+                  type="button"
+                  aria-selected={activa === p.id}
+                  onClick={() => setElegida(p.id)}
+                  className={cn(
+                    '-mb-px border-b-2 pb-2 text-sm font-semibold transition-colors',
+                    activa === p.id
+                      ? 'border-primary-600 text-primary-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-800'
+                  )}
+                >
+                  {p.etiqueta}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </header>
 
-      {toast && (
-        <div className="mx-auto max-w-7xl px-6 pt-4">
-          <Alert state={toast.type} onClose={clearToast}>
-            {toast.message}
-          </Alert>
-        </div>
-      )}
-
-      <div className="mx-auto max-w-7xl px-6 py-6">
-        <ZonaTable
-          zonas={zonas}
-          isLoading={isLoading}
-          mostrarSucursal={sucursales.length > 1}
-          onEdit={openEditar}
-          onDelete={openEliminar}
-          onSupervisor={openSupervisor}
-        />
-      </div>
-
-      <ZonaFormModal
-        open={formModal.open}
-        editando={formModal.zona !== null}
-        form={form}
-        setForm={setForm}
-        errors={formErrors}
-        sucursales={sucursales}
-        isSubmitting={isSubmitting}
-        onSubmit={() => {
-          submitForm().catch((err: unknown) => {
-            logger.error('Error no controlado al guardar la zona:', err);
-          });
-        }}
-        onCancel={closeForm}
-      />
-
-      <SupervisorZonaModal
-        zona={supervisorTarget}
-        candidatos={supervisores}
-        seleccion={supervisorSeleccion}
-        onSeleccion={setSupervisorSeleccion}
-        isSubmitting={isSubmitting}
-        onConfirm={() => {
-          submitSupervisor().catch((err: unknown) => {
-            logger.error('Error no controlado al asignar el supervisor:', err);
-          });
-        }}
-        onCancel={closeSupervisor}
-      />
-
-      <EliminarZonaModal
-        zona={deleteTarget}
-        isSubmitting={isSubmitting}
-        onConfirm={() => {
-          submitEliminar().catch((err: unknown) => {
-            logger.error('Error no controlado al eliminar la zona:', err);
-          });
-        }}
-        onCancel={closeEliminar}
-      />
+      {activa === 'zonas' ? <ZonasPanel /> : <RutasPanel />}
     </div>
   );
 };
