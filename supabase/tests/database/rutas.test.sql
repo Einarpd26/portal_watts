@@ -1,7 +1,8 @@
 -- Pruebas de las funciones de rutas (CU-05). Ejecutar con: npx supabase test db
--- Cubre ruta_evaluar, ruta_guardar y rutas_listar: tolerancia de astillas, tipos, validez y superposición.
+-- Cubre ruta_evaluar, ruta_guardar y rutas_listar (tolerancia de astillas, tipos, validez y superposición),
+-- y rutas_exportar y zonas_contorno (respaldo con geometría completa y contorno derivado, ADR-002 D6).
 BEGIN;
-SELECT plan(14);
+SELECT plan(20);
 
 -- Caja contigua a R-N4 (que ocupa x -63.17..-63.16): solo comparten borde
 SELECT is(
@@ -49,6 +50,38 @@ SELECT is(
   true, 'una ruta puede reemplazar su polígono moviéndose sobre su propia posición anterior');
 
 SELECT is((SELECT count(*)::int FROM public.rutas_listar(NULL, NULL)), 11, 'rutas_listar devuelve las 10 del seed y la nueva');
+
+-- Contorno derivado (D6): la unión de las 4 rutas de ZS es su envolvente; ZC no tiene rutas ni contorno
+SELECT ok(
+  (SELECT ST_Equals(ST_SetSRID(ST_GeomFromGeoJSON(c.geojson::text), 4326), ST_MakeEnvelope(-63.20, -17.80, -63.16, -17.79, 4326))
+     FROM public.zonas_contorno(ARRAY[(SELECT id FROM public.zonas WHERE codigo_zona = 'ZS')]) c),
+  'el contorno de una zona es la unión de sus rutas');
+SELECT is(
+  (SELECT count(*)::int FROM public.zonas_contorno(ARRAY[(SELECT id FROM public.zonas WHERE codigo_zona = 'ZC')])),
+  0, 'una zona sin rutas no tiene contorno');
+
+-- Una ruta separada del resto convierte el contorno en MultiPolygon
+INSERT INTO public.rutas (codigo_ruta, ruta, localizacion, id_zona)
+SELECT 'R-S9', 'Separada', ST_MakeEnvelope(-63.10, -17.80, -63.09, -17.79, 4326), id FROM public.zonas WHERE codigo_zona = 'ZS';
+SELECT is(
+  (SELECT c.geojson ->> 'type' FROM public.zonas_contorno(ARRAY[(SELECT id FROM public.zonas WHERE codigo_zona = 'ZS')]) c),
+  'MultiPolygon', 'con rutas no contiguas el contorno es un MultiPolygon');
+
+-- Respaldo: la exportación conserva vértices que la simplificación del mapa (~1 m) descarta
+INSERT INTO public.rutas (codigo_ruta, ruta, localizacion, id_zona)
+SELECT 'R-S8', 'Con vértice fino',
+       ST_GeomFromText('POLYGON((-63.08 -17.80, -63.075 -17.800003, -63.07 -17.80, -63.07 -17.79, -63.08 -17.79, -63.08 -17.80))', 4326),
+       id FROM public.zonas WHERE codigo_zona = 'ZS';
+SELECT is(
+  (SELECT ST_NPoints(ST_GeomFromGeoJSON(e.geojson::text))
+     FROM public.rutas_exportar(ARRAY[(SELECT id FROM public.zonas WHERE codigo_zona = 'ZS')], (SELECT id FROM public.rutas WHERE codigo_ruta = 'R-S8')) e),
+  6, 'la exportación trae la geometría completa');
+SELECT is(
+  (SELECT ST_NPoints(ST_GeomFromGeoJSON(l.geojson::text)) FROM public.rutas_listar(NULL, NULL) l WHERE l.codigo_ruta = 'R-S8'),
+  5, 'el listado del mapa sí la simplifica');
+SELECT is(
+  (SELECT count(*)::int FROM public.rutas_exportar(ARRAY[(SELECT id FROM public.zonas WHERE codigo_zona = 'ZS')], (SELECT id FROM public.rutas WHERE codigo_ruta = 'R-S8'))),
+  1, 'exportar una ruta devuelve solo esa ruta');
 
 SELECT * FROM finish();
 ROLLBACK;

@@ -491,6 +491,19 @@ export type Database = {
         }
         Returns: Json
       }
+      rutas_exportar: {
+        Args: { p_id_ruta?: number; p_ids_zona: number[] }
+        Returns: {
+          codigo_ruta: string
+          codigo_zona: string
+          descripcion_ruta: string
+          geojson: Json
+          id: number
+          id_zona: number
+          ruta: string
+          zona: string
+        }[]
+      }
       rutas_listar: {
         Args: { p_id_sucursal?: number; p_ids_zona?: number[] }
         Returns: {
@@ -500,6 +513,13 @@ export type Database = {
           id: number
           id_zona: number
           ruta: string
+        }[]
+      }
+      zonas_contorno: {
+        Args: { p_ids_zona: number[]; p_tolerancia?: number }
+        Returns: {
+          geojson: Json
+          id_zona: number
         }[]
       }
     }
