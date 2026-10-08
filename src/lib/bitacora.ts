@@ -11,6 +11,7 @@ export type ModuloBitacora =
   | 'AUTENTICACION'
   | 'ACCESOS'
   | 'PERSONAL'
+  | 'TERRITORIO'
   | 'SISTEMA';
 
 export type AccionBitacora =

@@ -163,3 +163,29 @@ export interface CatalogoItem {
   referencias: number;
   created_at: string;
 }
+
+// 10. Territorio: zonas comerciales y su supervisor (CU-04, CU-07)
+export interface SupervisorDeZona {
+  id_persona: number;
+  nombre: string;
+}
+
+export interface ZonaItem {
+  id: number;
+  codigo_zona: string;
+  zona: string;
+  descripcion_zona: string | null;
+  canal_venta: string | null;
+  id_sucursal: number;
+  sucursal_nombre: string;
+  supervisor: SupervisorDeZona | null;
+  /** Cantidad de rutas de la zona; mayor a 0 impide eliminarla */
+  total_rutas: number;
+}
+
+/** Colaborador con rol de acceso Supervisor en una sucursal: candidato a supervisar zonas */
+export interface SupervisorCandidato {
+  id_persona: number;
+  nombre: string;
+  id_sucursal: number;
+}

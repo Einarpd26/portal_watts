@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { PG_FOREIGN_KEY_VIOLATION, PG_UNIQUE_VIOLATION } from '@/lib/pgErrors';
 import type { CatalogoItem } from '@/types';
 import type { CatalogoTipo } from '@/utils/catalogoValidation';
 
@@ -20,9 +21,6 @@ export interface CatalogoAdapter {
   eliminar(id: number): Promise<CatalogoResultado<null>>;
 }
 
-// Códigos de PostgreSQL que PostgREST propaga en `error.code`
-const PG_UNIQUE_VIOLATION = '23505';
-const PG_FOREIGN_KEY_VIOLATION = '23503';
 
 function mapearError(error: { code?: string }): { ok: false; error: CatalogoError } {
   if (error.code === PG_UNIQUE_VIOLATION) return { ok: false, error: 'duplicado' };

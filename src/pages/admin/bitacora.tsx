@@ -37,7 +37,7 @@ interface BitacoraApiResponse {
   };
 }
 
-const MODULOS = ['TODOS', 'AUTENTICACION', 'ACCESOS', 'PERSONAL', 'SISTEMA'];
+const MODULOS = ['TODOS', 'AUTENTICACION', 'ACCESOS', 'PERSONAL', 'TERRITORIO', 'SISTEMA'];
 const ACCIONES = ['TODAS', ...ACCIONES_BITACORA];
 
 function getModuloBadgeClasses(modulo: string): string {
@@ -48,6 +48,8 @@ function getModuloBadgeClasses(modulo: string): string {
       return 'bg-purple-50 text-purple-700 border-purple-200';
     case 'PERSONAL':
       return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    case 'TERRITORIO':
+      return 'bg-amber-50 text-amber-700 border-amber-200';
     case 'SISTEMA':
       return 'bg-gray-100 text-gray-700 border-gray-200';
     default:
@@ -77,16 +79,21 @@ function getAccionBadgeClasses(accion: string): string {
     case 'INVITAR_USUARIO':
     case 'CREAR_SUCURSAL':
     case 'CREAR_CARGO':
+    case 'CREAR_ZONA':
+    case 'ASIGNAR_SUPERVISOR_ZONA':
       return 'bg-sky-100 text-sky-800';
     case 'EDITAR_PERSONAL':
     case 'EDITAR_SUCURSAL':
     case 'EDITAR_CARGO':
+    case 'EDITAR_ZONA':
     case 'CAMBIO_PASSWORD':
       return 'bg-amber-100 text-amber-800';
     case 'BAJA_PERSONAL':
     case 'REVOCAR_ACCESO':
     case 'ELIMINAR_SUCURSAL':
     case 'ELIMINAR_CARGO':
+    case 'ELIMINAR_ZONA':
+    case 'QUITAR_SUPERVISOR_ZONA':
       return 'bg-rose-100 text-rose-800';
     default:
       return 'bg-gray-100 text-gray-700';

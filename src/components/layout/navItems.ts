@@ -39,7 +39,7 @@ export const MANAGEMENT_GROUP: NavItem[] = [
   { label: "Accesos", href: "/admin/usuarios", requiredPermissions: ["cuentas:gestionar"], available: true },
   { label: "Bitácora", href: "/admin/bitacora", requiredPermissions: ["bitacora:consultar"], available: true },
   { label: "Catálogos", href: "/admin/catalogos", requiredPermissions: ["catalogos:gestionar"], available: true },
-  { label: "Territorio", href: "/territorio", requiredPermissions: ["territorio:gestionar"], available: false },
+  { label: "Territorio", href: "/territorio", requiredPermissions: ["territorio:gestionar"], available: true },
 ];
 
 // Link de ayuda: siempre visible al final del nav (tokens-de-marca.md §5.3).

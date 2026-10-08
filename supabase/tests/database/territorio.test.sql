@@ -1,7 +1,7 @@
 -- Pruebas de la base de datos del Módulo 2 (zonas y rutas). Ejecutar con: npx supabase test db
 -- Reglas verificadas: ADR-002 (no superposición por interiores), RN-01, restricciones y privilegios.
 BEGIN;
-SELECT plan(20);
+SELECT plan(22);
 
 SELECT has_extension('extensions', 'postgis', 'PostGIS está instalado');
 SELECT has_table('public', 'zonas', 'existe zonas');
@@ -65,6 +65,16 @@ SELECT throws_ok(
 
 -- Seed: una zona queda sin supervisor (CU-07)
 SELECT is((SELECT count(*)::int FROM public.zonas z WHERE NOT EXISTS (SELECT 1 FROM public.supervisor_zonas sz WHERE sz.id_zona = z.id)), 1, 'solo la zona ZC queda sin supervisor');
+
+-- Baja de una zona sin rutas: se elimina también su asignación de supervisor (CU-04)
+INSERT INTO public.supervisor_zonas (id_supervisor, id_zona)
+SELECT p.id, z.id FROM public.personas p, public.zonas z WHERE p.ci = '6394812' AND z.codigo_zona = 'ZC';
+SELECT lives_ok($$DELETE FROM public.zonas WHERE codigo_zona = 'ZC'$$, 'se elimina una zona sin rutas');
+SELECT is(
+  (SELECT count(*)::int FROM public.supervisor_zonas sz WHERE NOT EXISTS (SELECT 1 FROM public.zonas z WHERE z.id = sz.id_zona)),
+  0,
+  'al eliminar una zona se elimina su asignación de supervisor'
+);
 
 -- Privilegios (ADR-001 §E, ADR-002 §3)
 SELECT ok(NOT has_table_privilege('anon', 'public.rutas', 'SELECT'), 'anon no lee rutas');
