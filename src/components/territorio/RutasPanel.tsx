@@ -49,7 +49,9 @@ export function RutasPanel() {
   const {
     zonas,
     rutasVisibles,
+    contornos,
     isLoading,
+    isExportando,
     isEvaluando,
     isSubmitting,
     filtroZona,
@@ -68,6 +70,13 @@ export function RutasPanel() {
     closeEditor,
     elegirArchivo,
     quitarArchivo,
+    dibujo,
+    verticesVecinos,
+    iniciarDibujo,
+    reiniciarDibujo,
+    detenerDibujo,
+    alCambiarDibujo,
+    exportar,
     submit,
     toast,
     clearToast,
@@ -81,6 +90,12 @@ export function RutasPanel() {
   const editando = editor?.ruta ?? null;
   const zonaDe = (id: number) => zonas.find((z) => z.id === id);
   const sinZonas = !isLoading && zonas.length === 0;
+
+  const accion = (promesa: Promise<void>, contexto: string) => {
+    promesa.catch((err: unknown) => {
+      logger.error(`Error no controlado al ${contexto}:`, err);
+    });
+  };
 
   return (
     <>
@@ -107,7 +122,7 @@ export function RutasPanel() {
             >
               <div className="border-b border-gray-100 px-5 py-4">
                 <h2 className="text-base font-bold text-gray-900">
-                  {editando ? `Editar ${editando.codigo_ruta}` : 'Importar ruta'}
+                  {editando ? `Editar ${editando.codigo_ruta}` : 'Nueva ruta'}
                 </h2>
               </div>
 
@@ -137,10 +152,43 @@ export function RutasPanel() {
                   </Select>
                 )}
 
-                <div>
-                  <p className="mb-1.5 text-xs font-semibold uppercase tracking-widest text-gray-500">
-                    {editando ? 'Reemplazar el polígono (opcional)' : 'Archivo GeoJSON'}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">
+                    {editando ? 'Polígono (opcional: déjalo como está o cámbialo)' : 'Polígono'}
                   </p>
+                  {dibujo ? (
+                    <div className="space-y-2 rounded-input border border-success-200 bg-success-50 p-3 text-xs text-gray-700">
+                      <p>
+                        {dibujo.poligonoInicial
+                          ? 'Arrastra los vértices para ajustarlos; arrastra un punto intermedio para agregar uno; clic derecho sobre un vértice para quitarlo.'
+                          : 'Haz clic en el mapa para agregar vértices y cierra el polígono haciendo clic en el primero (o con Enter). Luego puedes ajustar los vértices.'}
+                      </p>
+                      <p>Los vértices de las rutas vecinas atraen el cursor: úsalos para compartir el borde sin superponerte.</p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant="secondary" size="sm" onClick={reiniciarDibujo} disabled={isSubmitting}>
+                          Empezar de nuevo
+                        </Button>
+                        <Button type="button" variant="secondary" size="sm" onClick={detenerDibujo} disabled={isSubmitting}>
+                          Dejar de dibujar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="w-full"
+                      disabled={isSubmitting}
+                      onClick={() => accion(iniciarDibujo(), 'iniciar el dibujo')}
+                    >
+                      {editando ? 'Editar el polígono en el mapa' : 'Dibujar en el mapa'}
+                    </Button>
+                  )}
+                  {/* El resultado va junto al dibujo para que se vea sin desplazar el panel */}
+                  {isEvaluando && <p className="text-sm text-gray-500">Validando el polígono…</p>}
+                  {evaluacion && !isEvaluando && <ResultadoValidacion evaluacion={evaluacion} />}
+                  <p className="pt-1 text-xs text-gray-500">o importa un archivo GeoJSON:</p>
                   <input
                     ref={archivoRef}
                     type="file"
@@ -150,16 +198,10 @@ export function RutasPanel() {
                     className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-btn file:border file:border-gray-200 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-bold file:text-gray-800 hover:file:bg-gray-50"
                     onChange={(e) => {
                       const archivo = e.target.files?.[0];
-                      if (archivo) {
-                        elegirArchivo(archivo).catch((err: unknown) => {
-                          logger.error('Error no controlado al leer el archivo GeoJSON:', err);
-                        });
-                      }
+                      if (archivo) accion(elegirArchivo(archivo), 'leer el archivo GeoJSON');
                     }}
                   />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Un Polygon con coordenadas [longitud, latitud], de hasta 512 KB.
-                  </p>
+                  <p className="text-xs text-gray-500">Un Polygon con coordenadas [longitud, latitud], de hasta 512 KB.</p>
                   {archivoNombre && (
                     <button
                       type="button"
@@ -174,8 +216,16 @@ export function RutasPanel() {
                   )}
                 </div>
 
-                {isEvaluando && <p className="text-sm text-gray-500">Validando el polígono…</p>}
-                {evaluacion && !isEvaluando && <ResultadoValidacion evaluacion={evaluacion} />}
+                {editando && (
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-primary-600 hover:underline disabled:opacity-50"
+                    disabled={isExportando}
+                    onClick={() => accion(exportar({ tipo: 'ruta', id: editando.id }), 'exportar la ruta')}
+                  >
+                    Exportar el polígono guardado (GeoJSON)
+                  </button>
+                )}
                 <Input
                   label="Código"
                   value={form.codigo_ruta}
@@ -234,9 +284,24 @@ export function RutasPanel() {
                     ))}
                   </Select>
                 )}
-                <Button onClick={openCrear} disabled={sinZonas} className="w-full">
-                  Importar ruta
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={openCrear} disabled={sinZonas} className="flex-1">
+                    Nueva ruta
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    disabled={sinZonas || isExportando}
+                    title={filtroZona === null ? 'Exportar todas tus zonas y rutas' : 'Exportar esta zona con su contorno y sus rutas'}
+                    onClick={() =>
+                      accion(
+                        exportar(filtroZona === null ? { tipo: 'todo' } : { tipo: 'zona', id: filtroZona }),
+                        'exportar el territorio'
+                      )
+                    }
+                  >
+                    Exportar
+                  </Button>
+                </div>
               </div>
 
               <ul className="flex-1 divide-y divide-gray-100 overflow-y-auto" aria-label="Rutas">
@@ -288,15 +353,25 @@ export function RutasPanel() {
 
         <section
           aria-label="Mapa de rutas"
-          className="h-[28rem] overflow-hidden rounded-card bg-white shadow-card lg:h-[calc(100vh-14rem)] lg:min-h-[24rem]"
+          className="relative h-[28rem] overflow-hidden rounded-card bg-white shadow-card lg:h-[calc(100vh-14rem)] lg:min-h-[24rem]"
         >
+          <p className="pointer-events-none absolute bottom-8 left-2 z-10 rounded bg-white/90 px-2 py-1 text-xs text-gray-600 shadow-sm">
+            Línea gris discontinua: contorno de la zona (unión de sus rutas)
+          </p>
           <MapaTerritorial
             rutas={rutasVisibles}
             seleccionId={seleccionId}
             onSeleccionar={setSeleccionId}
-            vistaPrevia={evaluacion?.geojson ?? null}
+            // Mientras se dibuja, el propio dibujo es la vista previa
+            vistaPrevia={dibujo ? null : (evaluacion?.geojson ?? null)}
             vistaPreviaInvalida={evaluacion !== null && !evaluacion.valida}
             conflictos={evaluacion?.conflictos ?? []}
+            contornos={contornos}
+            dibujo={
+              dibujo
+                ? { ...dibujo, verticesVecinos, onCambio: alCambiarDibujo }
+                : null
+            }
           />
         </section>
       </div>

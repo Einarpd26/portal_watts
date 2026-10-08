@@ -5,7 +5,9 @@ import { setWorkerUrl } from 'maplibre-gl';
 import { Layer, Map, NavigationControl, Source } from '@vis.gl/react-maplibre';
 import type { MapLayerMouseEvent, MapRef } from '@vis.gl/react-maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import type { ConflictoRuta, PoligonoRuta, RutaItem } from '@/types';
+import { CapaDibujo } from '@/components/territorio/CapaDibujo';
+import type { Posicion } from '@/utils/ajusteVertices';
+import type { ConflictoRuta, ContornoZona, PoligonoRuta, RutaItem } from '@/types';
 
 // MapLibre 6 no resuelve solo la URL de su worker bajo el empaquetador: se sirve desde public/maplibre/
 // (lo copia scripts/copiar-worker-maplibre.mjs) y debe registrarse antes de crear el mapa (ADR-002 §4).
@@ -19,6 +21,7 @@ const COLOR_RUTA = '#2563eb'; // blue-600
 const COLOR_SELECCION = '#dc2626'; // primary-600
 const COLOR_VISTA_PREVIA = '#16a34a'; // green-600
 const COLOR_CONFLICTO = '#f59e0b'; // amber-500
+const COLOR_ZONA = '#4b5563'; // gray-600
 
 const VISTA_INICIAL = { longitude: -63.18, latitude: -17.78, zoom: 11 };
 
@@ -32,6 +35,15 @@ interface MapaTerritorialProps {
   vistaPreviaInvalida: boolean;
   /** Rutas existentes con las que se superpone la propuesta (A1) */
   conflictos: ConflictoRuta[];
+  /** Contorno de cada zona, derivado de sus rutas (ADR-002 D6) */
+  contornos: ContornoZona[];
+  /** Dibujo o edición del polígono en curso; null si no se está dibujando */
+  dibujo: {
+    clave: number;
+    poligonoInicial: PoligonoRuta | null;
+    verticesVecinos: Posicion[];
+    onCambio: (poligono: PoligonoRuta) => void;
+  } | null;
 }
 
 type Coleccion = GeoJSON.FeatureCollection<GeoJSON.Polygon, Record<string, unknown>>;
@@ -65,6 +77,8 @@ export function MapaTerritorial({
   vistaPrevia,
   vistaPreviaInvalida,
   conflictos,
+  contornos,
+  dibujo,
 }: MapaTerritorialProps) {
   const mapaRef = useRef<MapRef>(null);
 
@@ -85,17 +99,28 @@ export function MapaTerritorial({
       ),
     [conflictos]
   );
+  const datosContornos = useMemo<GeoJSON.FeatureCollection>(
+    () => ({
+      type: 'FeatureCollection',
+      features: contornos.map((c) => ({ type: 'Feature', properties: { id_zona: c.id_zona }, geometry: c.geojson })),
+    }),
+    [contornos]
+  );
   const datosVistaPrevia = useMemo(
     () => coleccion(vistaPrevia ? [{ poligono: vistaPrevia, propiedades: {} }] : []),
     [vistaPrevia]
   );
 
   // Encuadre: la vista previa manda mientras exista; si no, la ruta elegida o el conjunto
+  // Mientras se dibuja solo se encuadra al empezar: re-encuadrar en cada vértice molestaría
+  const poligonoDibujo = dibujo?.poligonoInicial ?? null;
+  const dibujando = dibujo !== null;
   const cajaEncuadre = useMemo(() => {
+    if (dibujando) return poligonoDibujo ? cajaDe([poligonoDibujo]) : null;
     if (vistaPrevia) return cajaDe([vistaPrevia, ...conflictos.flatMap((c) => (c.geojson ? [c.geojson] : []))]);
     const elegida = rutas.find((r) => r.id === seleccionId);
     return cajaDe(elegida ? [elegida.geojson] : rutas.map((r) => r.geojson));
-  }, [vistaPrevia, conflictos, rutas, seleccionId]);
+  }, [dibujando, poligonoDibujo, vistaPrevia, conflictos, rutas, seleccionId]);
 
   useEffect(() => {
     if (!cajaEncuadre) return;
@@ -117,11 +142,20 @@ export function MapaTerritorial({
       mapLib={import('maplibre-gl')}
       initialViewState={VISTA_INICIAL}
       mapStyle={ESTILO_BASE}
-      interactiveLayerIds={['rutas-relleno']}
+      // Mientras se dibuja, los clics son del dibujo y no seleccionan rutas
+      interactiveLayerIds={dibujo ? [] : ['rutas-relleno']}
       onClick={alHacerClic}
       cursor="auto"
     >
       <NavigationControl position="top-right" showCompass={false} />
+
+      <Source id="contornos" type="geojson" data={datosContornos}>
+        <Layer
+          id="contornos-borde"
+          type="line"
+          paint={{ 'line-color': COLOR_ZONA, 'line-width': 2, 'line-dasharray': [4, 2], 'line-opacity': 0.8 }}
+        />
+      </Source>
 
       <Source id="rutas" type="geojson" data={datosRutas}>
         <Layer
@@ -163,6 +197,15 @@ export function MapaTerritorial({
           }}
         />
       </Source>
+
+      {dibujo && (
+        <CapaDibujo
+          key={dibujo.clave}
+          poligonoInicial={dibujo.poligonoInicial}
+          verticesVecinos={dibujo.verticesVecinos}
+          onCambio={dibujo.onCambio}
+        />
+      )}
     </Map>
   );
 }

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { logger } from '@/lib/logger';
 import { GEOJSON_MAX_BYTES, interpretarGeoJson, validarRuta, type RutaErrors } from '@/utils/rutaValidation';
-import type { ConflictoRuta, PoligonoRuta, RutaItem, ZonaDeRuta } from '@/types';
+import { verticesDeRutas, type Posicion } from '@/utils/ajusteVertices';
+import type { ConflictoRuta, ContornoZona, PoligonoRuta, RutaExportable, RutaItem, ZonaDeRuta } from '@/types';
 
 export interface RutaForm {
   id_zona: number | null;
@@ -12,7 +13,7 @@ export interface RutaForm {
 
 const FORM_VACIO: RutaForm = { id_zona: null, codigo_ruta: '', ruta: '', descripcion_ruta: '' };
 
-/** Resultado de validar el archivo importado (vista previa de CU-05) */
+/** Resultado de validar el polígono propuesto, importado o dibujado (vista previa de CU-05) */
 export interface Evaluacion {
   valida: boolean;
   motivo: string | null;
@@ -21,6 +22,14 @@ export interface Evaluacion {
   area_m2: number | null;
   conflictos: ConflictoRuta[];
 }
+
+/** Dibujo en curso: `clave` reinicia la capa de dibujo; `poligonoInicial` es la ruta a editar */
+export interface Dibujo {
+  clave: number;
+  poligonoInicial: PoligonoRuta | null;
+}
+
+export type ObjetivoExportacion = { tipo: 'ruta'; id: number } | { tipo: 'zona'; id: number } | { tipo: 'todo' };
 
 type Toast = { type: 'success' | 'error'; message: string };
 type Editor = { ruta: RutaItem | null };
@@ -34,18 +43,29 @@ interface RespuestaValidar {
   conflictos?: ConflictoRuta[];
 }
 
+const sinPreview = (motivo: string): Evaluacion => ({
+  valida: false,
+  motivo,
+  geojson: null,
+  vertices: null,
+  area_m2: null,
+  conflictos: [],
+});
+
 export interface UseGestionRutasReturn {
   zonas: ZonaDeRuta[];
   rutas: RutaItem[];
   rutasVisibles: RutaItem[];
+  contornos: ContornoZona[];
   isLoading: boolean;
   isEvaluando: boolean;
   isSubmitting: boolean;
+  isExportando: boolean;
   filtroZona: number | null;
   setFiltroZona: (id: number | null) => void;
   seleccionId: number | null;
   setSeleccionId: (id: number | null) => void;
-  // Editor (alta por importación y edición)
+  // Editor (alta y edición; el polígono se importa o se dibuja)
   editor: Editor | null;
   form: RutaForm;
   setForm: (form: RutaForm) => void;
@@ -58,6 +78,15 @@ export interface UseGestionRutasReturn {
   closeEditor: () => void;
   elegirArchivo: (archivo: File) => Promise<void>;
   quitarArchivo: () => void;
+  // Dibujo en el mapa (ADR-002 D6)
+  dibujo: Dibujo | null;
+  verticesVecinos: Posicion[];
+  iniciarDibujo: () => Promise<void>;
+  reiniciarDibujo: () => void;
+  detenerDibujo: () => void;
+  alCambiarDibujo: (poligono: PoligonoRuta) => void;
+  // Respaldo
+  exportar: (objetivo: ObjetivoExportacion) => Promise<void>;
   submit: () => Promise<void>;
   toast: Toast | null;
   clearToast: () => void;
@@ -66,9 +95,11 @@ export interface UseGestionRutasReturn {
 export function useGestionRutas(): UseGestionRutasReturn {
   const [zonas, setZonas] = useState<ZonaDeRuta[]>([]);
   const [rutas, setRutas] = useState<RutaItem[]>([]);
+  const [contornos, setContornos] = useState<ContornoZona[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEvaluando, setIsEvaluando] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExportando, setIsExportando] = useState(false);
   const [filtroZona, setFiltroZona] = useState<number | null>(null);
   const [seleccionId, setSeleccionId] = useState<number | null>(null);
 
@@ -78,8 +109,10 @@ export function useGestionRutas(): UseGestionRutasReturn {
   const [archivoNombre, setArchivoNombre] = useState<string | null>(null);
   const [textoGeoJson, setTextoGeoJson] = useState<string | null>(null);
   const [evaluacion, setEvaluacion] = useState<Evaluacion | null>(null);
-  // Descarta la respuesta de una validación vieja si el usuario ya eligió otro archivo
+  const [dibujo, setDibujo] = useState<Dibujo | null>(null);
+  // Descarta la respuesta de una validación vieja si ya hay un polígono más nuevo
   const evaluacionActual = useRef(0);
+  const claveDibujo = useRef(0);
 
   const [toast, setToast] = useState<Toast | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -105,9 +138,10 @@ export function useGestionRutas(): UseGestionRutasReturn {
     try {
       const res = await fetch('/api/admin/rutas');
       if (res.ok) {
-        const data = (await res.json()) as { zonas?: ZonaDeRuta[]; rutas?: RutaItem[] };
+        const data = (await res.json()) as { zonas?: ZonaDeRuta[]; rutas?: RutaItem[]; contornos?: ContornoZona[] };
         setZonas(data.zonas ?? []);
         setRutas(data.rutas ?? []);
+        setContornos(data.contornos ?? []);
       } else {
         showToast('error', 'No se pudieron cargar las rutas.');
       }
@@ -129,6 +163,17 @@ export function useGestionRutas(): UseGestionRutasReturn {
     () => (filtroZona === null ? rutas : rutas.filter((r) => r.id_zona === filtroZona)),
     [rutas, filtroZona]
   );
+  const contornosVisibles = useMemo(
+    () => (filtroZona === null ? contornos : contornos.filter((c) => c.id_zona === filtroZona)),
+    [contornos, filtroZona]
+  );
+
+  // El dibujo se pega a los vértices de las demás rutas del alcance (no a los de la que se edita)
+  const idEditando = editor?.ruta?.id ?? null;
+  const verticesVecinos = useMemo(
+    () => verticesDeRutas(rutas.filter((r) => r.id !== idEditando).map((r) => r.geojson)),
+    [rutas, idEditando]
+  );
 
   const leerError = useCallback(async (res: Response, alternativo: string) => {
     try {
@@ -136,14 +181,7 @@ export function useGestionRutas(): UseGestionRutasReturn {
       if (body.errors) setFormErrors(body.errors);
       if (body.conflictos) {
         // A1: el mapa resalta las rutas en conflicto
-        setEvaluacion({
-          valida: false,
-          motivo: body.error ?? alternativo,
-          geojson: null,
-          vertices: null,
-          area_m2: null,
-          conflictos: body.conflictos,
-        });
+        setEvaluacion({ ...sinPreview(body.error ?? alternativo), conflictos: body.conflictos });
       }
       return body.error ?? alternativo;
     } catch (parseErr: unknown) {
@@ -153,7 +191,7 @@ export function useGestionRutas(): UseGestionRutasReturn {
     }
   }, []);
 
-  const limpiarArchivo = useCallback(() => {
+  const limpiarPoligono = useCallback(() => {
     evaluacionActual.current += 1;
     setArchivoNombre(null);
     setTextoGeoJson(null);
@@ -161,65 +199,11 @@ export function useGestionRutas(): UseGestionRutasReturn {
     setIsEvaluando(false);
   }, []);
 
-  const setForm = useCallback((next: RutaForm) => {
-    setFormState(next);
-    setFormErrors({});
-  }, []);
-
-  const openCrear = useCallback(() => {
-    limpiarArchivo();
-    // Con una sola zona disponible no hay nada que elegir
-    const unica = filtroZona ?? (zonas.length === 1 ? zonas[0].id : null);
-    setFormState({ ...FORM_VACIO, id_zona: unica });
-    setFormErrors({});
-    setSeleccionId(null);
-    setEditor({ ruta: null });
-  }, [limpiarArchivo, filtroZona, zonas]);
-
-  const openEditar = useCallback(
-    (ruta: RutaItem) => {
-      limpiarArchivo();
-      setFormState({
-        id_zona: ruta.id_zona,
-        codigo_ruta: ruta.codigo_ruta,
-        ruta: ruta.ruta,
-        descripcion_ruta: ruta.descripcion_ruta ?? '',
-      });
-      setFormErrors({});
-      setSeleccionId(ruta.id);
-      setEditor({ ruta });
-    },
-    [limpiarArchivo]
-  );
-
-  const closeEditor = useCallback(() => {
-    limpiarArchivo();
-    setEditor(null);
-  }, [limpiarArchivo]);
-
-  const elegirArchivo = useCallback(
-    async (archivo: File) => {
+  /** Valida el polígono propuesto (archivo leído o dibujo serializado) contra el servidor */
+  const evaluarTexto = useCallback(
+    async (texto: string) => {
       const turno = ++evaluacionActual.current;
-      setArchivoNombre(archivo.name);
       setTextoGeoJson(null);
-      setEvaluacion(null);
-
-      const sinPreview = (motivo: string): Evaluacion => ({
-        valida: false,
-        motivo,
-        geojson: null,
-        vertices: null,
-        area_m2: null,
-        conflictos: [],
-      });
-
-      // El tamaño se revisa antes de leer el archivo completo en memoria
-      if (archivo.size > GEOJSON_MAX_BYTES) {
-        setEvaluacion(sinPreview(`El archivo supera el tamaño máximo de ${GEOJSON_MAX_BYTES / 1024} KB.`));
-        return;
-      }
-      const texto = await archivo.text();
-      if (turno !== evaluacionActual.current) return;
 
       const local = interpretarGeoJson(texto);
       if (!local.ok) {
@@ -237,7 +221,7 @@ export function useGestionRutas(): UseGestionRutasReturn {
         });
         if (turno !== evaluacionActual.current) return;
         if (!res.ok) {
-          setEvaluacion(sinPreview(await leerError(res, 'No se pudo validar el archivo.')));
+          setEvaluacion(sinPreview(await leerError(res, 'No se pudo validar el polígono.')));
           return;
         }
         const r = (await res.json()) as RespuestaValidar;
@@ -250,8 +234,8 @@ export function useGestionRutas(): UseGestionRutasReturn {
           conflictos: r.conflictos ?? [],
         });
       } catch (err: unknown) {
-        logger.error('Error validando el GeoJSON de la ruta:', err);
-        if (turno === evaluacionActual.current) setEvaluacion(sinPreview('Error de red al validar el archivo.'));
+        logger.error('Error validando el polígono de la ruta:', err);
+        if (turno === evaluacionActual.current) setEvaluacion(sinPreview('Error de red al validar el polígono.'));
       } finally {
         if (turno === evaluacionActual.current) setIsEvaluando(false);
       }
@@ -259,8 +243,147 @@ export function useGestionRutas(): UseGestionRutasReturn {
     [editor, leerError]
   );
 
-  // Alta: exige un polígono válido. Edición: el archivo es opcional (si no hay, se conserva el actual).
-  const puedeGuardar = editor !== null && !isEvaluando && (editor.ruta ? evaluacion === null || evaluacion.valida : evaluacion?.valida === true);
+  const setForm = useCallback((next: RutaForm) => {
+    setFormState(next);
+    setFormErrors({});
+  }, []);
+
+  const openCrear = useCallback(() => {
+    // El aviso habla de la acción anterior; si se cerrara solo durante la edición, la página
+    // saltaría hacia arriba mientras se arrastra un vértice en el mapa
+    clearToast();
+    limpiarPoligono();
+    setDibujo(null);
+    // Con una sola zona disponible no hay nada que elegir
+    const unica = filtroZona ?? (zonas.length === 1 ? zonas[0].id : null);
+    setFormState({ ...FORM_VACIO, id_zona: unica });
+    setFormErrors({});
+    setSeleccionId(null);
+    setEditor({ ruta: null });
+  }, [clearToast, limpiarPoligono, filtroZona, zonas]);
+
+  const openEditar = useCallback(
+    (ruta: RutaItem) => {
+      clearToast();
+      limpiarPoligono();
+      setDibujo(null);
+      setFormState({
+        id_zona: ruta.id_zona,
+        codigo_ruta: ruta.codigo_ruta,
+        ruta: ruta.ruta,
+        descripcion_ruta: ruta.descripcion_ruta ?? '',
+      });
+      setFormErrors({});
+      setSeleccionId(ruta.id);
+      setEditor({ ruta });
+    },
+    [clearToast, limpiarPoligono]
+  );
+
+  const closeEditor = useCallback(() => {
+    limpiarPoligono();
+    setDibujo(null);
+    setEditor(null);
+  }, [limpiarPoligono]);
+
+  const elegirArchivo = useCallback(
+    async (archivo: File) => {
+      // Importar reemplaza al dibujo: un solo origen del polígono a la vez
+      setDibujo(null);
+      evaluacionActual.current += 1;
+      setArchivoNombre(archivo.name);
+      setEvaluacion(null);
+      // El tamaño se revisa antes de leer el archivo completo en memoria
+      if (archivo.size > GEOJSON_MAX_BYTES) {
+        setTextoGeoJson(null);
+        setEvaluacion(sinPreview(`El archivo supera el tamaño máximo de ${GEOJSON_MAX_BYTES / 1024} KB.`));
+        return;
+      }
+      await evaluarTexto(await archivo.text());
+    },
+    [evaluarTexto]
+  );
+
+  // ---- Dibujo en el mapa
+  const iniciarDibujo = useCallback(async () => {
+    limpiarPoligono();
+    let poligonoInicial: PoligonoRuta | null = null;
+    const editando = editor?.ruta;
+    if (editando) {
+      // Se edita sobre la geometría completa, no sobre la simplificada del listado
+      try {
+        const res = await fetch(`/api/admin/rutas/${editando.id}`);
+        if (!res.ok) {
+          showToast('error', await leerError(res, 'No se pudo cargar el polígono de la ruta.'));
+          return;
+        }
+        poligonoInicial = ((await res.json()) as { ruta: RutaExportable }).ruta.geojson;
+      } catch (err: unknown) {
+        logger.error('Error cargando el polígono de la ruta:', err);
+        showToast('error', 'Error de red al cargar el polígono.');
+        return;
+      }
+    }
+    claveDibujo.current += 1;
+    setDibujo({ clave: claveDibujo.current, poligonoInicial });
+  }, [editor, limpiarPoligono, leerError, showToast]);
+
+  const reiniciarDibujo = useCallback(() => {
+    limpiarPoligono();
+    claveDibujo.current += 1;
+    setDibujo({ clave: claveDibujo.current, poligonoInicial: null });
+  }, [limpiarPoligono]);
+
+  const detenerDibujo = useCallback(() => {
+    limpiarPoligono();
+    setDibujo(null);
+  }, [limpiarPoligono]);
+
+  const alCambiarDibujo = useCallback(
+    (poligono: PoligonoRuta) => {
+      evaluarTexto(JSON.stringify(poligono)).catch((err: unknown) => {
+        logger.error('Error no controlado al validar el dibujo:', err);
+      });
+    },
+    [evaluarTexto]
+  );
+
+  // ---- Respaldo en GeoJSON
+  const exportar = useCallback(
+    async (objetivo: ObjetivoExportacion) => {
+      const consulta =
+        objetivo.tipo === 'ruta' ? `?id_ruta=${objetivo.id}` : objetivo.tipo === 'zona' ? `?id_zona=${objetivo.id}` : '';
+      setIsExportando(true);
+      try {
+        const res = await fetch(`/api/admin/rutas/exportar${consulta}`);
+        if (!res.ok) {
+          showToast('error', await leerError(res, 'No se pudo exportar.'));
+          return;
+        }
+        const nombre =
+          /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? 'territorio.geojson';
+        const url = URL.createObjectURL(await res.blob());
+        const enlace = document.createElement('a');
+        enlace.href = url;
+        enlace.download = nombre;
+        enlace.click();
+        URL.revokeObjectURL(url);
+        showToast('success', `Se descargó ${nombre}.`);
+      } catch (err: unknown) {
+        logger.error('Error exportando el territorio:', err);
+        showToast('error', 'Error de red al exportar.');
+      } finally {
+        setIsExportando(false);
+      }
+    },
+    [leerError, showToast]
+  );
+
+  // Alta: exige un polígono válido. Edición: si no se tocó el polígono, se conserva el actual.
+  const puedeGuardar =
+    editor !== null &&
+    !isEvaluando &&
+    (editor.ruta ? evaluacion === null || evaluacion.valida : evaluacion?.valida === true);
 
   const submit = useCallback(async () => {
     if (!editor) return;
@@ -296,10 +419,11 @@ export function useGestionRutas(): UseGestionRutasReturn {
   }, [editor, form, textoGeoJson, closeEditor, showToast, load, leerError]);
 
   return {
-    zonas, rutas, rutasVisibles, isLoading, isEvaluando, isSubmitting,
+    zonas, rutas, rutasVisibles, contornos: contornosVisibles, isLoading, isEvaluando, isSubmitting, isExportando,
     filtroZona, setFiltroZona, seleccionId, setSeleccionId,
     editor, form, setForm, formErrors, archivoNombre, evaluacion, puedeGuardar,
-    openCrear, openEditar, closeEditor, elegirArchivo, quitarArchivo: limpiarArchivo, submit,
-    toast, clearToast,
+    openCrear, openEditar, closeEditor, elegirArchivo, quitarArchivo: limpiarPoligono,
+    dibujo, verticesVecinos, iniciarDibujo, reiniciarDibujo, detenerDibujo, alCambiarDibujo,
+    exportar, submit, toast, clearToast,
   };
 }
