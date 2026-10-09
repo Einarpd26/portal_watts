@@ -252,3 +252,14 @@ export async function guardarRuta(
     conflictos: todosLosConflictos(data, idsZonaEnAlcance),
   };
 }
+
+/** Traslado de zona (CU-06): actualiza id_zona sin tocar el polígono. RN-05 (eliminar
+ *  planificacion_rutas vigente) se aplica en CU-09 / Ciclo 3 cuando esa tabla exista. */
+export async function trasladarRuta(id: number, idZonaDestino: number): Promise<{ ok: true } | { ok: false; error: 'error' }> {
+  const { error } = await createAdminClient()
+    .from('rutas')
+    .update({ id_zona: idZonaDestino })
+    .eq('id', id);
+  if (error) return { ok: false, error: 'error' };
+  return { ok: true };
+}
