@@ -88,6 +88,8 @@ export interface UseGestionRutasReturn {
   submit: () => Promise<void>;
   toast: Toast | null;
   clearToast: () => void;
+  showToast: (type: Toast['type'], message: string) => void;
+  reload: () => Promise<void>;
 }
 
 export function useGestionRutas(): UseGestionRutasReturn {
@@ -426,6 +428,6 @@ export function useGestionRutas(): UseGestionRutasReturn {
     editor, form, setForm, formErrors, evaluacion, puedeGuardar,
     openCrear, openEditar, closeEditor, elegirArchivo,
     dibujo, verticesVecinos, iniciarDibujo, detenerDibujo, alCambiarDibujo,
-    exportar, submit, toast, clearToast,
+    exportar, submit, toast, clearToast, showToast, reload: load,
   };
 }

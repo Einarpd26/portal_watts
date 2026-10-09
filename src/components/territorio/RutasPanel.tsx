@@ -4,16 +4,19 @@ import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useGestionRutas } from '@/hooks/useGestionRutas';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { useAuth } from '@/contexts/AuthContext';
 import { ListaRutas } from '@/components/territorio/ListaRutas';
 import { FormularioRuta } from '@/components/territorio/FormularioRuta';
 import { BarraModoMapa } from '@/components/territorio/BarraModoMapa';
 import { LeyendaMapa } from '@/components/territorio/LeyendaMapa';
 import { TarjetaRuta } from '@/components/territorio/TarjetaRuta';
 import { BotonPlegarPanel, SelectorVistaMovil, type VistaMovil } from '@/components/territorio/ControlesPanelMapa';
+import { TrasladarRutaModal } from '@/components/territorio/TrasladarRutaModal';
 import Alert from '@/components/ui/Alert';
 import { cn } from '@/utils/cn';
 import { coloresPorZona } from '@/utils/coloresTerritorio';
 import { estadoDelPoligono } from '@/utils/estadoPoligono';
+import { alcanceDeRutas } from '@/utils/rutaScope';
 import { logger } from '@/lib/logger';
 import type { RutaItem } from '@/types';
 
@@ -40,13 +43,18 @@ const accion = (promesa: Promise<void>, contexto: string) => {
  */
 export function RutasPanel() {
   const g = useGestionRutas();
+  const { user } = useAuth();
   const [busqueda, setBusqueda] = useState('');
   // En pantallas angostas se ve el panel o el mapa, no ambos
   const [vistaMovil, setVistaMovil] = useState<VistaMovil>('lista');
   // En escritorio el panel se puede plegar para dar todo el ancho al mapa
   const [panelPlegado, setPanelPlegado] = useState(false);
+  const [trasladoRuta, setTrasladoRuta] = useState<RutaItem | null>(null);
+  const [isTrasladando, setIsTrasladando] = useState(false);
 
-  // Esc equivale a Cancelar (salvo mientras se envía)
+  // Supervisors cannot transfer routes (CU-06 actors: Gerencia, Fiscalizador)
+  const puedeTraslado = user ? alcanceDeRutas(user).tipo !== 'supervisor' : false;
+
   useEscapeKey(g.closeEditor, g.editor !== null && !g.isSubmitting);
 
   const coloresZona = useMemo(() => coloresPorZona(g.zonas), [g.zonas]);
@@ -89,6 +97,31 @@ export function RutasPanel() {
       onCerrar={() => g.setSeleccionId(null)}
     />
   );
+
+  const handleConfirmarTraslado = async (idZonaDestino: number) => {
+    if (!trasladoRuta) return;
+    setIsTrasladando(true);
+    try {
+      const res = await fetch(`/api/admin/rutas/${trasladoRuta.id}/trasladar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_zona_destino: idZonaDestino }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        g.showToast('error', data.error ?? 'No se pudo trasladar la ruta.');
+      } else {
+        setTrasladoRuta(null);
+        g.showToast('success', 'Ruta trasladada correctamente.');
+        accion(g.reload(), 'recargar rutas');
+      }
+    } catch (err: unknown) {
+      logger.error('Error al trasladar ruta:', err);
+      g.showToast('error', 'Ocurrió un error inesperado.');
+    } finally {
+      setIsTrasladando(false);
+    }
+  };
 
   return (
     <div id={ID_PANTALLA_COMPLETA} className="flex min-h-0 flex-1 flex-col bg-white lg:flex-row">
@@ -142,6 +175,7 @@ export function RutasPanel() {
             onEditar={g.openEditar}
             onExportar={exportarRuta}
             isExportando={g.isExportando}
+            onTrasladar={puedeTraslado ? setTrasladoRuta : undefined}
           />
         )}
       </aside>
@@ -209,6 +243,14 @@ export function RutasPanel() {
           />
         )}
       </section>
+
+      <TrasladarRutaModal
+        ruta={trasladoRuta}
+        zonas={g.zonas}
+        isSubmitting={isTrasladando}
+        onConfirm={handleConfirmarTraslado}
+        onCancel={() => setTrasladoRuta(null)}
+      />
     </div>
   );
 }

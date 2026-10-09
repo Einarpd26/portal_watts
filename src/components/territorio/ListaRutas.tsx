@@ -20,6 +20,7 @@ interface ListaRutasProps {
   onEditar: (ruta: RutaItem) => void;
   onExportar: (ruta: RutaItem) => void;
   isExportando: boolean;
+  onTrasladar?: (ruta: RutaItem) => void;
 }
 
 /** Panel lateral de rutas: búsqueda, filtro por zona y lista con el color de su zona */
@@ -38,6 +39,7 @@ export function ListaRutas({
   onEditar,
   onExportar,
   isExportando,
+  onTrasladar,
 }: ListaRutasProps) {
   const sinZonas = !isLoading && zonas.length === 0;
   const codigoZona = (id: number) => zonas.find((z) => z.id === id)?.codigo_zona ?? '—';
@@ -140,6 +142,11 @@ export function ListaRutas({
                   <Button variant="secondary" size="sm" onClick={() => onExportar(r)} disabled={isExportando}>
                     Exportar GeoJSON
                   </Button>
+                  {onTrasladar && (
+                    <Button variant="secondary" size="sm" onClick={() => onTrasladar(r)}>
+                      Trasladar
+                    </Button>
+                  )}
                 </div>
               )}
             </li>
