@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { logger } from '@/lib/logger';
 import { validarZona, type ZonaErrors } from '@/utils/zonaValidation';
-import type { SupervisorCandidato, ZonaItem } from '@/types';
+import type { ContornoZona, RutaItem, SupervisorCandidato, ZonaItem } from '@/types';
 
 export interface ZonaForm {
   codigo_zona: string;
@@ -24,6 +24,12 @@ export interface UseGestionTerritorioReturn {
   zonas: ZonaItem[];
   supervisores: SupervisorCandidato[];
   sucursales: SucursalOpcion[];
+  /** Rutas de las zonas visibles, como referencia en el mapa (solo lectura) */
+  rutas: RutaItem[];
+  /** Envolvente de cada zona con rutas (ADR-002 D7) */
+  contornos: ContornoZona[];
+  seleccionId: number | null;
+  setSeleccionId: (id: number | null) => void;
   isLoading: boolean;
   isSubmitting: boolean;
   // Alta y edición de zonas (CU-04)
@@ -55,6 +61,9 @@ export function useGestionTerritorio(): UseGestionTerritorioReturn {
   const [zonas, setZonas] = useState<ZonaItem[]>([]);
   const [supervisores, setSupervisores] = useState<SupervisorCandidato[]>([]);
   const [sucursales, setSucursales] = useState<SucursalOpcion[]>([]);
+  const [rutas, setRutas] = useState<RutaItem[]>([]);
+  const [contornos, setContornos] = useState<ContornoZona[]>([]);
+  const [seleccionId, setSeleccionId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -93,10 +102,14 @@ export function useGestionTerritorio(): UseGestionTerritorioReturn {
           zonas?: ZonaItem[];
           supervisores?: SupervisorCandidato[];
           sucursales?: SucursalOpcion[];
+          rutas?: RutaItem[];
+          contornos?: ContornoZona[];
         };
         setZonas(data.zonas ?? []);
         setSupervisores(data.supervisores ?? []);
         setSucursales(data.sucursales ?? []);
+        setRutas(data.rutas ?? []);
+        setContornos(data.contornos ?? []);
       } else {
         showToast('error', 'No se pudo cargar el territorio.');
       }
@@ -148,6 +161,7 @@ export function useGestionTerritorio(): UseGestionTerritorioReturn {
       id_sucursal: zona.id_sucursal,
     });
     setFormErrors({});
+    setSeleccionId(zona.id);
     setFormModal({ open: true, zona });
   }, []);
 
@@ -169,7 +183,10 @@ export function useGestionTerritorio(): UseGestionTerritorioReturn {
         body: JSON.stringify(validacion.data),
       });
       if (res.ok) {
+        // La zona guardada queda elegida para verla en el mapa
+        const { zona } = (await res.json()) as { zona?: { id: number } };
         closeForm();
+        setSeleccionId(zona?.id ?? editando?.id ?? null);
         showToast('success', editando ? 'Se actualizó la zona.' : 'Se creó la zona.');
         await load();
       } else {
@@ -194,6 +211,7 @@ export function useGestionTerritorio(): UseGestionTerritorioReturn {
       const res = await fetch(`/api/admin/zonas/${deleteTarget.id}`, { method: 'DELETE' });
       setDeleteTarget(null);
       if (res.ok) {
+        setSeleccionId(null);
         showToast('success', 'Se eliminó la zona.');
         await load();
       } else {
@@ -242,7 +260,7 @@ export function useGestionTerritorio(): UseGestionTerritorioReturn {
   }, [supervisorTarget, supervisorSeleccion, showToast, load, leerError]);
 
   return {
-    zonas, supervisores, sucursales, isLoading, isSubmitting,
+    zonas, supervisores, sucursales, rutas, contornos, seleccionId, setSeleccionId, isLoading, isSubmitting,
     formModal, form, setForm, formErrors, openCrear, openEditar, closeForm, submitForm,
     deleteTarget, openEliminar, closeEliminar, submitEliminar,
     supervisorTarget, supervisorSeleccion, setSupervisorSeleccion, openSupervisor, closeSupervisor, submitSupervisor,

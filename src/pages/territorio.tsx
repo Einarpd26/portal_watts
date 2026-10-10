@@ -70,13 +70,7 @@ const TerritorioPage: PageWithLayout = () => {
         )}
       </header>
 
-      {activa === 'zonas' ? (
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <ZonasPanel />
-        </div>
-      ) : (
-        <RutasPanel />
-      )}
+      {activa === 'zonas' ? <ZonasPanel /> : <RutasPanel />}
     </div>
   );
 };

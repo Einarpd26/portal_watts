@@ -8,7 +8,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { CapaDibujo } from '@/components/territorio/CapaDibujo';
 import type { Posicion } from '@/utils/ajusteVertices';
 import { COLOR_CONFLICTO, COLOR_INVALIDO, COLOR_PROPUESTA, PALETA_ZONAS } from '@/utils/coloresTerritorio';
-import type { ConflictoRuta, ContornoZona, PoligonoRuta, RutaItem } from '@/types';
+import type { ConflictoRuta, ContornoZona, MultiPoligonoGeoJson, PoligonoRuta, RutaItem } from '@/types';
 
 // MapLibre 6 no resuelve solo la URL de su worker bajo el empaquetador: se sirve desde public/maplibre/
 // (lo copia scripts/copiar-worker-maplibre.mjs) y debe registrarse antes de crear el mapa (ADR-002 §4).
@@ -24,6 +24,9 @@ const ZOOM_MAXIMO_ENCUADRE = 14;
 
 interface MapaTerritorialProps {
   rutas: RutaItem[];
+  /** Qué se elige con un clic: una ruta (pestaña Rutas) o el contorno de una zona (pestaña Zonas) */
+  seleccion?: 'ruta' | 'zona';
+  /** Id de la ruta o de la zona elegida, según `seleccion` */
   seleccionId: number | null;
   onSeleccionar: (id: number | null) => void;
   /** Polígono importado aún sin confirmar (vista previa) */
@@ -61,10 +64,12 @@ const coleccion = (poligonos: Array<{ poligono: PoligonoRuta; propiedades: Recor
 });
 
 /** Caja [oeste, sur, este, norte] que contiene todos los polígonos, o null si no hay ninguno */
-function cajaDe(poligonos: PoligonoRuta[]): [number, number, number, number] | null {
+function cajaDe(poligonos: Array<PoligonoRuta | MultiPoligonoGeoJson>): [number, number, number, number] | null {
   let caja: [number, number, number, number] | null = null;
-  for (const p of poligonos) {
-    for (const [lon, lat] of p.coordinates[0] ?? []) {
+  // El anillo exterior basta para la caja; un MultiPolygon aporta el de cada parte
+  const anillos = poligonos.flatMap((p) => (p.type === 'Polygon' ? [p.coordinates[0] ?? []] : p.coordinates.map((c) => c[0] ?? [])));
+  for (const anillo of anillos) {
+    for (const [lon, lat] of anillo) {
       caja = caja
         ? [Math.min(caja[0], lon), Math.min(caja[1], lat), Math.max(caja[2], lon), Math.max(caja[3], lat)]
         : [lon, lat, lon, lat];
@@ -75,6 +80,7 @@ function cajaDe(poligonos: PoligonoRuta[]): [number, number, number, number] | n
 
 export function MapaTerritorial({
   rutas,
+  seleccion = 'ruta',
   seleccionId,
   onSeleccionar,
   vistaPrevia,
@@ -95,10 +101,10 @@ export function MapaTerritorial({
       coleccion(
         rutas.map((r) => ({
           poligono: r.geojson,
-          propiedades: { id: r.id, color: colorDe(r.id_zona), seleccionada: r.id === seleccionId },
+          propiedades: { id: r.id, color: colorDe(r.id_zona), seleccionada: seleccion === 'ruta' && r.id === seleccionId },
         }))
       ),
-    [rutas, seleccionId, colorDe]
+    [rutas, seleccion, seleccionId, colorDe]
   );
   const datosConflictos = useMemo(
     () =>
@@ -110,32 +116,44 @@ export function MapaTerritorial({
   const datosContornos = useMemo<GeoJSON.FeatureCollection>(
     () => ({
       type: 'FeatureCollection',
-      features: contornos.map((c) => ({ type: 'Feature', properties: { color: colorDe(c.id_zona) }, geometry: c.geojson })),
+      features: contornos.map((c) => ({
+        type: 'Feature',
+        properties: { id: c.id_zona, color: colorDe(c.id_zona), seleccionada: seleccion === 'zona' && c.id_zona === seleccionId },
+        geometry: c.geojson,
+      })),
     }),
-    [contornos, colorDe]
+    [contornos, seleccion, seleccionId, colorDe]
   );
   const datosVistaPrevia = useMemo(
     () => coleccion(vistaPrevia ? [{ poligono: vistaPrevia, propiedades: {} }] : []),
     [vistaPrevia]
   );
 
-  // Encuadre: la vista previa manda mientras exista; si no, la ruta elegida o el conjunto
+  // Lo elegido: el polígono de la ruta o el contorno de la zona
+  const geometriaElegida = useMemo(
+    () =>
+      seleccion === 'zona'
+        ? (contornos.find((c) => c.id_zona === seleccionId)?.geojson ?? null)
+        : (rutas.find((r) => r.id === seleccionId)?.geojson ?? null),
+    [seleccion, contornos, rutas, seleccionId]
+  );
+
+  // Encuadre: la vista previa manda mientras exista; si no, lo elegido o el conjunto
   // Mientras se dibuja solo se encuadra al empezar: re-encuadrar en cada vértice molestaría
   const poligonoDibujo = dibujo?.poligonoInicial ?? null;
   const dibujando = dibujo !== null;
   const cajaEncuadre = useMemo(() => {
     if (dibujando) return poligonoDibujo ? cajaDe([poligonoDibujo]) : null;
     if (vistaPrevia) return cajaDe([vistaPrevia, ...conflictos.flatMap((c) => (c.geojson ? [c.geojson] : []))]);
-    const elegida = rutas.find((r) => r.id === seleccionId);
-    return cajaDe(elegida ? [elegida.geojson] : rutas.map((r) => r.geojson));
-  }, [dibujando, poligonoDibujo, vistaPrevia, conflictos, rutas, seleccionId]);
+    const elegida = geometriaElegida;
+    return cajaDe(elegida ? [elegida] : [...rutas.map((r) => r.geojson), ...contornos.map((c) => c.geojson)]);
+  }, [dibujando, poligonoDibujo, vistaPrevia, conflictos, rutas, contornos, geometriaElegida]);
 
   // La tarjeta se ancla al borde norte del polígono elegido para no taparlo
   const anclaTarjeta = useMemo<[number, number] | null>(() => {
-    const elegida = rutas.find((r) => r.id === seleccionId);
-    const caja = elegida ? cajaDe([elegida.geojson]) : null;
+    const caja = geometriaElegida ? cajaDe([geometriaElegida]) : null;
     return caja ? [(caja[0] + caja[2]) / 2, caja[3]] : null;
-  }, [rutas, seleccionId]);
+  }, [geometriaElegida]);
 
   // Al salir del dibujo o de una previsualización (Descartar, Guardar) el mapa se queda donde
   // está: el usuario venía trabajando en esa área y un salto de vista lo desorienta
@@ -183,7 +201,7 @@ export function MapaTerritorial({
       initialViewState={VISTA_INICIAL}
       mapStyle={ESTILO_BASE}
       // Mientras se dibuja, los clics son del dibujo y no seleccionan rutas
-      interactiveLayerIds={dibujo ? [] : ['rutas-relleno']}
+      interactiveLayerIds={dibujo ? [] : [seleccion === 'zona' ? 'contornos-relleno' : 'rutas-relleno']}
       onClick={alHacerClic}
       onResize={alRedimensionar}
       cursor="auto"
@@ -193,10 +211,23 @@ export function MapaTerritorial({
       <FullscreenControl position="bottom-right" containerId={idPantallaCompleta} />
 
       <Source id="contornos" type="geojson" data={datosContornos}>
+        {/* En la pestaña Zonas el contorno es lo que se elige: se rellena para recibir el clic */}
+        {seleccion === 'zona' && (
+          <Layer
+            id="contornos-relleno"
+            type="fill"
+            paint={{ 'fill-color': ['get', 'color'], 'fill-opacity': ['case', ['get', 'seleccionada'], 0.25, 0.08] }}
+          />
+        )}
         <Layer
           id="contornos-borde"
           type="line"
-          paint={{ 'line-color': ['get', 'color'], 'line-width': 2.5, 'line-dasharray': [4, 2], 'line-opacity': 0.9 }}
+          paint={{
+            'line-color': ['get', 'color'],
+            'line-width': ['case', ['get', 'seleccionada'], 4, 2.5],
+            'line-dasharray': [4, 2],
+            'line-opacity': 0.9,
+          }}
         />
       </Source>
 

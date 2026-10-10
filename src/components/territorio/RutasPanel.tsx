@@ -9,6 +9,7 @@ import { FormularioRuta } from '@/components/territorio/FormularioRuta';
 import { BarraModoMapa } from '@/components/territorio/BarraModoMapa';
 import { LeyendaMapa } from '@/components/territorio/LeyendaMapa';
 import { TarjetaRuta } from '@/components/territorio/TarjetaRuta';
+import { BotonPlegarPanel, SelectorVistaMovil, type VistaMovil } from '@/components/territorio/ControlesPanelMapa';
 import Alert from '@/components/ui/Alert';
 import { cn } from '@/utils/cn';
 import { coloresPorZona } from '@/utils/coloresTerritorio';
@@ -41,7 +42,7 @@ export function RutasPanel() {
   const g = useGestionRutas();
   const [busqueda, setBusqueda] = useState('');
   // En pantallas angostas se ve el panel o el mapa, no ambos
-  const [vistaMovil, setVistaMovil] = useState<'lista' | 'mapa'>('lista');
+  const [vistaMovil, setVistaMovil] = useState<VistaMovil>('lista');
   // En escritorio el panel se puede plegar para dar todo el ancho al mapa
   const [panelPlegado, setPanelPlegado] = useState(false);
 
@@ -100,22 +101,7 @@ export function RutasPanel() {
         </div>
       )}
 
-      <div className="flex shrink-0 border-b border-gray-200 bg-white p-2 lg:hidden" role="group" aria-label="Vista">
-        {(['lista', 'mapa'] as const).map((v) => (
-          <button
-            key={v}
-            type="button"
-            aria-pressed={vistaMovil === v}
-            onClick={() => setVistaMovil(v)}
-            className={cn(
-              'flex-1 rounded-lg py-1.5 text-sm font-semibold',
-              vistaMovil === v ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-50'
-            )}
-          >
-            {v === 'lista' ? (g.editor ? 'Datos' : 'Lista') : 'Mapa'}
-          </button>
-        ))}
-      </div>
+      <SelectorVistaMovil vista={vistaMovil} onCambiar={setVistaMovil} etiquetaLista={g.editor ? 'Datos' : 'Lista'} />
 
       <aside
         className={cn(
@@ -182,20 +168,7 @@ export function RutasPanel() {
         <LeyendaMapa zonas={g.zonas} coloresZona={coloresZona} />
 
         <div className="absolute left-2 top-2 z-10 flex items-center gap-2">
-          <button
-            type="button"
-            aria-pressed={panelPlegado}
-            aria-label={panelPlegado ? 'Mostrar panel lateral' : 'Ocultar panel lateral'}
-            title={panelPlegado ? 'Mostrar panel lateral' : 'Ocultar panel lateral'}
-            onClick={() => setPanelPlegado((v) => !v)}
-            className="hidden h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white/95 text-gray-700 shadow-sm backdrop-blur-sm hover:bg-white lg:flex"
-          >
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect x="3" y="4" width="18" height="16" rx="2" />
-              <path d="M9 4v16" />
-              <path d={panelPlegado ? 'm13 10 2 2-2 2' : 'm15 10-2 2 2 2'} />
-            </svg>
-          </button>
+          <BotonPlegarPanel plegado={panelPlegado} onAlternar={() => setPanelPlegado((v) => !v)} />
 
           {!g.editor && g.zonas.length > 0 && (
             <button

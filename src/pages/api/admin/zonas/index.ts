@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
 import { crearZona, listarSucursales, listarSupervisores, listarZonas } from '@/lib/zonas';
+import { contornosDeZonas, listarRutas } from '@/lib/rutas';
 import { alcanceDeListado, enAlcanceDeSucursal } from '@/utils/sucursalScope';
 import { validarZona } from '@/utils/zonaValidation';
 import { logger } from '@/lib/logger';
@@ -31,10 +32,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!zonas.ok || !supervisores.ok || !sucursales.ok) {
         return res.status(500).json({ error: 'No se pudo obtener el territorio.' });
       }
+      // El mapa de zonas muestra el contorno de cada una y sus rutas como referencia (solo lectura),
+      // en el mismo alcance por sucursal: quien gestiona zonas no necesita rutas:gestionar para verlas
+      const idsZona = zonas.data.map((z) => z.id);
+      const [rutas, contornos] = await Promise.all([listarRutas(idsZona), contornosDeZonas(idsZona, false)]);
+      if (!rutas.ok || !contornos.ok) {
+        return res.status(500).json({ error: 'No se pudo obtener el territorio.' });
+      }
       return res.status(200).json({
         zonas: zonas.data,
         supervisores: supervisores.data,
         sucursales: sucursales.data,
+        rutas: rutas.data,
+        contornos: contornos.data,
       });
     }
 
