@@ -4,9 +4,12 @@ import { useRef } from 'react';
 import Button from '@/components/ui/Button';
 import { cn } from '@/utils/cn';
 import { formatoArea, type EstadoPoligono } from '@/utils/estadoPoligono';
+import { detalleInvasion } from '@/utils/invasionZona';
 
 interface BarraModoMapaProps {
   estado: EstadoPoligono;
+  /** Zona de la ruta, para sugerir el traslado cuando su envolvente cubriría otras rutas (D7) */
+  codigoZona: string;
   isSubmitting: boolean;
   puedeGuardar: boolean;
   onDibujar: () => void;
@@ -28,6 +31,7 @@ const PUNTO = {
  */
 export function BarraModoMapa({
   estado,
+  codigoZona,
   isSubmitting,
   puedeGuardar,
   onDibujar,
@@ -72,9 +76,13 @@ export function BarraModoMapa({
     case 'invalido': {
       tono = 'error';
       titulo = estado.motivo;
-      const codigos = estado.conflictos.map((c) => (c.fuera_de_alcance ? 'otra ruta fuera de tus zonas' : c.codigo_ruta));
+      const superposiciones = estado.conflictos.filter((c) => c.tipo === 'superposicion');
+      const codigos = superposiciones.map((c) => (c.fuera_de_alcance ? 'otra ruta fuera de tus zonas' : c.codigo_ruta));
+      // Las invasiones solo cuentan si no hay superposición: primero se corrige el polígono
+      const invasiones = superposiciones.length === 0 ? estado.conflictos.filter((c) => c.tipo === 'invasion') : [];
       detalle = [
         codigos.length > 0 ? `En conflicto con ${codigos.join(', ')} (en ámbar).` : null,
+        invasiones.length > 0 ? detalleInvasion(codigoZona, invasiones) : null,
         estado.ajustable ? 'Ajusta los vértices para resolverlo.' : null,
       ]
         .filter(Boolean)

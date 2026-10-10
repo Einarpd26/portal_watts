@@ -226,6 +226,7 @@ export function RutasPanel() {
         {g.editor && (
           <BarraModoMapa
             estado={estado}
+            codigoZona={g.zonas.find((z) => z.id === (g.editor?.ruta?.id_zona ?? g.form.id_zona))?.codigo_zona ?? ''}
             isSubmitting={g.isSubmitting}
             puedeGuardar={g.puedeGuardar}
             onDibujar={() => accion(g.iniciarDibujo(), 'iniciar el dibujo')}

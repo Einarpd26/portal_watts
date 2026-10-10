@@ -25,7 +25,7 @@ test("estado: un polígono válido se puede seguir ajustando solo mientras se di
 });
 
 test("estado: un polígono inválido lleva su motivo y sus conflictos", () => {
-  const conflicto = { id: 8, codigo_ruta: "R-N1", area_m2: 10, geojson: null, fuera_de_alcance: false };
+  const conflicto = { tipo: "superposicion" as const, id: 8, codigo_ruta: "R-N1", codigo_zona: "ZN", area_m2: 10, geojson: null, fuera_de_alcance: false, trasladable: false };
   const r = estadoDelPoligono({ ...base, evaluacion: { ...evaluacion, valida: false, motivo: "Se superpone", conflictos: [conflicto] } });
   assert.deepEqual(r, { tipo: "invalido", motivo: "Se superpone", conflictos: [conflicto], ajustable: false });
 });

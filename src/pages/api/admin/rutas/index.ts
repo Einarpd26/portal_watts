@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
 import { contornosDeZonas, guardarRuta, listarRutas } from '@/lib/rutas';
-import { geoJsonComoTexto, resolverContextoRutas, responderFalloGuardado } from '@/lib/rutasApi';
+import { codigoDeZona, geoJsonComoTexto, resolverContextoRutas, responderFalloGuardado } from '@/lib/rutasApi';
 import { interpretarGeoJson, validarRuta } from '@/utils/rutaValidation';
 import { logger } from '@/lib/logger';
 
@@ -55,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       JSON.stringify(geometria.poligono),
       idsZona
     );
-    if (!guardado.ok) return responderFalloGuardado(res, guardado);
+    if (!guardado.ok) return responderFalloGuardado(res, guardado, codigoDeZona(zonas, idZona));
 
     await registrarBitacoraDesdeSesion(
       caller,

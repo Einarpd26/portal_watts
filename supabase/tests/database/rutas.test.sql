@@ -1,8 +1,9 @@
 -- Pruebas de las funciones de rutas (CU-05). Ejecutar con: npx supabase test db
 -- Cubre ruta_evaluar, ruta_guardar y rutas_listar (tolerancia de astillas, tipos, validez y superposición),
--- y rutas_exportar y zonas_contorno (respaldo con geometría completa y contorno derivado, ADR-002 D6).
+-- y rutas_exportar y zonas_contorno (respaldo con geometría completa y contorno derivado, ADR-002 D6),
+-- y la envolvente de zona con su regla de no invasión (ADR-002 D7).
 BEGIN;
-SELECT plan(20);
+SELECT plan(29);
 
 -- Caja contigua a R-N4 (que ocupa x -63.17..-63.16): solo comparten borde
 SELECT is(
@@ -51,21 +52,22 @@ SELECT is(
 
 SELECT is((SELECT count(*)::int FROM public.rutas_listar(NULL, NULL)), 11, 'rutas_listar devuelve las 10 del seed y la nueva');
 
--- Contorno derivado (D6): la unión de las 4 rutas de ZS es su envolvente; ZC no tiene rutas ni contorno
+-- Contorno derivado (D6, forma de D7): las 4 rutas contiguas de ZS forman un rectángulo, que es su
+-- propia envolvente; ZC no tiene rutas ni contorno
 SELECT ok(
   (SELECT ST_Equals(ST_SetSRID(ST_GeomFromGeoJSON(c.geojson::text), 4326), ST_MakeEnvelope(-63.20, -17.80, -63.16, -17.79, 4326))
      FROM public.zonas_contorno(ARRAY[(SELECT id FROM public.zonas WHERE codigo_zona = 'ZS')]) c),
-  'el contorno de una zona es la unión de sus rutas');
+  'el contorno de una zona es la envolvente de sus rutas');
 SELECT is(
   (SELECT count(*)::int FROM public.zonas_contorno(ARRAY[(SELECT id FROM public.zonas WHERE codigo_zona = 'ZC')])),
   0, 'una zona sin rutas no tiene contorno');
 
--- Una ruta separada del resto convierte el contorno en MultiPolygon
+-- D7: una ruta separada del resto no parte el contorno; la envolvente sigue siendo una sola figura
 INSERT INTO public.rutas (codigo_ruta, ruta, localizacion, id_zona)
 SELECT 'R-S9', 'Separada', ST_MakeEnvelope(-63.10, -17.80, -63.09, -17.79, 4326), id FROM public.zonas WHERE codigo_zona = 'ZS';
 SELECT is(
   (SELECT c.geojson ->> 'type' FROM public.zonas_contorno(ARRAY[(SELECT id FROM public.zonas WHERE codigo_zona = 'ZS')]) c),
-  'MultiPolygon', 'con rutas no contiguas el contorno es un MultiPolygon');
+  'Polygon', 'con rutas no contiguas el contorno sigue siendo un solo Polygon (envolvente)');
 
 -- Respaldo: la exportación conserva vértices que la simplificación del mapa (~1 m) descarta
 INSERT INTO public.rutas (codigo_ruta, ruta, localizacion, id_zona)
@@ -82,6 +84,56 @@ SELECT is(
 SELECT is(
   (SELECT count(*)::int FROM public.rutas_exportar(ARRAY[(SELECT id FROM public.zonas WHERE codigo_zona = 'ZS')], (SELECT id FROM public.rutas WHERE codigo_ruta = 'R-S8'))),
   1, 'exportar una ruta devuelve solo esa ruta');
+
+-- D7: regla de no invasión, en un área aislada (~-60, -15) para no depender de los datos del seed.
+-- TA y TB son de la sucursal 1; TC de la 2. T-B1 queda en el hueco entre T-A1 y la futura T-A2;
+-- T-D1 solo toca el borde de la envolvente de TA; T-C1 queda entre T-A2 y la futura T-A3.
+INSERT INTO public.zonas (codigo_zona, zona, id_sucursal) VALUES ('TA', 'Prueba A', 1), ('TB', 'Prueba B', 1), ('TC', 'Prueba C', 2);
+INSERT INTO public.rutas (codigo_ruta, ruta, localizacion, id_zona)
+SELECT 'T-A1', 'A1', ST_MakeEnvelope(-60.00, -15.01, -59.99, -15.00, 4326), id FROM public.zonas WHERE codigo_zona = 'TA'
+UNION ALL SELECT 'T-B1', 'B1', ST_MakeEnvelope(-59.985, -15.008, -59.975, -15.002, 4326), id FROM public.zonas WHERE codigo_zona = 'TB'
+UNION ALL SELECT 'T-D1', 'D1', ST_MakeEnvelope(-60.00, -15.00, -59.99, -14.99, 4326), id FROM public.zonas WHERE codigo_zona = 'TB'
+UNION ALL SELECT 'T-C1', 'C1', ST_MakeEnvelope(-59.955, -15.008, -59.945, -15.002, 4326), id FROM public.zonas WHERE codigo_zona = 'TC';
+
+CREATE TEMP TABLE eval_a2 AS
+SELECT public.ruta_evaluar('{"type":"Polygon","coordinates":[[[-59.97,-15.01],[-59.96,-15.01],[-59.96,-15.0],[-59.97,-15.0],[-59.97,-15.01]]]}',
+                           NULL, (SELECT id FROM public.zonas WHERE codigo_zona = 'TA')) AS r;
+SELECT is((SELECT jsonb_array_length(r -> 'invasiones') FROM eval_a2), 1,
+  'la envolvente que pasaría a cubrir una ruta de otra zona es una invasión (y tocar su borde no lo es)');
+SELECT is((SELECT r -> 'invasiones' -> 0 ->> 'codigo_ruta' FROM eval_a2), 'T-B1', 'la invasión informa la ruta cubierta');
+SELECT is((SELECT (r -> 'invasiones' -> 0 ->> 'misma_sucursal')::boolean FROM eval_a2), true,
+  'una ruta de la misma sucursal se puede sugerir para traslado');
+SELECT is(
+  jsonb_array_length(public.ruta_evaluar('{"type":"Polygon","coordinates":[[[-59.97,-15.01],[-59.96,-15.01],[-59.96,-15.0],[-59.97,-15.0],[-59.97,-15.01]]]}') -> 'invasiones'),
+  0, 'sin zona no se evalúan invasiones');
+SELECT is(
+  public.ruta_guardar((SELECT id FROM public.zonas WHERE codigo_zona = 'TA'), 'T-A2', 'A2', NULL, NULL,
+    '{"type":"Polygon","coordinates":[[[-59.97,-15.01],[-59.96,-15.01],[-59.96,-15.0],[-59.97,-15.0],[-59.97,-15.01]]]}') ->> 'error',
+  'invasion', 'guardar una ruta cuya zona invadiría otra ruta se rechaza');
+
+-- Si el polígono pisa la ruta, es una superposición y no se repite como invasión
+SELECT is(
+  (SELECT jsonb_build_array(jsonb_array_length(e -> 'conflictos'), jsonb_array_length(e -> 'invasiones'))
+     FROM public.ruta_evaluar('{"type":"Polygon","coordinates":[[[-59.99,-15.01],[-59.98,-15.01],[-59.98,-15.0],[-59.99,-15.0],[-59.99,-15.01]]]}',
+                              NULL, (SELECT id FROM public.zonas WHERE codigo_zona = 'TA')) e),
+  '[1, 0]'::jsonb, 'una ruta pisada cuenta como superposición, no como invasión');
+
+-- Invasión heredada (se carga sin pasar por la regla): no bloquea editar las rutas de la zona
+INSERT INTO public.rutas (codigo_ruta, ruta, localizacion, id_zona)
+SELECT 'T-A2', 'A2', ST_MakeEnvelope(-59.97, -15.01, -59.96, -15.00, 4326), id FROM public.zonas WHERE codigo_zona = 'TA';
+SELECT is(
+  jsonb_array_length(public.ruta_evaluar('{"type":"Polygon","coordinates":[[[-59.97,-15.01],[-59.96,-15.01],[-59.96,-15.0],[-59.97,-15.0],[-59.97,-15.01]]]}',
+    (SELECT id FROM public.rutas WHERE codigo_ruta = 'T-A2'), (SELECT id FROM public.zonas WHERE codigo_zona = 'TA')) -> 'invasiones'),
+  0, 'una invasión heredada no bloquea editar la ruta');
+
+-- Pero no se puede agregar otra: T-A3 haría que TA cubra T-C1, de otra sucursal
+CREATE TEMP TABLE eval_a3 AS
+SELECT public.ruta_evaluar('{"type":"Polygon","coordinates":[[[-59.94,-15.01],[-59.93,-15.01],[-59.93,-15.0],[-59.94,-15.0],[-59.94,-15.01]]]}',
+                           NULL, (SELECT id FROM public.zonas WHERE codigo_zona = 'TA')) AS r;
+SELECT is((SELECT jsonb_agg(i ->> 'codigo_ruta') FROM eval_a3, jsonb_array_elements(r -> 'invasiones') i), '["T-C1"]'::jsonb,
+  'una invasión nueva se rechaza aunque la zona ya tenga una heredada');
+SELECT is((SELECT (r -> 'invasiones' -> 0 ->> 'misma_sucursal')::boolean FROM eval_a3), false,
+  'una ruta de otra sucursal no se puede sugerir para traslado');
 
 SELECT * FROM finish();
 ROLLBACK;

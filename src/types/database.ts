@@ -477,7 +477,7 @@ export type Database = {
     }
     Functions: {
       ruta_evaluar: {
-        Args: { p_excluir_id?: number; p_geojson: string }
+        Args: { p_excluir_id?: number; p_geojson: string; p_id_zona?: number }
         Returns: Json
       }
       ruta_guardar: {
@@ -514,6 +514,11 @@ export type Database = {
           id_zona: number
           ruta: string
         }[]
+      }
+      zona_envolvente: { Args: { p_rutas: unknown }; Returns: unknown }
+      zona_invasiones_nuevas: {
+        Args: { p_excluir_id?: number; p_geom: unknown; p_id_zona: number }
+        Returns: Json
       }
       zonas_contorno: {
         Args: { p_ids_zona: number[]; p_tolerancia?: number }

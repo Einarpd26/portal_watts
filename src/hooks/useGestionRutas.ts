@@ -110,6 +110,8 @@ export function useGestionRutas(): UseGestionRutasReturn {
   // Descarta la respuesta de una validación vieja si ya hay un polígono más nuevo
   const evaluacionActual = useRef(0);
   const claveDibujo = useRef(0);
+  // Zona con la que se validó el polígono actual: si el usuario la cambia, se vuelve a validar
+  const zonaEvaluada = useRef<number | null>(null);
 
   const [toast, setToast] = useState<Toast | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -209,11 +211,14 @@ export function useGestionRutas(): UseGestionRutasReturn {
 
       setTextoGeoJson(texto);
       setIsEvaluando(true);
+      // Con la zona, el servidor también revisa que su envolvente no cubra rutas de otra zona (D7)
+      const idZona = editor?.ruta?.id_zona ?? form.id_zona;
+      zonaEvaluada.current = idZona;
       try {
         const res = await fetch('/api/admin/rutas/validar', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ geojson: texto, id_ruta: editor?.ruta?.id }),
+          body: JSON.stringify({ geojson: texto, id_ruta: editor?.ruta?.id, id_zona: idZona ?? undefined }),
         });
         if (turno !== evaluacionActual.current) return;
         if (!res.ok) {
@@ -236,8 +241,16 @@ export function useGestionRutas(): UseGestionRutasReturn {
         if (turno === evaluacionActual.current) setIsEvaluando(false);
       }
     },
-    [editor, leerError]
+    [editor, form.id_zona, leerError]
   );
+
+  // En un alta la zona se puede elegir después de dibujar: el resultado depende de ella
+  useEffect(() => {
+    if (textoGeoJson === null || editor?.ruta || form.id_zona === zonaEvaluada.current) return;
+    evaluarTexto(textoGeoJson).catch((err: unknown) => {
+      logger.error('Error revalidando el polígono al cambiar la zona:', err);
+    });
+  }, [form.id_zona, textoGeoJson, editor, evaluarTexto]);
 
   const setForm = useCallback((next: RutaForm) => {
     setFormState(next);

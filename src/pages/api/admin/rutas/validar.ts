@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { evaluarRuta, obtenerRuta } from '@/lib/rutas';
-import { geoJsonComoTexto, resolverContextoRutas } from '@/lib/rutasApi';
+import { codigoDeZona, geoJsonComoTexto, resolverContextoRutas } from '@/lib/rutasApi';
+import { motivoInvasion } from '@/utils/invasionZona';
 import { interpretarGeoJson } from '@/utils/rutaValidation';
 import { logger } from '@/lib/logger';
 
@@ -8,6 +9,8 @@ import { logger } from '@/lib/logger';
 export const config = { api: { bodyParser: { sizeLimit: '700kb' } } };
 
 // Vista previa de CU-05 (paso 3): valida el polígono y busca superposiciones sin guardar nada.
+// Con la zona (la de la ruta que se edita o `id_zona` en un alta) informa además las rutas de
+// otras zonas que su envolvente pasaría a cubrir (ADR-002 D7).
 // Siempre responde 200 con `valida`; el motivo del rechazo y los conflictos van en el cuerpo.
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -16,13 +19,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const contexto = await resolverContextoRutas(req, res);
   if (!contexto) return;
-  const { idsZona } = contexto;
+  const { zonas, idsZona } = contexto;
 
   try {
     const cuerpo = (req.body ?? {}) as Record<string, unknown>;
 
     // Al reemplazar el polígono de una ruta, ella misma no cuenta como conflicto
     let excluirId: number | null = null;
+    let idZona: number | null = typeof cuerpo.id_zona === 'number' ? cuerpo.id_zona : null;
     if (typeof cuerpo.id_ruta === 'number') {
       const ruta = await obtenerRuta(cuerpo.id_ruta);
       if (!ruta.ok) {
@@ -32,6 +36,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(403).json({ error: 'Solo puedes administrar rutas de tus zonas asignadas' });
       }
       excluirId = ruta.data.id;
+      idZona = ruta.data.id_zona;
+    }
+    if (idZona !== null && !idsZona.has(idZona)) {
+      return res.status(403).json({ error: 'Solo puedes administrar rutas de tus zonas asignadas' });
     }
 
     const geometria = interpretarGeoJson(geoJsonComoTexto(cuerpo.geojson));
@@ -39,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ valida: false, motivo: geometria.mensaje, code: geometria.error, conflictos: [] });
     }
 
-    const evaluacion = await evaluarRuta(JSON.stringify(geometria.poligono), excluirId, idsZona);
+    const evaluacion = await evaluarRuta(JSON.stringify(geometria.poligono), excluirId, idZona, idsZona);
     if (!evaluacion.ok) return res.status(500).json({ error: 'No se pudo validar la ruta.' });
 
     const e = evaluacion.data;
@@ -54,10 +62,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         conflictos: [],
       });
     }
+    // La superposición se informa primero: es del polígono mismo, no de su zona
+    const superpone = e.conflictos.some((c) => c.tipo === 'superposicion');
+    const invade = !superpone && e.conflictos.length > 0;
     return res.status(200).json({
       valida: e.conflictos.length === 0,
-      motivo: e.conflictos.length > 0 ? 'La ruta se superpone con otra ruta existente.' : null,
-      code: e.conflictos.length > 0 ? 'superposicion' : null,
+      motivo: superpone
+        ? 'La ruta se superpone con otra ruta existente.'
+        : invade && idZona !== null
+          ? motivoInvasion(codigoDeZona(zonas, idZona))
+          : null,
+      code: superpone ? 'superposicion' : invade ? 'invasion' : null,
       geojson: e.geojson,
       vertices: e.vertices,
       area_m2: e.area_m2,

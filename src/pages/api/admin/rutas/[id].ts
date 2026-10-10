@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
 import { exportarRutas, guardarRuta, obtenerRuta } from '@/lib/rutas';
-import { geoJsonComoTexto, resolverContextoRutas, responderFalloGuardado } from '@/lib/rutasApi';
+import { codigoDeZona, geoJsonComoTexto, resolverContextoRutas, responderFalloGuardado } from '@/lib/rutasApi';
 import { interpretarGeoJson, validarRuta } from '@/utils/rutaValidation';
 import { logger } from '@/lib/logger';
 
@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const contexto = await resolverContextoRutas(req, res);
   if (!contexto) return;
-  const { caller, idsZona } = contexto;
+  const { caller, zonas, idsZona } = contexto;
 
   const id = Number(typeof req.query.id === 'string' ? req.query.id : '');
   if (!Number.isInteger(id) || id <= 0) {
@@ -71,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const guardado = await guardarRuta(id, { ...validacion.data, id_zona: ruta.data.id_zona }, poligono, idsZona);
-    if (!guardado.ok) return responderFalloGuardado(res, guardado);
+    if (!guardado.ok) return responderFalloGuardado(res, guardado, codigoDeZona(zonas, ruta.data.id_zona));
 
     await registrarBitacoraDesdeSesion(
       caller,

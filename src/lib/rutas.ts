@@ -13,7 +13,7 @@ import type {
 import type { AlcanceRutas } from '@/utils/rutaScope';
 import type { RutaNormalizada } from '@/utils/rutaValidation';
 
-export type RutaError = ErrorGeometriaRuta | 'duplicado' | 'zona_invalida' | 'no_encontrada' | 'error';
+export type RutaError = ErrorGeometriaRuta | 'invasion' | 'duplicado' | 'zona_invalida' | 'no_encontrada' | 'error';
 export type RutaResultado<T> = { ok: true; data: T } | { ok: false; error: RutaError };
 
 export interface RutaBasica {
@@ -29,6 +29,9 @@ type FilaConflicto = {
   id_zona: number;
   area_m2: number;
   geojson: PoligonoRuta;
+  // Solo en las invasiones (ADR-002 D7)
+  codigo_zona?: string;
+  misma_sucursal?: boolean;
 };
 
 // PostgREST devuelve una relación a-uno como objeto o como arreglo según la restricción de unicidad
@@ -137,16 +140,45 @@ export async function obtenerRuta(id: number): Promise<RutaResultado<RutaBasica>
 
 /**
  * Interpreta los conflictos que devuelve la base. Una ruta ajena al alcance del solicitante
- * se informa sin código ni polígono: basta saber que existe para rechazar el guardado.
+ * se informa sin código ni polígono: basta saber que existe para rechazar el guardado. Una
+ * invasión es trasladable si la ruta está en el alcance y en la misma sucursal (ADR-002 D4 y D7).
  */
-function interpretarConflictos(crudos: unknown, idsZonaEnAlcance: Set<number>): ConflictoRuta[] {
+function interpretarConflictos(
+  crudos: unknown,
+  idsZonaEnAlcance: Set<number>,
+  tipo: ConflictoRuta['tipo']
+): ConflictoRuta[] {
   if (!Array.isArray(crudos)) return [];
   return (crudos as FilaConflicto[]).map((c) =>
     idsZonaEnAlcance.has(c.id_zona)
-      ? { id: c.id, codigo_ruta: c.codigo_ruta, area_m2: c.area_m2, geojson: c.geojson, fuera_de_alcance: false }
-      : { id: null, codigo_ruta: null, area_m2: c.area_m2, geojson: null, fuera_de_alcance: true }
+      ? {
+          tipo,
+          id: c.id,
+          codigo_ruta: c.codigo_ruta,
+          codigo_zona: c.codigo_zona ?? null,
+          area_m2: c.area_m2,
+          geojson: c.geojson,
+          fuera_de_alcance: false,
+          trasladable: tipo === 'invasion' && c.misma_sucursal === true,
+        }
+      : {
+          tipo,
+          id: null,
+          codigo_ruta: null,
+          codigo_zona: null,
+          area_m2: c.area_m2,
+          geojson: null,
+          fuera_de_alcance: true,
+          trasladable: false,
+        }
   );
 }
+
+/** Superposiciones primero (se resuelven en el polígono), luego invasiones de la envolvente */
+const todosLosConflictos = (crudo: Record<string, unknown>, idsZonaEnAlcance: Set<number>) => [
+  ...interpretarConflictos(crudo.conflictos, idsZonaEnAlcance, 'superposicion'),
+  ...interpretarConflictos(crudo.invasiones, idsZonaEnAlcance, 'invasion'),
+];
 
 function interpretarEvaluacion(crudo: Json, idsZonaEnAlcance: Set<number>): RutaEvaluacion | null {
   if (!esObjeto(crudo)) return null;
@@ -156,7 +188,7 @@ function interpretarEvaluacion(crudo: Json, idsZonaEnAlcance: Set<number>): Ruta
       geojson: crudo.geojson as unknown as PoligonoRuta,
       vertices: Number(crudo.vertices),
       area_m2: Number(crudo.area_m2),
-      conflictos: interpretarConflictos(crudo.conflictos, idsZonaEnAlcance),
+      conflictos: todosLosConflictos(crudo, idsZonaEnAlcance),
     };
   }
   const error = crudo.error as ErrorGeometriaRuta;
@@ -164,19 +196,24 @@ function interpretarEvaluacion(crudo: Json, idsZonaEnAlcance: Set<number>): Ruta
     ok: false,
     error,
     detalle: typeof crudo.detalle === 'string' ? crudo.detalle : undefined,
-    conflictos: interpretarConflictos(crudo.conflictos, idsZonaEnAlcance),
+    conflictos: todosLosConflictos(crudo, idsZonaEnAlcance),
   };
 }
 
-/** Vista previa de CU-05: normaliza y valida el polígono y busca superposiciones sin guardar nada */
+/**
+ * Vista previa de CU-05: normaliza y valida el polígono y busca superposiciones sin guardar nada.
+ * Con `idZona` también busca las rutas de otras zonas que su envolvente pasaría a cubrir (D7).
+ */
 export async function evaluarRuta(
   geojson: string,
   excluirId: number | null,
+  idZona: number | null,
   idsZonaEnAlcance: Set<number>
 ): Promise<RutaResultado<RutaEvaluacion>> {
   const { data, error } = await createAdminClient().rpc('ruta_evaluar', {
     p_geojson: geojson,
     p_excluir_id: excluirId ?? undefined,
+    p_id_zona: idZona ?? undefined,
   });
   if (error) return { ok: false, error: 'error' };
   const evaluacion = interpretarEvaluacion(data, idsZonaEnAlcance);
@@ -212,6 +249,6 @@ export async function guardarRuta(
     ok: false,
     error: data.error as RutaError,
     detalle: typeof data.detalle === 'string' ? data.detalle : undefined,
-    conflictos: interpretarConflictos(data.conflictos, idsZonaEnAlcance),
+    conflictos: todosLosConflictos(data, idsZonaEnAlcance),
   };
 }
