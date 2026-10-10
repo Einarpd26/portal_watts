@@ -61,3 +61,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior-y: contain;
 }
+/* Tarjeta de la ruta elegida sobre el mapa (MapaTerritorial): sin el relleno ni las esquinas
+   rectas por defecto de MapLibre, para que se vea como el resto de las tarjetas del portal */
+.popup-ruta .maplibregl-popup-content {
+  padding: 0;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.15), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}

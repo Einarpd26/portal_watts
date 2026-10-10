@@ -130,8 +130,10 @@ export function ListaRutas({
                   </span>
                 </span>
               </button>
+              {/* En escritorio las acciones están en la tarjeta sobre el polígono; en el celular el
+                  mapa y la lista no se ven a la vez, así que se mantienen aquí */}
               {elegida && (
-                <div className="flex gap-2 px-4 pb-3 pl-9">
+                <div className="flex gap-2 px-4 pb-3 pl-9 lg:hidden">
                   <Button variant="secondary" size="sm" onClick={() => onEditar(r)}>
                     Editar
                   </Button>

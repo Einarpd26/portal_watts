@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { setWorkerUrl } from 'maplibre-gl';
-import { FullscreenControl, Layer, Map, NavigationControl, Source } from '@vis.gl/react-maplibre';
+import { FullscreenControl, Layer, Map, NavigationControl, Popup, Source } from '@vis.gl/react-maplibre';
 import type { MapEvent, MapLayerMouseEvent, MapRef } from '@vis.gl/react-maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { CapaDibujo } from '@/components/territorio/CapaDibujo';
@@ -18,6 +18,9 @@ setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
 const ESTILO_BASE = 'https://tiles.openfreemap.org/styles/liberty';
 
 const VISTA_INICIAL = { longitude: -63.18, latitude: -17.78, zoom: 11 };
+// Encuadre moderado: margen de un cuarto del lado menor y tope de zoom de barrio (no de calle)
+const MARGEN_ENCUADRE = 0.25;
+const ZOOM_MAXIMO_ENCUADRE = 14;
 
 interface MapaTerritorialProps {
   rutas: RutaItem[];
@@ -42,6 +45,8 @@ interface MapaTerritorialProps {
     verticesVecinos: Posicion[];
     onCambio: (poligono: PoligonoRuta) => void;
   } | null;
+  /** Contenido flotante anclado sobre la ruta elegida (sus acciones); null para no mostrarlo */
+  tarjetaSeleccion?: ReactNode;
 }
 
 type Coleccion = GeoJSON.FeatureCollection<GeoJSON.Polygon, Record<string, unknown>>;
@@ -79,6 +84,7 @@ export function MapaTerritorial({
   coloresZona,
   idPantallaCompleta,
   dibujo,
+  tarjetaSeleccion = null,
 }: MapaTerritorialProps) {
   const colorDe = useCallback((idZona: number) => coloresZona.get(idZona) ?? PALETA_ZONAS[0], [coloresZona]);
 
@@ -124,6 +130,13 @@ export function MapaTerritorial({
     return cajaDe(elegida ? [elegida.geojson] : rutas.map((r) => r.geojson));
   }, [dibujando, poligonoDibujo, vistaPrevia, conflictos, rutas, seleccionId]);
 
+  // La tarjeta se ancla al borde norte del polígono elegido para no taparlo
+  const anclaTarjeta = useMemo<[number, number] | null>(() => {
+    const elegida = rutas.find((r) => r.id === seleccionId);
+    const caja = elegida ? cajaDe([elegida.geojson]) : null;
+    return caja ? [(caja[0] + caja[2]) / 2, caja[3]] : null;
+  }, [rutas, seleccionId]);
+
   // Al salir del dibujo o de una previsualización (Descartar, Guardar) el mapa se queda donde
   // está: el usuario venía trabajando en esa área y un salto de vista lo desorienta
   const modo = dibujando ? 'dibujo' : vistaPrevia ? 'previsualizacion' : 'normal';
@@ -132,7 +145,13 @@ export function MapaTerritorial({
     (duracion: number) => {
       if (!cajaEncuadre) return;
       const [oeste, sur, este, norte] = cajaEncuadre;
-      mapaRef.current?.fitBounds([[oeste, sur], [este, norte]], { padding: 48, duration: duracion, maxZoom: 16 });
+      const mapa = mapaRef.current;
+      if (!mapa) return;
+      // Margen proporcional a la vista: el polígono queda centrado con su entorno visible, sin
+      // acercarse hasta llenar la pantalla
+      const { clientWidth, clientHeight } = mapa.getContainer();
+      const padding = Math.max(48, Math.round(Math.min(clientWidth, clientHeight) * MARGEN_ENCUADRE));
+      mapa.fitBounds([[oeste, sur], [este, norte]], { padding, duration: duracion, maxZoom: ZOOM_MAXIMO_ENCUADRE });
     },
     [cajaEncuadre]
   );
@@ -222,6 +241,21 @@ export function MapaTerritorial({
           }}
         />
       </Source>
+
+      {anclaTarjeta && tarjetaSeleccion && (
+        <Popup
+          longitude={anclaTarjeta[0]}
+          latitude={anclaTarjeta[1]}
+          anchor="bottom"
+          offset={10}
+          closeButton={false}
+          closeOnClick={false}
+          maxWidth="none"
+          className="popup-ruta"
+        >
+          {tarjetaSeleccion}
+        </Popup>
+      )}
 
       {dibujo && (
         <CapaDibujo

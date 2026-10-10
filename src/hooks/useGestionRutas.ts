@@ -79,7 +79,8 @@ export interface UseGestionRutasReturn {
   // Dibujo en el mapa (ADR-002 D6)
   dibujo: Dibujo | null;
   verticesVecinos: Posicion[];
-  iniciarDibujo: () => Promise<void>;
+  /** Con `ruta` se edita esa ruta aunque el editor recién se esté abriendo (estado aún sin actualizar) */
+  iniciarDibujo: (ruta?: RutaItem) => Promise<void>;
   detenerDibujo: () => void;
   alCambiarDibujo: (poligono: PoligonoRuta) => void;
   // Respaldo
@@ -299,10 +300,10 @@ export function useGestionRutas(): UseGestionRutasReturn {
   );
 
   // ---- Dibujo en el mapa
-  const iniciarDibujo = useCallback(async () => {
+  const iniciarDibujo = useCallback(async (ruta?: RutaItem) => {
     limpiarPoligono();
     let poligonoInicial: PoligonoRuta | null = null;
-    const editando = editor?.ruta;
+    const editando = ruta ?? editor?.ruta;
     if (editando) {
       // Se edita sobre la geometría completa, no sobre la simplificada del listado
       try {
