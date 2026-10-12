@@ -30,9 +30,16 @@ test("invasión: el mensaje completo une motivo y detalle", () => {
   assert.equal(mensajeInvasion("ZN", [invasion({})]), "La zona ZN pasaría a cubrir rutas de otra zona. Cubriría R-S1 (zona ZS). Ajusta el polígono o traslada R-S1 a la zona ZN.");
 });
 
-test("invasión en un traslado: lista las rutas cubiertas sin sugerir ajustar el polígono", () => {
+test("invasión en un traslado: lista las rutas cubiertas y sugiere trasladar primero las trasladables", () => {
   assert.equal(
     mensajeInvasionTraslado("ZN", [invasion({}), invasion({ id: null, codigo_ruta: null, codigo_zona: null, fuera_de_alcance: true, trasladable: false })]),
-    "La zona ZN pasaría a cubrir rutas de otra zona. Cubriría R-S1 (zona ZS) y otra ruta fuera de tus zonas."
+    "La zona ZN pasaría a cubrir rutas de otra zona. Cubriría R-S1 (zona ZS) y otra ruta fuera de tus zonas. Traslada primero R-S1 a la zona ZN."
+  );
+});
+
+test("invasión en un traslado: sin rutas trasladables no hay sugerencia ni se pide ajustar el polígono", () => {
+  assert.equal(
+    mensajeInvasionTraslado("ZN", [invasion({ codigo_ruta: "C-1", codigo_zona: "ZC", trasladable: false })]),
+    "La zona ZN pasaría a cubrir rutas de otra zona. Cubriría C-1 (zona ZC)."
   );
 });

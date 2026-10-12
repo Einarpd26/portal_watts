@@ -19,9 +19,15 @@ function rutasCubiertas(invasiones: ConflictoRuta[]) {
   return { propias, cubiertas };
 }
 
-/** Rechazo de un traslado: no sugiere ajustar el polígono, que en un traslado no cambia */
+/**
+ * Rechazo de un traslado (CU-06 A3): no sugiere ajustar el polígono, que en un traslado no cambia;
+ * sugiere trasladar primero las rutas cubiertas que se puedan, una por una (sin cadenas automáticas)
+ */
 export function mensajeInvasionTraslado(codigoZona: string, invasiones: ConflictoRuta[]): string {
-  return `${motivoInvasion(codigoZona)} Cubriría ${lista(rutasCubiertas(invasiones).cubiertas)}.`;
+  const { propias, cubiertas } = rutasCubiertas(invasiones);
+  const trasladables = propias.filter((i) => i.trasladable).map((i) => i.codigo_ruta as string);
+  const sugerencia = trasladables.length > 0 ? ` Traslada primero ${lista(trasladables)} a la zona ${codigoZona}.` : '';
+  return `${motivoInvasion(codigoZona)} Cubriría ${lista(cubiertas)}.${sugerencia}`;
 }
 
 /** Qué rutas cubriría y qué hacer: ajustar el polígono o trasladar las rutas que se puedan (CU-06) */
