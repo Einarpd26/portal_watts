@@ -13,7 +13,7 @@ import type {
 import type { AlcanceRutas } from '@/utils/rutaScope';
 import type { RutaNormalizada } from '@/utils/rutaValidation';
 
-export type RutaError = ErrorGeometriaRuta | 'invasion' | 'duplicado' | 'zona_invalida' | 'no_encontrada' | 'error';
+export type RutaError = ErrorGeometriaRuta | 'invasion' | 'cobertura' | 'duplicado' | 'zona_invalida' | 'no_encontrada' | 'error';
 export type RutaResultado<T> = { ok: true; data: T } | { ok: false; error: RutaError };
 
 export interface RutaBasica {
@@ -32,6 +32,13 @@ type FilaConflicto = {
   // Solo en las invasiones (ADR-002 D7)
   codigo_zona?: string;
   misma_sucursal?: boolean;
+};
+
+type FilaCobertura = {
+  id_zona: number;
+  codigo_zona: string;
+  area_m2: number;
+  geojson: PoligonoRuta;
 };
 
 // PostgREST devuelve una relación a-uno como objeto o como arreglo según la restricción de unicidad
@@ -174,10 +181,32 @@ function interpretarConflictos(
   );
 }
 
-/** Superposiciones primero (se resuelven en el polígono), luego invasiones de la envolvente */
+/**
+ * Zonas ajenas cuya envolvente cubriría el polígono. Una zona fuera del alcance de quien opera se
+ * informa sin código ni envolvente, igual que una ruta ajena.
+ */
+function interpretarCoberturas(crudas: unknown, idsZonaEnAlcance: Set<number>): ConflictoRuta[] {
+  if (!Array.isArray(crudas)) return [];
+  return (crudas as FilaCobertura[]).map((c) => {
+    const visible = idsZonaEnAlcance.has(c.id_zona);
+    return {
+      tipo: 'cobertura' as const,
+      id: null,
+      codigo_ruta: null,
+      codigo_zona: visible ? c.codigo_zona : null,
+      area_m2: c.area_m2,
+      geojson: visible ? c.geojson : null,
+      fuera_de_alcance: !visible,
+      trasladable: false,
+    };
+  });
+}
+
+/** Superposiciones primero (se resuelven en el polígono), luego invasiones y coberturas de envolvente */
 const todosLosConflictos = (crudo: Record<string, unknown>, idsZonaEnAlcance: Set<number>) => [
   ...interpretarConflictos(crudo.conflictos, idsZonaEnAlcance, 'superposicion'),
   ...interpretarConflictos(crudo.invasiones, idsZonaEnAlcance, 'invasion'),
+  ...interpretarCoberturas(crudo.coberturas, idsZonaEnAlcance),
 ];
 
 function interpretarEvaluacion(crudo: Json, idsZonaEnAlcance: Set<number>): RutaEvaluacion | null {
@@ -259,8 +288,9 @@ export type TrasladoRuta =
 
 /**
  * Traslado de zona (CU-06): actualiza id_zona sin tocar el polígono. La base valida que la
- * envolvente de la zona destino no pase a cubrir rutas de otras zonas (ADR-002 D7), bajo el mismo
- * bloqueo que el guardado. RN-05 (eliminar planificacion_rutas vigente) se aplica en CU-09 /
+ * envolvente de la zona destino no pase a cubrir rutas de otras zonas y que ninguna envolvente
+ * (la de la zona de origen incluida) quede cubriendo la ruta (ADR-002 D7), bajo el mismo bloqueo
+ * que el guardado. RN-05 (eliminar planificacion_rutas vigente) se aplica en CU-09 /
  * Ciclo 3 cuando esa tabla exista.
  */
 export async function trasladarRuta(
@@ -277,6 +307,6 @@ export async function trasladarRuta(
   return {
     ok: false,
     error: data.error as RutaError,
-    conflictos: interpretarConflictos(data.invasiones, idsZonaEnAlcance, 'invasion'),
+    conflictos: todosLosConflictos(data, idsZonaEnAlcance),
   };
 }

@@ -240,8 +240,12 @@ export interface RutaExportable {
 
 /** Ruta existente con la que se superpone la propuesta (A1). Fuera de alcance no se detalla. */
 export interface ConflictoRuta {
-  /** `superposicion`: el polígono pisa la ruta (RN-01). `invasion`: la envolvente de la zona la cubriría (ADR-002 D7) */
-  tipo: 'superposicion' | 'invasion';
+  /**
+   * `superposicion`: el polígono pisa la ruta (RN-01). `invasion`: la envolvente de la zona la cubriría
+   * (ADR-002 D7). `cobertura`: el polígono caería dentro de la envolvente de otra zona; `codigo_zona` es
+   * esa zona, `geojson` su envolvente y no hay ruta
+   */
+  tipo: 'superposicion' | 'invasion' | 'cobertura';
   id: number | null;
   codigo_ruta: string | null;
   /** Zona de la ruta en conflicto (solo si está en el alcance de quien opera) */
@@ -249,7 +253,7 @@ export interface ConflictoRuta {
   area_m2: number;
   geojson: PoligonoRuta | null;
   fuera_de_alcance: boolean;
-  /** Una invasión se resuelve trasladando la ruta a la zona que crece (misma sucursal y en el alcance) */
+  /** Una invasión se resuelve trasladando la ruta a la zona que crece (misma sucursal y en el alcance); una cobertura no */
   trasladable: boolean;
 }
 

@@ -3,7 +3,7 @@
 -- y rutas_exportar y zonas_contorno (respaldo con geometría completa y contorno derivado, ADR-002 D6),
 -- y la envolvente de zona con su regla de no invasión (ADR-002 D7).
 BEGIN;
-SELECT plan(34);
+SELECT plan(43);
 
 -- Caja contigua a R-N4 (que ocupa x -63.17..-63.16): solo comparten borde
 SELECT is(
@@ -157,6 +157,64 @@ SELECT is((SELECT jsonb_agg(i ->> 'codigo_ruta') FROM eval_a3, jsonb_array_eleme
   'una invasión nueva se rechaza aunque la zona ya tenga una heredada');
 SELECT is((SELECT (r -> 'invasiones' -> 0 ->> 'misma_sucursal')::boolean FROM eval_a3), false,
   'una ruta de otra sucursal no se puede sugerir para traslado');
+
+-- Cobertura ajena (ADR-002 D7, ampliada el 12 de octubre de 2026): una ruta que caería dentro de la
+-- envolvente de OTRA zona se rechaza, aunque la zona que la recibe no crezca sobre nadie.
+-- TD (T-D0 y T-D2) deja un hueco en su envolvente; TE, TH, TI y TG se usan para recibir o ceder rutas.
+INSERT INTO public.zonas (codigo_zona, zona, id_sucursal)
+VALUES ('TD', 'Prueba D', 1), ('TE', 'Prueba E', 1), ('TG', 'Prueba G', 1), ('TH', 'Prueba H', 1), ('TI', 'Prueba I', 1);
+INSERT INTO public.rutas (codigo_ruta, ruta, localizacion, id_zona)
+SELECT 'T-D0', 'D0', ST_MakeEnvelope(-59.00, -15.01, -58.99, -15.00, 4326), id FROM public.zonas WHERE codigo_zona = 'TD'
+UNION ALL SELECT 'T-D2', 'D2', ST_MakeEnvelope(-58.97, -15.01, -58.96, -15.00, 4326), id FROM public.zonas WHERE codigo_zona = 'TD'
+UNION ALL SELECT 'T-G0', 'G0', ST_MakeEnvelope(-58.00, -15.01, -57.99, -15.00, 4326), id FROM public.zonas WHERE codigo_zona = 'TG'
+UNION ALL SELECT 'T-G2', 'G2', ST_MakeEnvelope(-57.97, -15.01, -57.96, -15.00, 4326), id FROM public.zonas WHERE codigo_zona = 'TG'
+UNION ALL SELECT 'T-G1', 'G1', ST_MakeEnvelope(-57.985, -15.008, -57.975, -15.002, 4326), id FROM public.zonas WHERE codigo_zona = 'TG';
+
+-- Una ruta de TE en el hueco de TD queda dentro de su envolvente
+SELECT is(
+  (SELECT jsonb_agg(c ->> 'codigo_zona')
+     FROM jsonb_array_elements(public.ruta_evaluar(
+       '{"type":"Polygon","coordinates":[[[-58.985,-15.008],[-58.975,-15.008],[-58.975,-15.002],[-58.985,-15.002],[-58.985,-15.008]]]}',
+       NULL, (SELECT id FROM public.zonas WHERE codigo_zona = 'TE')) -> 'coberturas') c),
+  '["TD"]'::jsonb, 'una ruta dentro de la envolvente de otra zona informa esa zona');
+CREATE TEMP TABLE guardar_hueco AS
+SELECT public.ruta_guardar((SELECT id FROM public.zonas WHERE codigo_zona = 'TE'), 'T-F1', 'F1', NULL, NULL,
+  '{"type":"Polygon","coordinates":[[[-58.985,-15.008],[-58.975,-15.008],[-58.975,-15.002],[-58.985,-15.002],[-58.985,-15.008]]]}') AS r;
+SELECT is((SELECT r ->> 'error' FROM guardar_hueco), 'cobertura', 'guardar una ruta dentro de la envolvente de otra zona se rechaza');
+SELECT is((SELECT count(*)::int FROM public.rutas WHERE codigo_ruta = 'T-F1'), 0, 'la ruta rechazada por cobertura no se guarda');
+SELECT is(
+  jsonb_array_length(public.ruta_evaluar(
+    '{"type":"Polygon","coordinates":[[[-58.95,-15.01],[-58.94,-15.01],[-58.94,-15.0],[-58.95,-15.0],[-58.95,-15.01]]]}',
+    NULL, (SELECT id FROM public.zonas WHERE codigo_zona = 'TE')) -> 'coberturas'),
+  0, 'una ruta fuera de toda envolvente ajena no tiene coberturas');
+SELECT is(
+  jsonb_array_length(public.ruta_evaluar(
+    '{"type":"Polygon","coordinates":[[[-58.96,-15.01],[-58.95,-15.01],[-58.95,-15.0],[-58.96,-15.0],[-58.96,-15.01]]]}',
+    NULL, (SELECT id FROM public.zonas WHERE codigo_zona = 'TE')) -> 'coberturas'),
+  0, 'una ruta que solo toca el borde de la envolvente ajena no la invade');
+
+-- Una ruta que ya estaba dentro de la envolvente ajena (heredado) puede editarse y trasladarse
+INSERT INTO public.rutas (codigo_ruta, ruta, localizacion, id_zona)
+SELECT 'T-F1', 'F1', ST_MakeEnvelope(-58.985, -15.008, -58.975, -15.002, 4326), id FROM public.zonas WHERE codigo_zona = 'TE';
+SELECT is(
+  jsonb_array_length(public.ruta_evaluar(
+    '{"type":"Polygon","coordinates":[[[-58.985,-15.008],[-58.975,-15.008],[-58.975,-15.002],[-58.985,-15.002],[-58.985,-15.008]]]}',
+    (SELECT id FROM public.rutas WHERE codigo_ruta = 'T-F1'), (SELECT id FROM public.zonas WHERE codigo_zona = 'TE')) -> 'coberturas'),
+  0, 'una cobertura heredada no bloquea editar la ruta');
+SELECT is(
+  (public.ruta_trasladar((SELECT id FROM public.rutas WHERE codigo_ruta = 'T-F1'),
+                         (SELECT id FROM public.zonas WHERE codigo_zona = 'TH')) ->> 'ok')::boolean,
+  true, 'una cobertura heredada de una tercera zona no bloquea el traslado');
+
+-- Al sacar T-G1 de TG, la envolvente de TG (T-G0 y T-G2) la seguiría cubriendo: el traslado se rechaza
+CREATE TEMP TABLE traslado_g AS
+SELECT public.ruta_trasladar((SELECT id FROM public.rutas WHERE codigo_ruta = 'T-G1'),
+                             (SELECT id FROM public.zonas WHERE codigo_zona = 'TI')) AS r;
+SELECT is((SELECT r ->> 'error' || ':' || (r -> 'coberturas' -> 0 ->> 'codigo_zona') FROM traslado_g), 'cobertura:TG',
+  'trasladar una ruta que la envolvente de su zona de origen seguiría cubriendo se rechaza');
+SELECT is(
+  (SELECT z.codigo_zona FROM public.rutas r JOIN public.zonas z ON z.id = r.id_zona WHERE r.codigo_ruta = 'T-G1'),
+  'TG', 'el traslado rechazado por cobertura deja la ruta en su zona');
 
 SELECT * FROM finish();
 ROLLBACK;

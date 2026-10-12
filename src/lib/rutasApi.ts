@@ -3,7 +3,7 @@ import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { alcanceDeRutas, PERMISO_RUTAS } from '@/utils/rutaScope';
 import { zonasEnAlcance, type GuardadoRuta } from '@/lib/rutas';
 import type { UserSession, ZonaDeRuta } from '@/types';
-import { mensajeInvasion } from '@/utils/invasionZona';
+import { mensajeCobertura, mensajeInvasion } from '@/utils/invasionZona';
 
 export interface ContextoRutas {
   caller: UserSession;
@@ -68,6 +68,11 @@ export function responderFalloGuardado(
     case 'invasion':
       return res.status(409).json({
         error: mensajeInvasion(codigoZona, fallo.conflictos ?? []),
+        conflictos: fallo.conflictos ?? [],
+      });
+    case 'cobertura':
+      return res.status(409).json({
+        error: mensajeCobertura(fallo.conflictos ?? []),
         conflictos: fallo.conflictos ?? [],
       });
     case 'duplicado':

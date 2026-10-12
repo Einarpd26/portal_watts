@@ -1,5 +1,6 @@
-// Textos de la regla de no invasión (ADR-002 D7): la envolvente de una zona no puede pasar a
-// cubrir rutas de otras zonas. Sin dependencias de Node.
+// Textos de la regla de no invasión (ADR-002 D7): la envolvente de una zona no puede cubrir rutas
+// de otras zonas, ni por crecer sobre ellas (invasión) ni porque la ruta caiga dentro de ella
+// (cobertura). Sin dependencias de Node.
 import type { ConflictoRuta } from '@/types';
 
 const lista = (codigos: string[]) =>
@@ -45,4 +46,28 @@ export function detalleInvasion(codigoZona: string, invasiones: ConflictoRuta[])
 /** Mensaje completo para un guardado rechazado (aviso sin vista previa) */
 export function mensajeInvasion(codigoZona: string, invasiones: ConflictoRuta[]): string {
   return `${motivoInvasion(codigoZona)} ${detalleInvasion(codigoZona, invasiones)}`;
+}
+
+/** Zonas cuya envolvente cubriría la ruta; las de fuera del alcance se cuentan sin revelar su código */
+function zonasCubridoras(coberturas: ConflictoRuta[]): string {
+  const visibles = coberturas.filter((c) => !c.fuera_de_alcance && c.codigo_zona).map((c) => c.codigo_zona as string);
+  const ajenas = coberturas.length - visibles.length;
+  const partes = [...visibles];
+  if (ajenas > 0) partes.push(ajenas === 1 ? 'otra zona fuera de tus zonas' : `${ajenas} zonas fuera de tus zonas`);
+  return partes.length === 1 && visibles.length === 1 ? `la zona ${partes[0]}` : `las zonas ${lista(partes)}`;
+}
+
+/** Motivo breve: la ruta caería dentro del contorno de otra zona (alta o edición) */
+export function motivoCobertura(coberturas: ConflictoRuta[]): string {
+  return `La ruta quedaría dentro del contorno de ${zonasCubridoras(coberturas)}, y una zona no puede cubrir rutas de otra.`;
+}
+
+/** Rechazo de un alta o una edición por cobertura ajena (CU-05 A4): se corrige el polígono */
+export function mensajeCobertura(coberturas: ConflictoRuta[]): string {
+  return `${motivoCobertura(coberturas)} Ajusta el polígono.`;
+}
+
+/** Rechazo de un traslado por cobertura (CU-06 A3): la zona de origen, sin la ruta, la seguiría cubriendo */
+export function mensajeCoberturaTraslado(coberturas: ConflictoRuta[]): string {
+  return `El contorno de ${zonasCubridoras(coberturas)} seguiría cubriendo la ruta tras el traslado, y una zona no puede cubrir rutas de otra. Traslada antes las rutas de esa zona que la rodean.`;
 }

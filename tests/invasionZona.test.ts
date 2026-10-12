@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { detalleInvasion, mensajeInvasion, mensajeInvasionTraslado, motivoInvasion } from "../src/utils/invasionZona.ts";
+import { detalleInvasion, mensajeCobertura, mensajeCoberturaTraslado, mensajeInvasion, mensajeInvasionTraslado, motivoCobertura, motivoInvasion } from "../src/utils/invasionZona.ts";
 import type { ConflictoRuta } from "../src/types/index.ts";
 
 const invasion = (c: Partial<ConflictoRuta>): ConflictoRuta => ({
@@ -41,5 +41,30 @@ test("invasión en un traslado: sin rutas trasladables no hay sugerencia ni se p
   assert.equal(
     mensajeInvasionTraslado("ZN", [invasion({ codigo_ruta: "C-1", codigo_zona: "ZC", trasladable: false })]),
     "La zona ZN pasaría a cubrir rutas de otra zona. Cubriría C-1 (zona ZC)."
+  );
+});
+
+const cobertura = (c: Partial<ConflictoRuta>): ConflictoRuta => ({
+  tipo: "cobertura", id: null, codigo_ruta: null, codigo_zona: "ZS", area_m2: 10, geojson: null, fuera_de_alcance: false, trasladable: false, ...c,
+});
+
+test("cobertura: nombra la zona cuyo contorno cubriría la ruta y pide ajustar el polígono", () => {
+  assert.equal(
+    mensajeCobertura([cobertura({})]),
+    "La ruta quedaría dentro del contorno de la zona ZS, y una zona no puede cubrir rutas de otra. Ajusta el polígono."
+  );
+});
+
+test("cobertura: varias zonas se listan y una fuera del alcance no revela su código", () => {
+  assert.equal(
+    motivoCobertura([cobertura({}), cobertura({ codigo_zona: "ZN" }), cobertura({ codigo_zona: null, fuera_de_alcance: true })]),
+    "La ruta quedaría dentro del contorno de las zonas ZS, ZN y otra zona fuera de tus zonas, y una zona no puede cubrir rutas de otra."
+  );
+});
+
+test("cobertura en un traslado: la zona de origen la seguiría cubriendo", () => {
+  assert.equal(
+    mensajeCoberturaTraslado([cobertura({ codigo_zona: "ZG" })]),
+    "El contorno de la zona ZG seguiría cubriendo la ruta tras el traslado, y una zona no puede cubrir rutas de otra. Traslada antes las rutas de esa zona que la rodean."
   );
 });

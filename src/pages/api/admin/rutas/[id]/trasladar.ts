@@ -3,7 +3,7 @@ import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
 import { obtenerRuta, trasladarRuta } from '@/lib/rutas';
 import { resolverContextoRutas } from '@/lib/rutasApi';
 import { alcanceDeRutas } from '@/utils/rutaScope';
-import { mensajeInvasionTraslado } from '@/utils/invasionZona';
+import { mensajeCoberturaTraslado, mensajeInvasionTraslado } from '@/utils/invasionZona';
 import { logger } from '@/lib/logger';
 
 // Traslado de ruta entre zonas (CU-06): Gerencia y Fiscalizador; Supervisor no puede trasladar.
@@ -59,6 +59,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // Regla de no invasión (ADR-002 D7): la envolvente de la zona destino cubriría rutas de otras zonas
           return res.status(409).json({
             error: mensajeInvasionTraslado(zonaDestino.codigo_zona, resultado.conflictos ?? []),
+            conflictos: resultado.conflictos ?? [],
+          });
+        case 'cobertura':
+          // La envolvente de la zona de origen, sin la ruta, la seguiría cubriendo (ADR-002 D7 ampliada)
+          return res.status(409).json({
+            error: mensajeCoberturaTraslado(resultado.conflictos ?? []),
             conflictos: resultado.conflictos ?? [],
           });
         case 'duplicado':
