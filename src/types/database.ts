@@ -491,6 +491,10 @@ export type Database = {
         }
         Returns: Json
       }
+      ruta_trasladar: {
+        Args: { p_id: number; p_id_zona_destino: number }
+        Returns: Json
+      }
       rutas_exportar: {
         Args: { p_id_ruta?: number; p_ids_zona: number[] }
         Returns: {

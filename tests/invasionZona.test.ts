@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { detalleInvasion, mensajeInvasion, motivoInvasion } from "../src/utils/invasionZona.ts";
+import { detalleInvasion, mensajeInvasion, mensajeInvasionTraslado, motivoInvasion } from "../src/utils/invasionZona.ts";
 import type { ConflictoRuta } from "../src/types/index.ts";
 
 const invasion = (c: Partial<ConflictoRuta>): ConflictoRuta => ({
@@ -28,4 +28,11 @@ test("invasión: una ruta fuera del alcance no revela su código ni se sugiere t
 
 test("invasión: el mensaje completo une motivo y detalle", () => {
   assert.equal(mensajeInvasion("ZN", [invasion({})]), "La zona ZN pasaría a cubrir rutas de otra zona. Cubriría R-S1 (zona ZS). Ajusta el polígono o traslada R-S1 a la zona ZN.");
+});
+
+test("invasión en un traslado: lista las rutas cubiertas sin sugerir ajustar el polígono", () => {
+  assert.equal(
+    mensajeInvasionTraslado("ZN", [invasion({}), invasion({ id: null, codigo_ruta: null, codigo_zona: null, fuera_de_alcance: true, trasladable: false })]),
+    "La zona ZN pasaría a cubrir rutas de otra zona. Cubriría R-S1 (zona ZS) y otra ruta fuera de tus zonas."
+  );
 });

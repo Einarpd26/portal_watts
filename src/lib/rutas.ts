@@ -253,13 +253,30 @@ export async function guardarRuta(
   };
 }
 
-/** Traslado de zona (CU-06): actualiza id_zona sin tocar el polígono. RN-05 (eliminar
- *  planificacion_rutas vigente) se aplica en CU-09 / Ciclo 3 cuando esa tabla exista. */
-export async function trasladarRuta(id: number, idZonaDestino: number): Promise<{ ok: true } | { ok: false; error: 'error' }> {
-  const { error } = await createAdminClient()
-    .from('rutas')
-    .update({ id_zona: idZonaDestino })
-    .eq('id', id);
-  if (error) return { ok: false, error: 'error' };
-  return { ok: true };
+export type TrasladoRuta =
+  | { ok: true }
+  | { ok: false; error: RutaError; conflictos?: ConflictoRuta[] };
+
+/**
+ * Traslado de zona (CU-06): actualiza id_zona sin tocar el polígono. La base valida que la
+ * envolvente de la zona destino no pase a cubrir rutas de otras zonas (ADR-002 D7), bajo el mismo
+ * bloqueo que el guardado. RN-05 (eliminar planificacion_rutas vigente) se aplica en CU-09 /
+ * Ciclo 3 cuando esa tabla exista.
+ */
+export async function trasladarRuta(
+  id: number,
+  idZonaDestino: number,
+  idsZonaEnAlcance: Set<number>
+): Promise<TrasladoRuta> {
+  const { data, error } = await createAdminClient().rpc('ruta_trasladar', {
+    p_id: id,
+    p_id_zona_destino: idZonaDestino,
+  });
+  if (error || !esObjeto(data)) return { ok: false, error: 'error' };
+  if (data.ok === true) return { ok: true };
+  return {
+    ok: false,
+    error: data.error as RutaError,
+    conflictos: interpretarConflictos(data.invasiones, idsZonaEnAlcance, 'invasion'),
+  };
 }

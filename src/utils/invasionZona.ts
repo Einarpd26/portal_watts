@@ -10,12 +10,23 @@ export function motivoInvasion(codigoZona: string): string {
   return `La zona ${codigoZona} pasaría a cubrir rutas de otra zona.`;
 }
 
-/** Qué rutas cubriría y qué hacer: ajustar el polígono o trasladar las rutas que se puedan (CU-06) */
-export function detalleInvasion(codigoZona: string, invasiones: ConflictoRuta[]): string {
+/** Rutas que la zona cubriría; las de fuera del alcance se cuentan sin revelar su código */
+function rutasCubiertas(invasiones: ConflictoRuta[]) {
   const propias = invasiones.filter((i) => !i.fuera_de_alcance && i.codigo_ruta);
   const ajenas = invasiones.length - propias.length;
   const cubiertas = propias.map((i) => (i.codigo_zona ? `${i.codigo_ruta} (zona ${i.codigo_zona})` : `${i.codigo_ruta}`));
   if (ajenas > 0) cubiertas.push(ajenas === 1 ? 'otra ruta fuera de tus zonas' : `${ajenas} rutas fuera de tus zonas`);
+  return { propias, cubiertas };
+}
+
+/** Rechazo de un traslado: no sugiere ajustar el polígono, que en un traslado no cambia */
+export function mensajeInvasionTraslado(codigoZona: string, invasiones: ConflictoRuta[]): string {
+  return `${motivoInvasion(codigoZona)} Cubriría ${lista(rutasCubiertas(invasiones).cubiertas)}.`;
+}
+
+/** Qué rutas cubriría y qué hacer: ajustar el polígono o trasladar las rutas que se puedan (CU-06) */
+export function detalleInvasion(codigoZona: string, invasiones: ConflictoRuta[]): string {
+  const { propias, cubiertas } = rutasCubiertas(invasiones);
 
   const trasladables = propias.filter((i) => i.trasladable).map((i) => i.codigo_ruta as string);
   const sugerencia =

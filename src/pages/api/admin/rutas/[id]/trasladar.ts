@@ -3,6 +3,7 @@ import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
 import { obtenerRuta, trasladarRuta } from '@/lib/rutas';
 import { resolverContextoRutas } from '@/lib/rutasApi';
 import { alcanceDeRutas } from '@/utils/rutaScope';
+import { mensajeInvasionTraslado } from '@/utils/invasionZona';
 import { logger } from '@/lib/logger';
 
 // Traslado de ruta entre zonas (CU-06): Gerencia y Fiscalizador; Supervisor no puede trasladar.
@@ -51,9 +52,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'No se puede trasladar una ruta a una zona de otra sucursal.' });
     }
 
-    const resultado = await trasladarRuta(id, id_zona_destino);
+    const resultado = await trasladarRuta(id, id_zona_destino, idsZona);
     if (!resultado.ok) {
-      return res.status(500).json({ error: 'No se pudo realizar el traslado.' });
+      switch (resultado.error) {
+        case 'invasion':
+          // Regla de no invasión (ADR-002 D7): la envolvente de la zona destino cubriría rutas de otras zonas
+          return res.status(409).json({
+            error: mensajeInvasionTraslado(zonaDestino.codigo_zona, resultado.conflictos ?? []),
+            conflictos: resultado.conflictos ?? [],
+          });
+        case 'duplicado':
+          return res.status(409).json({ error: 'La zona de destino ya tiene una ruta con ese código.' });
+        case 'no_encontrada':
+          return res.status(404).json({ error: 'La ruta no existe.' });
+        case 'zona_invalida':
+          return res.status(400).json({ error: 'La zona de destino no existe.' });
+        default:
+          return res.status(500).json({ error: 'No se pudo realizar el traslado.' });
+      }
     }
 
     const zonaOrigen = zonas.find((z) => z.id === ruta.data.id_zona);

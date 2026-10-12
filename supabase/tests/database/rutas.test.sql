@@ -3,7 +3,7 @@
 -- y rutas_exportar y zonas_contorno (respaldo con geometría completa y contorno derivado, ADR-002 D6),
 -- y la envolvente de zona con su regla de no invasión (ADR-002 D7).
 BEGIN;
-SELECT plan(29);
+SELECT plan(34);
 
 -- Caja contigua a R-N4 (que ocupa x -63.17..-63.16): solo comparten borde
 SELECT is(
@@ -110,6 +110,29 @@ SELECT is(
   public.ruta_guardar((SELECT id FROM public.zonas WHERE codigo_zona = 'TA'), 'T-A2', 'A2', NULL, NULL,
     '{"type":"Polygon","coordinates":[[[-59.97,-15.01],[-59.96,-15.01],[-59.96,-15.0],[-59.97,-15.0],[-59.97,-15.01]]]}') ->> 'error',
   'invasion', 'guardar una ruta cuya zona invadiría otra ruta se rechaza');
+
+-- Traslado (CU-06): la zona destino también debe respetar la regla de no invasión.
+-- T-E1 (zona TB) ocupa la misma caja que T-A2; llevarla a TA haría que TA cubra T-B1.
+INSERT INTO public.rutas (codigo_ruta, ruta, localizacion, id_zona)
+SELECT 'T-E1', 'E1', ST_MakeEnvelope(-59.97, -15.01, -59.96, -15.00, 4326), id FROM public.zonas WHERE codigo_zona = 'TB';
+
+CREATE TEMP TABLE traslado_a AS
+SELECT public.ruta_trasladar((SELECT id FROM public.rutas WHERE codigo_ruta = 'T-E1'),
+                             (SELECT id FROM public.zonas WHERE codigo_zona = 'TA')) AS r;
+SELECT is((SELECT r ->> 'error' FROM traslado_a), 'invasion', 'trasladar a una zona que invadiría otra ruta se rechaza');
+SELECT is((SELECT r -> 'invasiones' -> 0 ->> 'codigo_ruta' FROM traslado_a), 'T-B1', 'el traslado rechazado informa la ruta cubierta');
+SELECT is(
+  (SELECT z.codigo_zona FROM public.rutas r JOIN public.zonas z ON z.id = r.id_zona WHERE r.codigo_ruta = 'T-E1'),
+  'TB', 'un traslado rechazado deja la ruta en su zona');
+SELECT is(
+  (public.ruta_trasladar((SELECT id FROM public.rutas WHERE codigo_ruta = 'T-E1'),
+                         (SELECT id FROM public.zonas WHERE codigo_zona = 'TC')) ->> 'ok')::boolean,
+  true, 'trasladar a una zona sin invasiones nuevas se permite');
+SELECT is(
+  (SELECT z.codigo_zona FROM public.rutas r JOIN public.zonas z ON z.id = r.id_zona WHERE r.codigo_ruta = 'T-E1'),
+  'TC', 'el traslado permitido cambia la zona de la ruta');
+-- La caja queda libre para las pruebas siguientes
+DELETE FROM public.rutas WHERE codigo_ruta = 'T-E1';
 
 -- Si el polígono pisa la ruta, es una superposición y no se repite como invasión
 SELECT is(
