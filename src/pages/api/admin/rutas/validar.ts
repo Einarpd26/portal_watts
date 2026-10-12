@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { evaluarRuta, obtenerRuta } from '@/lib/rutas';
 import { codigoDeZona, geoJsonComoTexto, resolverContextoRutas } from '@/lib/rutasApi';
-import { descripcionSuperposicion, mensajeCobertura, motivoInvasion, revisionDeZonasAjenas } from '@/utils/invasionZona';
+import { mensajeCobertura, motivoInvasion } from '@/utils/invasionZona';
 import { interpretarGeoJson } from '@/utils/rutaValidation';
 import { logger } from '@/lib/logger';
 
@@ -63,8 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
     // La superposición se informa primero: es del polígono mismo, no de su zona
-    const superposiciones = e.conflictos.filter((c) => c.tipo === 'superposicion');
-    const superpone = superposiciones.length > 0;
+    const superpone = e.conflictos.some((c) => c.tipo === 'superposicion');
     const invasiones = e.conflictos.filter((c) => c.tipo === 'invasion');
     const coberturas = e.conflictos.filter((c) => c.tipo === 'cobertura');
     const invade = !superpone && invasiones.length > 0;
@@ -72,9 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({
       valida: e.conflictos.length === 0,
       motivo: superpone
-        ? `La ruta se superpone con ${descripcionSuperposicion(superposiciones)}.${
-            revisionDeZonasAjenas(superposiciones) ? ` ${revisionDeZonasAjenas(superposiciones)}` : ''
-          }`
+        ? 'La ruta se superpone con otra ruta existente.'
         : invade && idZona !== null
           ? motivoInvasion(codigoDeZona(zonas, idZona))
           : cubierta

@@ -11,12 +11,18 @@ export function motivoInvasion(codigoZona: string): string {
   return `La zona ${codigoZona} pasaría a cubrir rutas de otra zona.`;
 }
 
-/** "R-S1 (zona ZS)" para una ruta visible; "otra ruta de la zona ZC (fuera de tus zonas)" para una ajena */
+/** "R-S1 (zona ZS)" para una ruta propia; "R-N1 (zona ZN, fuera de tus zonas)" para una ajena */
 function descripcionesDeRutas(conflictos: ConflictoRuta[]): string[] {
-  const propias = conflictos.filter((c) => !c.fuera_de_alcance && c.codigo_ruta);
-  const descripciones = propias.map((c) => (c.codigo_zona ? `${c.codigo_ruta} (zona ${c.codigo_zona})` : `${c.codigo_ruta}`));
+  const conCodigo = conflictos.filter((c) => c.codigo_ruta);
+  const descripciones = conCodigo.map((c) => {
+    const zona = c.codigo_zona ? `zona ${c.codigo_zona}` : '';
+    const ajena = c.fuera_de_alcance ? 'fuera de tus zonas' : '';
+    const detalle = [zona, ajena].filter(Boolean).join(', ');
+    return detalle ? `${c.codigo_ruta} (${detalle})` : `${c.codigo_ruta}`;
+  });
+  // Sin código (por compatibilidad): se agrupan por zona
   const porZona = new Map<string, number>();
-  for (const c of conflictos.filter((x) => x.fuera_de_alcance || !x.codigo_ruta)) {
+  for (const c of conflictos.filter((x) => !x.codigo_ruta)) {
     const zona = c.codigo_zona ?? '';
     porZona.set(zona, (porZona.get(zona) ?? 0) + 1);
   }

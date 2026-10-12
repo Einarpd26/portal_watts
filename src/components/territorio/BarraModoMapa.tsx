@@ -4,7 +4,7 @@ import { useRef } from 'react';
 import Button from '@/components/ui/Button';
 import { cn } from '@/utils/cn';
 import { formatoArea, type EstadoPoligono } from '@/utils/estadoPoligono';
-import { descripcionSuperposicion, detalleInvasion } from '@/utils/invasionZona';
+import { descripcionSuperposicion, detalleInvasion, revisionDeZonasAjenas } from '@/utils/invasionZona';
 
 interface BarraModoMapaProps {
   estado: EstadoPoligono;
@@ -80,7 +80,9 @@ export function BarraModoMapa({
       // Las invasiones solo cuentan si no hay superposición: primero se corrige el polígono
       const invasiones = superposiciones.length === 0 ? estado.conflictos.filter((c) => c.tipo === 'invasion') : [];
       detalle = [
-        superposiciones.length > 0 ? `En conflicto con ${descripcionSuperposicion(superposiciones)} (en ámbar).` : null,
+        superposiciones.length > 0
+          ? `En conflicto con ${descripcionSuperposicion(superposiciones)} (en ámbar). ${revisionDeZonasAjenas(superposiciones)}`.trim()
+          : null,
         invasiones.length > 0 ? detalleInvasion(codigoZona, invasiones) : null,
         estado.ajustable ? 'Ajusta los vértices para resolverlo.' : null,
       ]

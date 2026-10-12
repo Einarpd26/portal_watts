@@ -76,7 +76,7 @@ test("cobertura en un traslado: la zona de origen la seguiría cubriendo", () =>
   );
 });
 
-test("invasión: una ruta fuera del alcance revela la zona (no el código) y se pide revisarla", () => {
+test("invasión: una ruta fuera del alcance sin código se agrupa por zona y se pide revisarla", () => {
   const ajena = invasion({ id: null, codigo_ruta: null, codigo_zona: "ZC", fuera_de_alcance: true, trasladable: false });
   assert.equal(
     detalleInvasion("ZN", [ajena]),
@@ -93,4 +93,17 @@ test("superposición: lista las rutas visibles y la zona de las que están fuera
   assert.equal(descripcionSuperposicion([invasion({ tipo: "superposicion" }), ajena]), "R-S1 (zona ZS) y otra ruta de la zona ZC (fuera de tus zonas)");
   assert.equal(revisionDeZonasAjenas([ajena]), "Pide a la Gerencia o al Fiscalizador que revisen la zona ZC.");
   assert.equal(revisionDeZonasAjenas([invasion({ tipo: "superposicion" })]), "");
+});
+
+test("invasión: una ruta fuera del alcance se muestra con su código y su zona, y se pide revisar la zona", () => {
+  const ajena = invasion({ codigo_ruta: "R-N1", codigo_zona: "ZN", fuera_de_alcance: true, trasladable: false });
+  assert.equal(
+    detalleInvasion("ZS", [ajena]),
+    "Cubriría R-N1 (zona ZN, fuera de tus zonas). Ajusta el polígono. Pide a la Gerencia o al Fiscalizador que revisen la zona ZN."
+  );
+});
+
+test("superposición: la ruta fuera del alcance se muestra con su código y su zona", () => {
+  const ajena = invasion({ tipo: "superposicion", codigo_ruta: "R-N1", codigo_zona: "ZN", fuera_de_alcance: true, trasladable: false });
+  assert.equal(descripcionSuperposicion([ajena]), "R-N1 (zona ZN, fuera de tus zonas)");
 });

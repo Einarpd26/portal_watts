@@ -248,7 +248,7 @@ export interface ConflictoRuta {
   tipo: 'superposicion' | 'invasion' | 'cobertura';
   id: number | null;
   codigo_ruta: string | null;
-  /** Zona de la ruta en conflicto (solo si está en el alcance de quien opera) */
+  /** Zona de la ruta en conflicto */
   codigo_zona: string | null;
   area_m2: number;
   geojson: PoligonoRuta | null;

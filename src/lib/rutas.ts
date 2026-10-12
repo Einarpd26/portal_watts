@@ -146,10 +146,10 @@ export async function obtenerRuta(id: number): Promise<RutaResultado<RutaBasica>
 }
 
 /**
- * Interpreta los conflictos que devuelve la base. Una ruta ajena al alcance del solicitante
- * se informa sin su código ni su polígono, pero con el código de su zona, para que sepa a quién
- * pedirle el espacio. Una
- * invasión es trasladable si la ruta está en el alcance y en la misma sucursal (ADR-002 D4 y D7).
+ * Interpreta los conflictos que devuelve la base. Una ruta ajena al alcance del solicitante se informa
+ * con su código, su zona y su polígono (para que vea hasta dónde llegan sus límites y a quién pedirle el
+ * espacio), pero marcada `fuera_de_alcance`: no puede editarla ni trasladarla. Una invasión es
+ * trasladable si la ruta está en el alcance y en la misma sucursal (ADR-002 D4 y D7).
  */
 function interpretarConflictos(
   crudos: unknown,
@@ -157,30 +157,19 @@ function interpretarConflictos(
   tipo: ConflictoRuta['tipo']
 ): ConflictoRuta[] {
   if (!Array.isArray(crudos)) return [];
-  return (crudos as FilaConflicto[]).map((c) =>
-    idsZonaEnAlcance.has(c.id_zona)
-      ? {
-          tipo,
-          id: c.id,
-          codigo_ruta: c.codigo_ruta,
-          codigo_zona: c.codigo_zona ?? null,
-          area_m2: c.area_m2,
-          geojson: c.geojson,
-          fuera_de_alcance: false,
-          trasladable: tipo === 'invasion' && c.misma_sucursal === true,
-        }
-      : {
-          tipo,
-          id: null,
-          codigo_ruta: null,
-          // La zona sí se informa: quien opera debe saber a quién pedirle el espacio
-          codigo_zona: c.codigo_zona ?? null,
-          area_m2: c.area_m2,
-          geojson: null,
-          fuera_de_alcance: true,
-          trasladable: false,
-        }
-  );
+  return (crudos as FilaConflicto[]).map((c) => {
+    const enAlcance = idsZonaEnAlcance.has(c.id_zona);
+    return {
+      tipo,
+      id: c.id,
+      codigo_ruta: c.codigo_ruta,
+      codigo_zona: c.codigo_zona ?? null,
+      area_m2: c.area_m2,
+      geojson: c.geojson,
+      fuera_de_alcance: !enAlcance,
+      trasladable: enAlcance && tipo === 'invasion' && c.misma_sucursal === true,
+    };
+  });
 }
 
 /**
