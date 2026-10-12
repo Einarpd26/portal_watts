@@ -11,6 +11,8 @@ interface TarjetaRutaProps {
   onEditarPoligono: () => void;
   onEditarDatos: () => void;
   onExportar: () => void;
+  /** Ausente si quien opera no puede trasladar rutas (el Supervisor, CU-06) */
+  onTrasladar?: () => void;
   onCerrar: () => void;
 }
 
@@ -26,6 +28,7 @@ export function TarjetaRuta({
   onEditarPoligono,
   onEditarDatos,
   onExportar,
+  onTrasladar,
   onCerrar,
 }: TarjetaRutaProps) {
   return (
@@ -68,6 +71,11 @@ export function TarjetaRuta({
         <Button variant="secondary" size="sm" onClick={onExportar} disabled={isExportando}>
           Exportar
         </Button>
+        {onTrasladar && (
+          <Button variant="secondary" size="sm" onClick={onTrasladar}>
+            Trasladar
+          </Button>
+        )}
       </div>
     </article>
   );

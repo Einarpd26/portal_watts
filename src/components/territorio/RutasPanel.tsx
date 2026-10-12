@@ -94,6 +94,7 @@ export function RutasPanel() {
         setVistaMovil('lista');
       }}
       onExportar={() => exportarRuta(rutaElegida)}
+      onTrasladar={puedeTraslado ? () => setTrasladoRuta(rutaElegida) : undefined}
       onCerrar={() => g.setSeleccionId(null)}
     />
   );

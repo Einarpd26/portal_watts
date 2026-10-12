@@ -19,6 +19,8 @@
 - [x] **T2 — API:** `src/pages/api/admin/rutas/[id]/trasladar.ts` (POST) — also promoted `[id].ts` → `[id]/index.ts`
 - [x] **T3 — Modal:** `src/components/territorio/TrasladarRutaModal.tsx`
 - [x] **T5 — Regla D7:** `ruta_trasladar` (SQL, migración 20261012000000) rechaza el traslado si la envolvente de la zona destino pasaría a cubrir rutas de otras zonas (409); `trasladarRuta` y `trasladar.ts` la usan
+- [x] **T6 — Tarjeta del mapa:** `onTrasladar` en `TarjetaRuta` (en escritorio las acciones viven en la tarjeta; el botón de la lista solo se ve en móvil)
+- [x] **T7 — Permiso:** `rutas:gestionar` para FISCALIZADOR (seed y migración 20261012010000); CU-06 lo define como actor
 - [x] **T4 — Wire:** `ListaRutas` + `RutasPanel` wired to modal + API; exposed `showToast`/`reload` from hook
 
 ## Acceptance criteria
