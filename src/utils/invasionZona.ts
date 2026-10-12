@@ -48,13 +48,10 @@ export function mensajeInvasion(codigoZona: string, invasiones: ConflictoRuta[])
   return `${motivoInvasion(codigoZona)} ${detalleInvasion(codigoZona, invasiones)}`;
 }
 
-/** Zonas cuya envolvente cubriría la ruta; las de fuera del alcance se cuentan sin revelar su código */
+/** Zonas cuya envolvente cubriría la ruta; las de fuera del alcance se marcan para saber a quién pedirle el espacio */
 function zonasCubridoras(coberturas: ConflictoRuta[]): string {
-  const visibles = coberturas.filter((c) => !c.fuera_de_alcance && c.codigo_zona).map((c) => c.codigo_zona as string);
-  const ajenas = coberturas.length - visibles.length;
-  const partes = [...visibles];
-  if (ajenas > 0) partes.push(ajenas === 1 ? 'otra zona fuera de tus zonas' : `${ajenas} zonas fuera de tus zonas`);
-  return partes.length === 1 && visibles.length === 1 ? `la zona ${partes[0]}` : `las zonas ${lista(partes)}`;
+  const nombres = coberturas.map((c) => `${c.codigo_zona ?? 'otra zona'}${c.fuera_de_alcance ? ' (fuera de tus zonas)' : ''}`);
+  return `${nombres.length === 1 ? 'la zona' : 'las zonas'} ${lista(nombres)}`;
 }
 
 /** Motivo breve: la ruta caería dentro del contorno de otra zona (alta o edición) */
@@ -62,9 +59,17 @@ export function motivoCobertura(coberturas: ConflictoRuta[]): string {
   return `La ruta quedaría dentro del contorno de ${zonasCubridoras(coberturas)}, y una zona no puede cubrir rutas de otra.`;
 }
 
-/** Rechazo de un alta o una edición por cobertura ajena (CU-05 A4): se corrige el polígono */
+/**
+ * Rechazo de un alta o una edición por cobertura ajena (CU-05 A4): se corrige el polígono o, si la zona
+ * cubridora no es de quien opera, se le pide a la Gerencia o al Fiscalizador que la modifique
+ */
 export function mensajeCobertura(coberturas: ConflictoRuta[]): string {
-  return `${motivoCobertura(coberturas)} Ajusta el polígono.`;
+  const ajenas = coberturas.filter((c) => c.fuera_de_alcance).map((c) => c.codigo_zona ?? 'esa zona');
+  const sugerencia =
+    ajenas.length > 0
+      ? `Ajusta el polígono o pide a la Gerencia o al Fiscalizador que modifiquen ${ajenas.length === 1 ? 'la zona' : 'las zonas'} ${lista(ajenas)}.`
+      : 'Ajusta el polígono.';
+  return `${motivoCobertura(coberturas)} ${sugerencia}`;
 }
 
 /** Rechazo de un traslado por cobertura (CU-06 A3): la zona de origen, sin la ruta, la seguiría cubriendo */

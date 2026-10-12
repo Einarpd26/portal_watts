@@ -182,24 +182,22 @@ function interpretarConflictos(
 }
 
 /**
- * Zonas ajenas cuya envolvente cubriría el polígono. Una zona fuera del alcance de quien opera se
- * informa sin código ni envolvente, igual que una ruta ajena.
+ * Zonas ajenas cuya envolvente cubriría el polígono. Se informan con su código y su envolvente aunque
+ * estén fuera del alcance de quien opera: el supervisor necesita saber a qué zona pedirle el espacio
+ * a la Gerencia o al Fiscalizador. `fuera_de_alcance` dice que no podrá modificarla él mismo.
  */
 function interpretarCoberturas(crudas: unknown, idsZonaEnAlcance: Set<number>): ConflictoRuta[] {
   if (!Array.isArray(crudas)) return [];
-  return (crudas as FilaCobertura[]).map((c) => {
-    const visible = idsZonaEnAlcance.has(c.id_zona);
-    return {
-      tipo: 'cobertura' as const,
-      id: null,
-      codigo_ruta: null,
-      codigo_zona: visible ? c.codigo_zona : null,
-      area_m2: c.area_m2,
-      geojson: visible ? c.geojson : null,
-      fuera_de_alcance: !visible,
-      trasladable: false,
-    };
-  });
+  return (crudas as FilaCobertura[]).map((c) => ({
+    tipo: 'cobertura' as const,
+    id: null,
+    codigo_ruta: null,
+    codigo_zona: c.codigo_zona,
+    area_m2: c.area_m2,
+    geojson: c.geojson,
+    fuera_de_alcance: !idsZonaEnAlcance.has(c.id_zona),
+    trasladable: false,
+  }));
 }
 
 /** Superposiciones primero (se resuelven en el polígono), luego invasiones y coberturas de envolvente */

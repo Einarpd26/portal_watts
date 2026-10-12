@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { detalleInvasion, mensajeCobertura, mensajeCoberturaTraslado, mensajeInvasion, mensajeInvasionTraslado, motivoCobertura, motivoInvasion } from "../src/utils/invasionZona.ts";
+import { detalleInvasion, mensajeCobertura, mensajeCoberturaTraslado, mensajeInvasion, mensajeInvasionTraslado, motivoInvasion } from "../src/utils/invasionZona.ts";
 import type { ConflictoRuta } from "../src/types/index.ts";
 
 const invasion = (c: Partial<ConflictoRuta>): ConflictoRuta => ({
@@ -55,10 +55,17 @@ test("cobertura: nombra la zona cuyo contorno cubriría la ruta y pide ajustar e
   );
 });
 
-test("cobertura: varias zonas se listan y una fuera del alcance no revela su código", () => {
+test("cobertura: una zona fuera del alcance se nombra y se pide a Gerencia o al Fiscalizador que la modifiquen", () => {
   assert.equal(
-    motivoCobertura([cobertura({}), cobertura({ codigo_zona: "ZN" }), cobertura({ codigo_zona: null, fuera_de_alcance: true })]),
-    "La ruta quedaría dentro del contorno de las zonas ZS, ZN y otra zona fuera de tus zonas, y una zona no puede cubrir rutas de otra."
+    mensajeCobertura([cobertura({ codigo_zona: "ZC", fuera_de_alcance: true })]),
+    "La ruta quedaría dentro del contorno de la zona ZC (fuera de tus zonas), y una zona no puede cubrir rutas de otra. Ajusta el polígono o pide a la Gerencia o al Fiscalizador que modifiquen la zona ZC."
+  );
+});
+
+test("cobertura: varias zonas se listan y solo se pide modificar las ajenas", () => {
+  assert.equal(
+    mensajeCobertura([cobertura({}), cobertura({ codigo_zona: "ZC", fuera_de_alcance: true })]),
+    "La ruta quedaría dentro del contorno de las zonas ZS y ZC (fuera de tus zonas), y una zona no puede cubrir rutas de otra. Ajusta el polígono o pide a la Gerencia o al Fiscalizador que modifiquen la zona ZC."
   );
 });
 
