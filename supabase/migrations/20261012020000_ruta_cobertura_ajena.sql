@@ -10,7 +10,7 @@
 
 -- 1. COBERTURAS AJENAS: zonas, distintas de `p_id_zona`, cuya envolvente cubriría `p_geom`.
 -- La envolvente de cada zona se calcula sin la ruta `p_excluir_id` (la que se reemplaza o traslada).
-CREATE OR REPLACE FUNCTION public.zona_coberturas_ajenas(p_id_zona bigint, p_geom geometry, p_excluir_id bigint DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.zona_coberturas_ajenas(p_id_zona bigint, p_geom extensions.geometry, p_excluir_id bigint DEFAULT NULL)
 RETURNS jsonb
 LANGUAGE plpgsql
 STABLE
@@ -58,7 +58,7 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.zona_coberturas_ajenas(bigint, geometry, bigint) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.zona_coberturas_ajenas(bigint, extensions.geometry, bigint) FROM PUBLIC, anon, authenticated;
 
 -- 2. EVALUAR: además de las invasiones, informa las coberturas ajenas
 CREATE OR REPLACE FUNCTION public.ruta_evaluar(p_geojson text, p_excluir_id bigint DEFAULT NULL, p_id_zona bigint DEFAULT NULL)

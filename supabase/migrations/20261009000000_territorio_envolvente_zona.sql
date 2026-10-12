@@ -10,8 +10,8 @@
 -- un polígono, pero puede cortar por dentro de una ruta. Unirla con las rutas garantiza que las
 -- cubra, y como cada ruta aporta sus vértices a la envolvente, el resultado es un único polígono.
 -- param_pctconvex = 0 es la envolvente más ajustada (1 equivale a la convexa).
-CREATE OR REPLACE FUNCTION public.zona_envolvente(p_rutas geometry)
-RETURNS geometry
+CREATE OR REPLACE FUNCTION public.zona_envolvente(p_rutas extensions.geometry)
+RETURNS extensions.geometry
 LANGUAGE plpgsql
 IMMUTABLE
 SET search_path = public, extensions
@@ -35,7 +35,7 @@ $$;
 -- se le agrega `p_geom` (sin la ruta `p_excluir_id`, que es la que se reemplaza). Se descartan las
 -- que la envolvente actual ya cubría (ADR-002 D7, punto 1). Se compara contra todas las zonas,
 -- como la regla de superposición; `misma_sucursal` dice si se puede sugerir el traslado (D4).
-CREATE OR REPLACE FUNCTION public.zona_invasiones_nuevas(p_id_zona bigint, p_geom geometry, p_excluir_id bigint DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.zona_invasiones_nuevas(p_id_zona bigint, p_geom extensions.geometry, p_excluir_id bigint DEFAULT NULL)
 RETURNS jsonb
 LANGUAGE plpgsql
 STABLE
@@ -237,8 +237,8 @@ AS $$
 $$;
 
 -- PostgreSQL concede EXECUTE a PUBLIC a toda función nueva (convención del proyecto: revocar por función)
-REVOKE EXECUTE ON FUNCTION public.zona_envolvente(geometry) FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.zona_invasiones_nuevas(bigint, geometry, bigint) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.zona_envolvente(extensions.geometry) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.zona_invasiones_nuevas(bigint, extensions.geometry, bigint) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.ruta_evaluar(text, bigint, bigint) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.ruta_guardar(bigint, text, text, bigint, text, text) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.zonas_contorno(bigint[], double precision) FROM PUBLIC, anon, authenticated;
