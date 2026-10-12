@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import Alert from '@/components/ui/Alert';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import type { RutaItem, ZonaDeRuta } from '@/types';
 
@@ -10,11 +11,13 @@ interface TrasladarRutaModalProps {
   ruta: RutaItem | null;
   zonas: ZonaDeRuta[];
   isSubmitting: boolean;
+  /** Motivo del rechazo del servidor; se muestra dentro del modal porque un aviso flotante quedaría detrás */
+  error?: string | null;
   onConfirm: (idZonaDestino: number) => void;
   onCancel: () => void;
 }
 
-export function TrasladarRutaModal({ ruta, zonas, isSubmitting, onConfirm, onCancel }: TrasladarRutaModalProps) {
+export function TrasladarRutaModal({ ruta, zonas, isSubmitting, error, onConfirm, onCancel }: TrasladarRutaModalProps) {
   const [idZonaDestino, setIdZonaDestino] = useState<number | null>(null);
 
   useEscapeKey(onCancel, ruta !== null && !isSubmitting);
@@ -64,6 +67,12 @@ export function TrasladarRutaModal({ ruta, zonas, isSubmitting, onConfirm, onCan
               </option>
             ))}
           </Select>
+        )}
+
+        {error && (
+          <div className="mt-4">
+            <Alert state="error">{error}</Alert>
+          </div>
         )}
 
         <div className="mt-6 flex justify-end gap-3">

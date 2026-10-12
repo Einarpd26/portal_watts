@@ -51,6 +51,8 @@ export function RutasPanel() {
   const [panelPlegado, setPanelPlegado] = useState(false);
   const [trasladoRuta, setTrasladoRuta] = useState<RutaItem | null>(null);
   const [isTrasladando, setIsTrasladando] = useState(false);
+  // El rechazo se muestra dentro del modal: el aviso flotante quedaría detrás de su fondo
+  const [errorTraslado, setErrorTraslado] = useState<string | null>(null);
 
   // Supervisors cannot transfer routes (CU-06 actors: Gerencia, Fiscalizador)
   const puedeTraslado = user ? alcanceDeRutas(user).tipo !== 'supervisor' : false;
@@ -73,6 +75,15 @@ export function RutasPanel() {
     evaluacion: g.evaluacion,
   });
 
+  const abrirTraslado = (ruta: RutaItem) => {
+    setErrorTraslado(null);
+    setTrasladoRuta(ruta);
+  };
+  const cerrarTraslado = () => {
+    setErrorTraslado(null);
+    setTrasladoRuta(null);
+  };
+
   const guardar = () => accion(g.submit(), 'guardar la ruta');
   const zonaFiltrada = g.zonas.find((z) => z.id === g.filtroZona);
   const exportarRuta = (r: RutaItem) => accion(g.exportar({ tipo: 'ruta', id: r.id }), 'exportar la ruta');
@@ -94,7 +105,7 @@ export function RutasPanel() {
         setVistaMovil('lista');
       }}
       onExportar={() => exportarRuta(rutaElegida)}
-      onTrasladar={puedeTraslado ? () => setTrasladoRuta(rutaElegida) : undefined}
+      onTrasladar={puedeTraslado ? () => abrirTraslado(rutaElegida) : undefined}
       onCerrar={() => g.setSeleccionId(null)}
     />
   );
@@ -102,6 +113,7 @@ export function RutasPanel() {
   const handleConfirmarTraslado = async (idZonaDestino: number) => {
     if (!trasladoRuta) return;
     setIsTrasladando(true);
+    setErrorTraslado(null);
     try {
       const res = await fetch(`/api/admin/rutas/${trasladoRuta.id}/trasladar`, {
         method: 'POST',
@@ -110,7 +122,7 @@ export function RutasPanel() {
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        g.showToast('error', data.error ?? 'No se pudo trasladar la ruta.');
+        setErrorTraslado(data.error ?? 'No se pudo trasladar la ruta.');
       } else {
         setTrasladoRuta(null);
         g.showToast('success', 'Ruta trasladada correctamente.');
@@ -118,7 +130,7 @@ export function RutasPanel() {
       }
     } catch (err: unknown) {
       logger.error('Error al trasladar ruta:', err);
-      g.showToast('error', 'Ocurrió un error inesperado.');
+      setErrorTraslado('Ocurrió un error inesperado.');
     } finally {
       setIsTrasladando(false);
     }
@@ -176,7 +188,7 @@ export function RutasPanel() {
             onEditar={g.openEditar}
             onExportar={exportarRuta}
             isExportando={g.isExportando}
-            onTrasladar={puedeTraslado ? setTrasladoRuta : undefined}
+            onTrasladar={puedeTraslado ? abrirTraslado : undefined}
           />
         )}
       </aside>
@@ -249,8 +261,9 @@ export function RutasPanel() {
         ruta={trasladoRuta}
         zonas={g.zonas}
         isSubmitting={isTrasladando}
+        error={errorTraslado}
         onConfirm={handleConfirmarTraslado}
-        onCancel={() => setTrasladoRuta(null)}
+        onCancel={cerrarTraslado}
       />
     </div>
   );
