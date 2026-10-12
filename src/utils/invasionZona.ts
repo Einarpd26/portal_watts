@@ -11,13 +11,44 @@ export function motivoInvasion(codigoZona: string): string {
   return `La zona ${codigoZona} pasaría a cubrir rutas de otra zona.`;
 }
 
+/** "R-S1 (zona ZS)" para una ruta visible; "otra ruta de la zona ZC (fuera de tus zonas)" para una ajena */
+function descripcionesDeRutas(conflictos: ConflictoRuta[]): string[] {
+  const propias = conflictos.filter((c) => !c.fuera_de_alcance && c.codigo_ruta);
+  const descripciones = propias.map((c) => (c.codigo_zona ? `${c.codigo_ruta} (zona ${c.codigo_zona})` : `${c.codigo_ruta}`));
+  const porZona = new Map<string, number>();
+  for (const c of conflictos.filter((x) => x.fuera_de_alcance || !x.codigo_ruta)) {
+    const zona = c.codigo_zona ?? '';
+    porZona.set(zona, (porZona.get(zona) ?? 0) + 1);
+  }
+  for (const [zona, n] of porZona) {
+    const sujeto = n === 1 ? 'otra ruta' : `${n} rutas`;
+    descripciones.push(zona ? `${sujeto} de la zona ${zona} (fuera de tus zonas)` : `${sujeto} fuera de tus zonas`);
+  }
+  return descripciones;
+}
+
+/** Pedido de revisión a Gerencia o al Fiscalizador por las zonas de las rutas fuera del alcance */
+function pedirRevision(conflictos: ConflictoRuta[]): string {
+  const zonas = [...new Set(conflictos.filter((c) => c.fuera_de_alcance && c.codigo_zona).map((c) => c.codigo_zona as string))];
+  return zonas.length > 0
+    ? `Pide a la Gerencia o al Fiscalizador que revisen ${zonas.length === 1 ? 'la zona' : 'las zonas'} ${lista(zonas)}.`
+    : '';
+}
+
 /** Rutas que la zona cubriría; las de fuera del alcance se cuentan sin revelar su código */
 function rutasCubiertas(invasiones: ConflictoRuta[]) {
   const propias = invasiones.filter((i) => !i.fuera_de_alcance && i.codigo_ruta);
-  const ajenas = invasiones.length - propias.length;
-  const cubiertas = propias.map((i) => (i.codigo_zona ? `${i.codigo_ruta} (zona ${i.codigo_zona})` : `${i.codigo_ruta}`));
-  if (ajenas > 0) cubiertas.push(ajenas === 1 ? 'otra ruta fuera de tus zonas' : `${ajenas} rutas fuera de tus zonas`);
-  return { propias, cubiertas };
+  return { propias, cubiertas: descripcionesDeRutas(invasiones) };
+}
+
+/** Rutas con las que se superpone el polígono (CU-05 A1), con la zona de las que están fuera del alcance */
+export function descripcionSuperposicion(conflictos: ConflictoRuta[]): string {
+  return lista(descripcionesDeRutas(conflictos));
+}
+
+/** Pedido final cuando algún conflicto es de una zona ajena; vacío si no hay ninguno */
+export function revisionDeZonasAjenas(conflictos: ConflictoRuta[]): string {
+  return pedirRevision(conflictos);
 }
 
 /**
@@ -28,7 +59,8 @@ export function mensajeInvasionTraslado(codigoZona: string, invasiones: Conflict
   const { propias, cubiertas } = rutasCubiertas(invasiones);
   const trasladables = propias.filter((i) => i.trasladable).map((i) => i.codigo_ruta as string);
   const sugerencia = trasladables.length > 0 ? ` Traslada primero ${lista(trasladables)} a la zona ${codigoZona}.` : '';
-  return `${motivoInvasion(codigoZona)} Cubriría ${lista(cubiertas)}.${sugerencia}`;
+  const revision = pedirRevision(invasiones);
+  return `${motivoInvasion(codigoZona)} Cubriría ${lista(cubiertas)}.${sugerencia}${revision ? ` ${revision}` : ''}`;
 }
 
 /** Qué rutas cubriría y qué hacer: ajustar el polígono o trasladar las rutas que se puedan (CU-06) */
@@ -40,7 +72,8 @@ export function detalleInvasion(codigoZona: string, invasiones: ConflictoRuta[])
     trasladables.length > 0
       ? `Ajusta el polígono o traslada ${lista(trasladables)} a la zona ${codigoZona}.`
       : 'Ajusta el polígono.';
-  return `Cubriría ${lista(cubiertas)}. ${sugerencia}`;
+  const revision = pedirRevision(invasiones);
+  return `Cubriría ${lista(cubiertas)}. ${sugerencia}${revision ? ` ${revision}` : ''}`;
 }
 
 /** Mensaje completo para un guardado rechazado (aviso sin vista previa) */

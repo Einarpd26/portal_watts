@@ -147,7 +147,8 @@ export async function obtenerRuta(id: number): Promise<RutaResultado<RutaBasica>
 
 /**
  * Interpreta los conflictos que devuelve la base. Una ruta ajena al alcance del solicitante
- * se informa sin código ni polígono: basta saber que existe para rechazar el guardado. Una
+ * se informa sin su código ni su polígono, pero con el código de su zona, para que sepa a quién
+ * pedirle el espacio. Una
  * invasión es trasladable si la ruta está en el alcance y en la misma sucursal (ADR-002 D4 y D7).
  */
 function interpretarConflictos(
@@ -172,7 +173,8 @@ function interpretarConflictos(
           tipo,
           id: null,
           codigo_ruta: null,
-          codigo_zona: null,
+          // La zona sí se informa: quien opera debe saber a quién pedirle el espacio
+          codigo_zona: c.codigo_zona ?? null,
           area_m2: c.area_m2,
           geojson: null,
           fuera_de_alcance: true,

@@ -86,15 +86,19 @@ BEGIN
         RETURN jsonb_build_object('ok', false, 'error', 'geometria_invalida', 'detalle', ST_IsValidReason(v_geom));
     END IF;
 
+    -- Se incluye el código de la zona: aunque la ruta esté fuera del alcance de quien opera, debe saber
+    -- a qué zona pedirle el espacio (la API oculta el código y el polígono de la ruta, no el de la zona)
     SELECT COALESCE(jsonb_agg(jsonb_build_object(
                'id', r.id,
                'codigo_ruta', r.codigo_ruta,
                'id_zona', r.id_zona,
+               'codigo_zona', z.codigo_zona,
                'area_m2', round(ST_Area(ST_Intersection(r.localizacion, v_geom)::geography)::numeric, 2),
                'geojson', ST_AsGeoJSON(ST_SimplifyPreserveTopology(r.localizacion, 0.00001))::jsonb
            ) ORDER BY r.codigo_ruta), '[]'::jsonb)
       INTO v_conflictos
       FROM public.rutas r
+      JOIN public.zonas z ON z.id = r.id_zona
      WHERE (p_excluir_id IS NULL OR r.id <> p_excluir_id)
        AND r.localizacion && v_geom
        AND ST_Relate(r.localizacion, v_geom, 'T********');

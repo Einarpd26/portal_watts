@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { detalleInvasion, mensajeCobertura, mensajeCoberturaTraslado, mensajeInvasion, mensajeInvasionTraslado, motivoInvasion } from "../src/utils/invasionZona.ts";
+import { descripcionSuperposicion, detalleInvasion, mensajeCobertura, mensajeCoberturaTraslado, mensajeInvasion, mensajeInvasionTraslado, motivoInvasion, revisionDeZonasAjenas } from "../src/utils/invasionZona.ts";
 import type { ConflictoRuta } from "../src/types/index.ts";
 
 const invasion = (c: Partial<ConflictoRuta>): ConflictoRuta => ({
@@ -74,4 +74,23 @@ test("cobertura en un traslado: la zona de origen la seguiría cubriendo", () =>
     mensajeCoberturaTraslado([cobertura({ codigo_zona: "ZG" })]),
     "El contorno de la zona ZG seguiría cubriendo la ruta tras el traslado, y una zona no puede cubrir rutas de otra. Traslada antes las rutas de esa zona que la rodean."
   );
+});
+
+test("invasión: una ruta fuera del alcance revela la zona (no el código) y se pide revisarla", () => {
+  const ajena = invasion({ id: null, codigo_ruta: null, codigo_zona: "ZC", fuera_de_alcance: true, trasladable: false });
+  assert.equal(
+    detalleInvasion("ZN", [ajena]),
+    "Cubriría otra ruta de la zona ZC (fuera de tus zonas). Ajusta el polígono. Pide a la Gerencia o al Fiscalizador que revisen la zona ZC."
+  );
+  assert.equal(
+    detalleInvasion("ZN", [ajena, ajena, invasion({})]),
+    "Cubriría R-S1 (zona ZS) y 2 rutas de la zona ZC (fuera de tus zonas). Ajusta el polígono o traslada R-S1 a la zona ZN. Pide a la Gerencia o al Fiscalizador que revisen la zona ZC."
+  );
+});
+
+test("superposición: lista las rutas visibles y la zona de las que están fuera del alcance", () => {
+  const ajena = invasion({ tipo: "superposicion", id: null, codigo_ruta: null, codigo_zona: "ZC", fuera_de_alcance: true, trasladable: false });
+  assert.equal(descripcionSuperposicion([invasion({ tipo: "superposicion" }), ajena]), "R-S1 (zona ZS) y otra ruta de la zona ZC (fuera de tus zonas)");
+  assert.equal(revisionDeZonasAjenas([ajena]), "Pide a la Gerencia o al Fiscalizador que revisen la zona ZC.");
+  assert.equal(revisionDeZonasAjenas([invasion({ tipo: "superposicion" })]), "");
 });
