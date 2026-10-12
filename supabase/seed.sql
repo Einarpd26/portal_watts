@@ -49,7 +49,8 @@ VALUES
             'personal:gestionar',
             'territorio:gestionar',
             'mapa:consultar',
-            'bitacora:consultar'
+            'bitacora:consultar',
+            'rutas:gestionar'
         ]
     ),
     (

@@ -2,7 +2,7 @@
 -- La regla de otorgamiento (puedeOtorgarAcceso) exige que quien otorga un rol posea todos sus
 -- permisos. Si un permiso se agrega a un rol y no a Gerencia, Gerencia deja de poder otorgar ese rol.
 BEGIN;
-SELECT plan(3);
+SELECT plan(4);
 
 SELECT is(
   (SELECT count(*)::int
@@ -16,6 +16,11 @@ SELECT is(
 SELECT ok(
   (SELECT permisos @> ARRAY['rutas:gestionar'] FROM public.roles WHERE codigo = 'SUPERVISOR'),
   'SUPERVISOR posee rutas:gestionar (ADR-002 D3)'
+);
+
+SELECT ok(
+  (SELECT permisos @> ARRAY['rutas:gestionar'] FROM public.roles WHERE codigo = 'FISCALIZADOR'),
+  'FISCALIZADOR posee rutas:gestionar (actor de CU-06; alcance por sucursal)'
 );
 
 SELECT ok(

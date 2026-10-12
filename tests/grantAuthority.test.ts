@@ -20,6 +20,7 @@ const PERMISOS_FISCALIZADOR = [
   "territorio:gestionar",
   "mapa:consultar",
   "bitacora:consultar",
+  "rutas:gestionar",
 ];
 const PERMISOS_VENDEDOR = ["mapa:consultar"];
 
@@ -116,7 +117,7 @@ test("Gerencia puede otorgar el rol SUPERVISOR (posee todos sus permisos, inclui
   assert.deepEqual(r, { ok: true });
 });
 
-test("Fiscalizador NO puede otorgar el rol SUPERVISOR (no posee planificacion:asignar ni rutas:gestionar)", () => {
+test("Fiscalizador NO puede otorgar el rol SUPERVISOR (no posee planificacion:asignar)", () => {
   const r = puedeOtorgarAcceso(fiscalizadorScz, {
     alcance_tipo: "SUCURSAL",
     id_sucursal: 1,
