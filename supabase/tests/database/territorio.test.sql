@@ -1,7 +1,7 @@
 -- Pruebas de la base de datos del Módulo 2 (zonas y rutas). Ejecutar con: npx supabase test db
 -- Reglas verificadas: ADR-002 (no superposición por interiores), RN-01, restricciones y privilegios.
 BEGIN;
-SELECT plan(22);
+SELECT plan(29);
 
 SELECT has_extension('extensions', 'postgis', 'PostGIS está instalado');
 SELECT has_table('public', 'zonas', 'existe zonas');
@@ -74,6 +74,61 @@ SELECT is(
   (SELECT count(*)::int FROM public.supervisor_zonas sz WHERE NOT EXISTS (SELECT 1 FROM public.zonas z WHERE z.id = sz.id_zona)),
   0,
   'al eliminar una zona se elimina su asignación de supervisor'
+);
+
+-- Corrección de la sucursal de una zona vacía (CU-04 A4)
+INSERT INTO public.zonas (codigo_zona, zona, id_sucursal)
+SELECT 'ZT', 'Zona de prueba', id FROM public.sucursales WHERE nombre_sucursal = 'Santa Cruz';
+INSERT INTO public.zonas (codigo_zona, zona, id_sucursal)
+SELECT 'ZV', 'Zona con supervisor', id FROM public.sucursales WHERE nombre_sucursal = 'Santa Cruz';
+INSERT INTO public.supervisor_zonas (id_supervisor, id_zona)
+SELECT p.id, z.id FROM public.personas p, public.zonas z WHERE p.ci = '6394812' AND z.codigo_zona = 'ZV';
+
+SELECT is(
+  (SELECT public.zona_cambiar_sucursal(z.id, s.id, z.codigo_zona, 'Zona corregida', NULL, NULL)->>'ok'
+     FROM public.zonas z, public.sucursales s
+    WHERE z.codigo_zona = 'ZT' AND s.nombre_sucursal <> 'Santa Cruz' ORDER BY s.id LIMIT 1),
+  'true',
+  'una zona sin rutas ni supervisor cambia de sucursal'
+);
+SELECT ok(
+  (SELECT s.nombre_sucursal <> 'Santa Cruz' AND z.zona = 'Zona corregida'
+     FROM public.zonas z JOIN public.sucursales s ON s.id = z.id_sucursal WHERE z.codigo_zona = 'ZT'),
+  'la zona quedó en la otra sucursal y con los datos nuevos'
+);
+SELECT is(
+  (SELECT public.zona_cambiar_sucursal(z.id, s.id, z.codigo_zona, z.zona, NULL, NULL)->>'error'
+     FROM public.zonas z, public.sucursales s
+    WHERE z.codigo_zona = 'ZN' AND s.id <> z.id_sucursal ORDER BY s.id LIMIT 1),
+  'con_rutas',
+  'no cambia de sucursal una zona con rutas'
+);
+SELECT is(
+  (SELECT public.zona_cambiar_sucursal(z.id, s.id, z.codigo_zona, z.zona, NULL, NULL)->>'error'
+     FROM public.zonas z, public.sucursales s
+    WHERE z.codigo_zona = 'ZV' AND s.id <> z.id_sucursal ORDER BY s.id LIMIT 1),
+  'con_supervisor',
+  'no cambia de sucursal una zona con supervisor'
+);
+INSERT INTO public.zonas (codigo_zona, zona, id_sucursal)
+SELECT 'ZT', 'Zona repetida en origen', id FROM public.sucursales WHERE nombre_sucursal = 'Santa Cruz';
+SELECT is(
+  (SELECT public.zona_cambiar_sucursal(z.id, o.id_sucursal, z.codigo_zona, z.zona, NULL, NULL)->>'error'
+     FROM public.zonas z, public.zonas o
+    WHERE z.zona = 'Zona repetida en origen' AND o.codigo_zona = 'ZT' AND o.zona = 'Zona corregida'),
+  'duplicado',
+  'no cambia de sucursal si el código ya existe en la sucursal destino'
+);
+SELECT is(
+  (SELECT public.zona_cambiar_sucursal(z.id, -1, z.codigo_zona, z.zona, NULL, NULL)->>'error'
+     FROM public.zonas z WHERE z.codigo_zona = 'ZV'),
+  'sucursal_invalida',
+  'rechaza una sucursal inexistente'
+);
+SELECT is(
+  public.zona_cambiar_sucursal(-1, 1, 'ZZ', 'Inexistente', NULL, NULL)->>'error',
+  'no_encontrada',
+  'rechaza una zona inexistente'
 );
 
 -- Privilegios (ADR-001 §E, ADR-002 §3)
