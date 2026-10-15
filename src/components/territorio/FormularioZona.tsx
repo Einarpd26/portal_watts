@@ -113,7 +113,7 @@ export function FormularioZona({
             placeholder="Seleccionar sucursal"
             value={form.id_sucursal ?? ''}
             onChange={(e) => setForm({ ...form, id_sucursal: e.target.value ? Number(e.target.value) : null })}
-            error={errors.id_sucursal}
+            error={cambiaSucursal ? undefined : errors.id_sucursal}
             disabled={isSubmitting}
           >
             {sucursales.map((s) => (
@@ -124,8 +124,18 @@ export function FormularioZona({
           </Select>
         )}
 
+        <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-gray-500">Contorno</p>
+          <p className="text-sm text-gray-600">
+            Se calcula solo: es la figura que envuelve a las rutas de la zona. Se define al crear o trasladar rutas.
+          </p>
+        </div>
+      </div>
+
+      <div className="shrink-0 border-t border-gray-200">
+        {/* Al pie para que la confirmación se vea siempre, sin depender del desplazamiento del formulario */}
         {puedeCorregir && cambiaSucursal && editando && (
-          <div role="alert" className="rounded-input border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <div role="alert" className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <p>
               Vas a mover la zona de <strong>{editando.sucursal_nombre}</strong> a{' '}
               <strong>{sucursalActual?.nombre}</strong>. Úsalo solo para corregir un error de registro.
@@ -140,24 +150,17 @@ export function FormularioZona({
               />
               <span>Confirmo el cambio de sucursal</span>
             </label>
+            {errors.id_sucursal && <p className="mt-1 text-xs font-medium text-red-700">{errors.id_sucursal}</p>}
           </div>
         )}
-
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-gray-500">Contorno</p>
-          <p className="text-sm text-gray-600">
-            Se calcula solo: es la figura que envuelve a las rutas de la zona. Se define al crear o trasladar rutas.
-          </p>
+        <div className="flex justify-end gap-2 p-3">
+          <Button type="button" variant="secondary" onClick={onCancelar} disabled={isSubmitting}>
+            Cancelar
+          </Button>
+          <Button type="submit" isLoading={isSubmitting} disabled={isSubmitting}>
+            {editando ? 'Guardar cambios' : 'Crear zona'}
+          </Button>
         </div>
-      </div>
-
-      <div className="flex shrink-0 justify-end gap-2 border-t border-gray-200 p-3">
-        <Button type="button" variant="secondary" onClick={onCancelar} disabled={isSubmitting}>
-          Cancelar
-        </Button>
-        <Button type="submit" isLoading={isSubmitting} disabled={isSubmitting}>
-          {editando ? 'Guardar cambios' : 'Crear zona'}
-        </Button>
       </div>
     </form>
   );
