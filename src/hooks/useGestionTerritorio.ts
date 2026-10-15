@@ -24,6 +24,11 @@ export interface UseGestionTerritorioReturn {
   zonas: ZonaItem[];
   supervisores: SupervisorCandidato[];
   sucursales: SucursalOpcion[];
+  /** Opera con alcance global: puede corregir la sucursal de una zona vacía (CU-04 A4) */
+  alcanceGlobal: boolean;
+  /** Confirmación expresa del cambio de sucursal al editar */
+  confirmaCambioSucursal: boolean;
+  setConfirmaCambioSucursal: (confirma: boolean) => void;
   /** Rutas de las zonas visibles, como referencia en el mapa (solo lectura) */
   rutas: RutaItem[];
   /** Envolvente de cada zona con rutas (ADR-002 D7) */
@@ -61,6 +66,8 @@ export function useGestionTerritorio(): UseGestionTerritorioReturn {
   const [zonas, setZonas] = useState<ZonaItem[]>([]);
   const [supervisores, setSupervisores] = useState<SupervisorCandidato[]>([]);
   const [sucursales, setSucursales] = useState<SucursalOpcion[]>([]);
+  const [alcanceGlobal, setAlcanceGlobal] = useState(false);
+  const [confirmaCambioSucursal, setConfirmaCambioSucursal] = useState(false);
   const [rutas, setRutas] = useState<RutaItem[]>([]);
   const [contornos, setContornos] = useState<ContornoZona[]>([]);
   const [seleccionId, setSeleccionId] = useState<number | null>(null);
@@ -102,12 +109,14 @@ export function useGestionTerritorio(): UseGestionTerritorioReturn {
           zonas?: ZonaItem[];
           supervisores?: SupervisorCandidato[];
           sucursales?: SucursalOpcion[];
+          alcance_global?: boolean;
           rutas?: RutaItem[];
           contornos?: ContornoZona[];
         };
         setZonas(data.zonas ?? []);
         setSupervisores(data.supervisores ?? []);
         setSucursales(data.sucursales ?? []);
+        setAlcanceGlobal(data.alcance_global === true);
         setRutas(data.rutas ?? []);
         setContornos(data.contornos ?? []);
       } else {
@@ -149,6 +158,7 @@ export function useGestionTerritorio(): UseGestionTerritorioReturn {
     // Con una sola sucursal visible (alcance de sucursal) no hay nada que elegir
     setFormState({ ...FORM_VACIO, id_sucursal: sucursales.length === 1 ? sucursales[0].id : null });
     setFormErrors({});
+    setConfirmaCambioSucursal(false);
     setFormModal({ open: true, zona: null });
   }, [sucursales]);
 
@@ -161,6 +171,7 @@ export function useGestionTerritorio(): UseGestionTerritorioReturn {
       id_sucursal: zona.id_sucursal,
     });
     setFormErrors({});
+    setConfirmaCambioSucursal(false);
     setSeleccionId(zona.id);
     setFormModal({ open: true, zona });
   }, []);
@@ -175,19 +186,29 @@ export function useGestionTerritorio(): UseGestionTerritorioReturn {
       return;
     }
 
+    // Corregir la sucursal exige confirmación expresa (CU-04 A4)
+    const cambiaSucursal = editando !== null && validacion.data.id_sucursal !== editando.id_sucursal;
+    if (cambiaSucursal && !confirmaCambioSucursal) {
+      setFormErrors({ id_sucursal: 'Confirma el cambio de sucursal para guardar.' });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const res = await fetch(editando ? `/api/admin/zonas/${editando.id}` : '/api/admin/zonas', {
         method: editando ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(validacion.data),
+        body: JSON.stringify(cambiaSucursal ? { ...validacion.data, confirmar_cambio_sucursal: true } : validacion.data),
       });
       if (res.ok) {
         // La zona guardada queda elegida para verla en el mapa
         const { zona } = (await res.json()) as { zona?: { id: number } };
         closeForm();
         setSeleccionId(zona?.id ?? editando?.id ?? null);
-        showToast('success', editando ? 'Se actualizó la zona.' : 'Se creó la zona.');
+        showToast(
+          'success',
+          cambiaSucursal ? 'Se corrigió la sucursal de la zona.' : editando ? 'Se actualizó la zona.' : 'Se creó la zona.'
+        );
         await load();
       } else {
         showToast('error', await leerError(res, 'No se pudo guardar la zona.'));
@@ -198,7 +219,7 @@ export function useGestionTerritorio(): UseGestionTerritorioReturn {
     } finally {
       setIsSubmitting(false);
     }
-  }, [form, formModal.zona, closeForm, showToast, load, leerError]);
+  }, [form, formModal.zona, confirmaCambioSucursal, closeForm, showToast, load, leerError]);
 
   // ---- Baja
   const openEliminar = useCallback((zona: ZonaItem) => setDeleteTarget(zona), []);
@@ -260,7 +281,7 @@ export function useGestionTerritorio(): UseGestionTerritorioReturn {
   }, [supervisorTarget, supervisorSeleccion, showToast, load, leerError]);
 
   return {
-    zonas, supervisores, sucursales, rutas, contornos, seleccionId, setSeleccionId, isLoading, isSubmitting,
+    zonas, supervisores, sucursales, alcanceGlobal, confirmaCambioSucursal, setConfirmaCambioSucursal, rutas, contornos, seleccionId, setSeleccionId, isLoading, isSubmitting,
     formModal, form, setForm, formErrors, openCrear, openEditar, closeForm, submitForm,
     deleteTarget, openEliminar, closeEliminar, submitEliminar,
     supervisorTarget, supervisorSeleccion, setSupervisorSeleccion, openSupervisor, closeSupervisor, submitSupervisor,

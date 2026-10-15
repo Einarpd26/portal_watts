@@ -18,6 +18,14 @@ export function enAlcanceDeSucursal(
   return sucursalesDeLaPersona.some((id) => id === solicitante.id_sucursal);
 }
 
+/**
+ * ¿Opera con alcance global? Es el criterio de las facultades que no están acotadas a una
+ * sucursal (RN-03), en lugar de preguntar por el nombre de un rol.
+ */
+export function tieneAlcanceGlobal(solicitante: AlcanceSolicitante): boolean {
+  return solicitante.alcance_tipo !== 'SUCURSAL';
+}
+
 export type AlcanceListado =
   | { tipo: 'global' }
   | { tipo: 'sucursal'; id_sucursal: number }

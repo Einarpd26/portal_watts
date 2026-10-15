@@ -1,12 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
-import { actualizarZona, eliminarZona, obtenerZona } from '@/lib/zonas';
-import { enAlcanceDeSucursal } from '@/utils/sucursalScope';
+import { actualizarZona, cambiarSucursalZona, eliminarZona, obtenerZona } from '@/lib/zonas';
+import { MENSAJE_CORRECCION_SUCURSAL } from '@/utils/correccionSucursalZona';
+import { enAlcanceDeSucursal, tieneAlcanceGlobal } from '@/utils/sucursalScope';
 import { validarZona } from '@/utils/zonaValidation';
 import { logger } from '@/lib/logger';
 
-// Zonas comerciales (CU-04): edición y baja. Una zona no cambia de sucursal.
+// Zonas comerciales (CU-04): edición y baja. La sucursal solo se corrige por error de registro
+// (A4): con alcance global y con la zona sin rutas ni supervisor.
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'PATCH' && req.method !== 'DELETE') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -33,8 +35,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (req.method === 'PATCH') {
       const cuerpo = (req.body ?? {}) as Record<string, unknown>;
-      if (typeof cuerpo.id_sucursal === 'number' && cuerpo.id_sucursal !== zona.data.id_sucursal) {
-        return res.status(400).json({ error: 'Una zona no puede cambiar de sucursal.' });
+      const idSucursalSolicitada =
+        typeof cuerpo.id_sucursal === 'number' ? cuerpo.id_sucursal : zona.data.id_sucursal;
+      const cambiaSucursal = idSucursalSolicitada !== zona.data.id_sucursal;
+      if (cambiaSucursal && !tieneAlcanceGlobal(caller)) {
+        return res.status(403).json({ error: MENSAJE_CORRECCION_SUCURSAL.sin_permiso });
+      }
+      if (cambiaSucursal && cuerpo.confirmar_cambio_sucursal !== true) {
+        return res.status(400).json({ error: 'Confirma el cambio de sucursal para continuar.' });
       }
       const texto = (v: unknown) => (typeof v === 'string' ? v : '');
       const validacion = validarZona(
@@ -43,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           zona: texto(cuerpo.zona),
           descripcion_zona: texto(cuerpo.descripcion_zona),
           canal_venta: texto(cuerpo.canal_venta),
-          id_sucursal: zona.data.id_sucursal,
+          id_sucursal: idSucursalSolicitada,
         },
         { exigirSucursal: false }
       );
@@ -52,7 +60,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       const { codigo_zona, zona: nombre, descripcion_zona, canal_venta } = validacion.data;
-      const resultado = await actualizarZona(id, { codigo_zona, zona: nombre, descripcion_zona, canal_venta });
+      const datos = { codigo_zona, zona: nombre, descripcion_zona, canal_venta };
+
+      if (cambiaSucursal) {
+        const cambio = await cambiarSucursalZona(id, idSucursalSolicitada, datos);
+        if (!cambio.ok) {
+          const rechazo = {
+            con_rutas: { status: 409, error: MENSAJE_CORRECCION_SUCURSAL.con_rutas },
+            con_supervisor: { status: 409, error: MENSAJE_CORRECCION_SUCURSAL.con_supervisor },
+            duplicado: { status: 409, error: 'Ya existe una zona con ese código en la sucursal.' },
+            sucursal_invalida: { status: 400, error: 'La sucursal indicada no existe.' },
+            no_encontrada: { status: 404, error: 'La zona no existe.' },
+            error: { status: 500, error: 'No se pudo corregir la sucursal de la zona.' },
+          }[cambio.error];
+          return res.status(rechazo.status).json({ error: rechazo.error });
+        }
+
+        await registrarBitacoraDesdeSesion(
+          caller,
+          'TERRITORIO',
+          'EDITAR_ZONA',
+          `Se corrigió la sucursal de la zona ID ${id}: ${codigo_zona} "${nombre}" (sucursal ${cambio.data.anterior} → ${idSucursalSolicitada})`,
+          req,
+          { id, codigo_zona, id_sucursal_anterior: cambio.data.anterior, id_sucursal: idSucursalSolicitada }
+        );
+        return res.status(200).json({ zona: { id, codigo_zona, zona: nombre, id_sucursal: idSucursalSolicitada } });
+      }
+
+      const resultado = await actualizarZona(id, datos);
       if (!resultado.ok) {
         if (resultado.error === 'duplicado') {
           return res.status(409).json({ error: 'Ya existe una zona con ese código en la sucursal.' });

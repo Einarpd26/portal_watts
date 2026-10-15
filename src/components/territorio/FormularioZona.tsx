@@ -4,6 +4,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import type { SucursalOpcion, ZonaForm } from '@/hooks/useGestionTerritorio';
+import { estadoCorreccionSucursal, MENSAJE_CORRECCION_SUCURSAL } from '@/utils/correccionSucursalZona';
 import type { ZonaErrors } from '@/utils/zonaValidation';
 import type { ZonaItem } from '@/types';
 
@@ -13,6 +14,10 @@ interface FormularioZonaProps {
   setForm: (form: ZonaForm) => void;
   errors: ZonaErrors;
   sucursales: SucursalOpcion[];
+  /** Opera con alcance global: puede corregir la sucursal de una zona vacía (CU-04 A4) */
+  alcanceGlobal: boolean;
+  confirmaCambio: boolean;
+  setConfirmaCambio: (confirma: boolean) => void;
   isSubmitting: boolean;
   onGuardar: () => void;
   onCancelar: () => void;
@@ -28,11 +33,24 @@ export function FormularioZona({
   setForm,
   errors,
   sucursales,
+  alcanceGlobal,
+  confirmaCambio,
+  setConfirmaCambio,
   isSubmitting,
   onGuardar,
   onCancelar,
 }: FormularioZonaProps) {
   const sucursalActual = sucursales.find((s) => s.id === form.id_sucursal);
+  // La sucursal se corrige solo por error de registro: con alcance global y la zona sin rutas ni supervisor
+  const correccion = editando
+    ? estadoCorreccionSucursal({
+        alcanceGlobal,
+        totalRutas: editando.total_rutas,
+        tieneSupervisor: editando.supervisor !== null,
+      })
+    : null;
+  const puedeCorregir = correccion === 'editable' && sucursales.length > 1;
+  const cambiaSucursal = editando !== null && form.id_sucursal !== editando.id_sucursal;
 
   return (
     <form
@@ -80,12 +98,14 @@ export function FormularioZona({
           placeholder="Minorista"
         />
 
-        {editando || sucursales.length <= 1 ? (
-          // Una zona no cambia de sucursal; con una sola sucursal visible tampoco hay nada que elegir
+        {(editando && !puedeCorregir) || sucursales.length <= 1 ? (
+          // Con una sola sucursal visible no hay nada que elegir; si no se puede corregir, se explica el motivo
           <div>
             <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-gray-500">Sucursal</p>
             <p className="text-sm text-gray-900">{sucursalActual?.nombre ?? '—'}</p>
-            {editando && <p className="mt-0.5 text-xs text-gray-500">Una zona no puede cambiar de sucursal.</p>}
+            {correccion && correccion !== 'editable' && (
+              <p className="mt-0.5 text-xs text-gray-500">{MENSAJE_CORRECCION_SUCURSAL[correccion]}</p>
+            )}
           </div>
         ) : (
           <Select
@@ -93,7 +113,7 @@ export function FormularioZona({
             placeholder="Seleccionar sucursal"
             value={form.id_sucursal ?? ''}
             onChange={(e) => setForm({ ...form, id_sucursal: e.target.value ? Number(e.target.value) : null })}
-            error={errors.id_sucursal}
+            error={cambiaSucursal ? undefined : errors.id_sucursal}
             disabled={isSubmitting}
           >
             {sucursales.map((s) => (
@@ -112,13 +132,35 @@ export function FormularioZona({
         </div>
       </div>
 
-      <div className="flex shrink-0 justify-end gap-2 border-t border-gray-200 p-3">
-        <Button type="button" variant="secondary" onClick={onCancelar} disabled={isSubmitting}>
-          Cancelar
-        </Button>
-        <Button type="submit" isLoading={isSubmitting} disabled={isSubmitting}>
-          {editando ? 'Guardar cambios' : 'Crear zona'}
-        </Button>
+      <div className="shrink-0 border-t border-gray-200">
+        {/* Al pie para que la confirmación se vea siempre, sin depender del desplazamiento del formulario */}
+        {puedeCorregir && cambiaSucursal && editando && (
+          <div role="alert" className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p>
+              Vas a mover la zona de <strong>{editando.sucursal_nombre}</strong> a{' '}
+              <strong>{sucursalActual?.nombre}</strong>. Úsalo solo para corregir un error de registro.
+            </p>
+            <label className="mt-2 flex cursor-pointer items-start gap-2">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 accent-primary-600"
+                checked={confirmaCambio}
+                disabled={isSubmitting}
+                onChange={(e) => setConfirmaCambio(e.target.checked)}
+              />
+              <span>Confirmo el cambio de sucursal</span>
+            </label>
+            {errors.id_sucursal && <p className="mt-1 text-xs font-medium text-red-700">{errors.id_sucursal}</p>}
+          </div>
+        )}
+        <div className="flex justify-end gap-2 p-3">
+          <Button type="button" variant="secondary" onClick={onCancelar} disabled={isSubmitting}>
+            Cancelar
+          </Button>
+          <Button type="submit" isLoading={isSubmitting} disabled={isSubmitting}>
+            {editando ? 'Guardar cambios' : 'Crear zona'}
+          </Button>
+        </div>
       </div>
     </form>
   );

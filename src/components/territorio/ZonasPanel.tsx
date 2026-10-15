@@ -100,6 +100,9 @@ export function ZonasPanel() {
             setForm={g.setForm}
             errors={g.formErrors}
             sucursales={g.sucursales}
+            alcanceGlobal={g.alcanceGlobal}
+            confirmaCambio={g.confirmaCambioSucursal}
+            setConfirmaCambio={g.setConfirmaCambioSucursal}
             isSubmitting={g.isSubmitting}
             onGuardar={() => accion(g.submitForm(), 'guardar la zona')}
             onCancelar={g.closeForm}
