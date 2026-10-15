@@ -519,6 +519,21 @@ export type Database = {
           ruta: string
         }[]
       }
+      zona_cambiar_sucursal: {
+        Args: {
+          p_canal_venta?: string
+          p_codigo_zona: string
+          p_descripcion_zona?: string
+          p_id: number
+          p_id_sucursal: number
+          p_zona: string
+        }
+        Returns: Json
+      }
+      zona_coberturas_ajenas: {
+        Args: { p_excluir_id?: number; p_geom: unknown; p_id_zona: number }
+        Returns: Json
+      }
       zona_envolvente: { Args: { p_rutas: unknown }; Returns: unknown }
       zona_invasiones_nuevas: {
         Args: { p_excluir_id?: number; p_geom: unknown; p_id_zona: number }

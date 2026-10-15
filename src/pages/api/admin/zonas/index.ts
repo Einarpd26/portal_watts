@@ -3,7 +3,7 @@ import { requireCallerAuth } from '@/utils/requireCallerAuth';
 import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
 import { crearZona, listarSucursales, listarSupervisores, listarZonas } from '@/lib/zonas';
 import { contornosDeZonas, listarRutas } from '@/lib/rutas';
-import { alcanceDeListado, enAlcanceDeSucursal } from '@/utils/sucursalScope';
+import { alcanceDeListado, enAlcanceDeSucursal, tieneAlcanceGlobal } from '@/utils/sucursalScope';
 import { validarZona } from '@/utils/zonaValidation';
 import { logger } from '@/lib/logger';
 
@@ -43,6 +43,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         zonas: zonas.data,
         supervisores: supervisores.data,
         sucursales: sucursales.data,
+        // La pantalla decide con esto si ofrece corregir la sucursal (CU-04 A4); la API lo vuelve a validar
+        alcance_global: tieneAlcanceGlobal(caller),
         rutas: rutas.data,
         contornos: contornos.data,
       });

@@ -154,6 +154,41 @@ export async function actualizarZona(id: number, datos: CamposEditables): Promis
   return { ok: true, data };
 }
 
+export type CambioSucursalError =
+  | 'duplicado'
+  | 'sucursal_invalida'
+  | 'no_encontrada'
+  | 'con_rutas'
+  | 'con_supervisor'
+  | 'error';
+
+/**
+ * Corrige la sucursal de la zona junto con sus datos (CU-04 A4). La función de base de datos
+ * verifica que no tenga rutas ni supervisor y cambia la sucursal con la fila bloqueada, así que el
+ * resultado es atómico. Quién puede invocarla se decide antes, en la API.
+ */
+export async function cambiarSucursalZona(
+  id: number,
+  idSucursal: number,
+  datos: CamposEditables
+): Promise<{ ok: true; data: { anterior: number } } | { ok: false; error: CambioSucursalError }> {
+  const { data, error } = await createAdminClient().rpc('zona_cambiar_sucursal', {
+    p_id: id,
+    p_id_sucursal: idSucursal,
+    p_codigo_zona: datos.codigo_zona,
+    p_zona: datos.zona,
+    p_descripcion_zona: datos.descripcion_zona ?? undefined,
+    p_canal_venta: datos.canal_venta ?? undefined,
+  });
+  if (error || data === null || typeof data !== 'object' || Array.isArray(data)) {
+    return { ok: false, error: 'error' };
+  }
+  if (data.ok === true) {
+    return { ok: true, data: { anterior: Number(data.id_sucursal_anterior) } };
+  }
+  return { ok: false, error: data.error as CambioSucursalError };
+}
+
 export async function eliminarZona(id: number): Promise<ZonaResultado<null>> {
   const { data, error } = await createAdminClient().from('zonas').delete().eq('id', id).select('id');
   if (error) return { ok: false, error: error.code === PG_FOREIGN_KEY_VIOLATION ? 'en_uso' : 'error' };
