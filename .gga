@@ -1,9 +1,7 @@
 # Gentleman Guardian Angel Configuration for portal_watts
-# Powered by Antigravity (Gemini 3.1 Pro High)
+# Powered by Claude Code
 
-PROVIDER="antigravity"
-ANTIGRAVITY_MODEL="gemini-3.1-pro-high"
-ANTIGRAVITY_EFFORT="high"
+PROVIDER="claude"
 
 FILE_PATTERNS="*.ts,*.tsx,*.js,*.jsx,*.json,*.css"
 EXCLUDE_PATTERNS="*.test.*,*.spec.*,*.d.ts,dist/*,build/*,.next/*,node_modules/*"
