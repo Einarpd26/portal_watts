@@ -270,6 +270,8 @@ export function useGestionUsuarios(): UseGestionUsuariosReturn {
       const data = await res.json();
 
       if (!res.ok) {
+        // El aviso se muestra en la página: si el modal sigue abierto, su fondo lo tapa
+        closeConfirm();
         showToast('error', data.error ?? 'Error al crear acceso');
         return;
       }
@@ -288,6 +290,7 @@ export function useGestionUsuarios(): UseGestionUsuariosReturn {
       showToast('success', data.message ?? 'Acceso creado correctamente');
     } catch (err: unknown) {
       logger.error('Error en submitInvite:', err);
+      closeConfirm();
       showToast('error', 'Error de conexión. Intentá de nuevo.');
     } finally {
       setIsSubmitting(false);
@@ -305,6 +308,7 @@ export function useGestionUsuarios(): UseGestionUsuariosReturn {
       const data = await res.json();
 
       if (!res.ok) {
+        closeRevoke();
         showToast('error', data.error ?? 'Error al revocar acceso');
         return;
       }
@@ -314,6 +318,7 @@ export function useGestionUsuarios(): UseGestionUsuariosReturn {
       showToast('success', 'Acceso revocado correctamente');
     } catch (err: unknown) {
       logger.error('Error en submitRevoke:', err);
+      closeRevoke();
       showToast('error', 'Error de conexión. Intentá de nuevo.');
     } finally {
       setIsSubmitting(false);
