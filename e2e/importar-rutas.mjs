@@ -21,14 +21,17 @@ const verificar = (nombre, ok, detalle = '') => {
 const navegador = await chromium.launch();
 const pagina = await (await navegador.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true })).newPage();
 const errores = [];
+let haySesion = false;
+// Una respuesta 401 antes de iniciar sesion es normal (el portal pregunta quien es); despues no
+pagina.on('response', (r) => { if (r.status() >= 400 && (haySesion || r.status() !== 401)) errores.push(`${r.status()} ${r.url()}`); });
 pagina.on('pageerror', (e) => errores.push(String(e)));
-pagina.on('console', (m) => m.type() === 'error' && !m.text().includes('tiles.openfreemap') && errores.push(m.text()));
 
 await pagina.goto(`${URL_BASE}/login`);
 await pagina.locator('input[type=email]').fill(process.env.PORTAL_EMAIL ?? 'fiscalizador.scz@carameloswatts.com');
 await pagina.locator('input[type=password]').fill(process.env.PORTAL_PASSWORD ?? 'Password123!');
 await pagina.getByRole('button', { name: 'Iniciar Sesión' }).click();
 await pagina.waitForURL((u) => !u.pathname.includes('/login'), { timeout: 20000 });
+haySesion = true;
 
 await pagina.goto(`${URL_BASE}/territorio`);
 await pagina.getByRole('tab', { name: 'Importar rutas' }).click();
@@ -36,6 +39,7 @@ verificar('La pestaña Importar rutas existe y abre', await pagina.getByText('1.
 await pagina.screenshot({ path: `${SALIDA}/01-inicial.png` });
 
 // Fiscalizador de Santa Cruz: la sucursal elegible es solo la suya
+await pagina.getByLabel('Sucursal de destino').locator('option', { hasText: 'Santa Cruz' }).waitFor({ state: 'attached' });
 const opciones = await pagina.getByLabel('Sucursal de destino').locator('option').allTextContents();
 verificar('Solo ofrece las sucursales del alcance', opciones.join('|') === 'Elige la sucursal|Santa Cruz', opciones.join('|'));
 verificar('Vista previa deshabilitada sin sucursal ni archivo', await pagina.getByRole('button', { name: 'Ver vista previa' }).isDisabled());
