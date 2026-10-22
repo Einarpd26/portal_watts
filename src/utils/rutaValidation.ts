@@ -199,3 +199,155 @@ export function validarRuta(entrada: RutaEntrada, opciones: { exigirZona: boolea
     },
   };
 }
+
+// ---------------------------------------------------------------------------------------------
+// Importación por lote (CU-16, ADR-002 D9): lectura y validación del FeatureCollection. Aquí solo
+// se decide lo que se puede rechazar sin consultar la base; las reglas territoriales (alcance,
+// superposición, invasión, cobertura ajena) las decide la base de datos con PostGIS.
+// ---------------------------------------------------------------------------------------------
+
+export const LOTE_MAX_BYTES = 5 * 1024 * 1024;
+export const LOTE_MAX_RUTAS = 500;
+
+/**
+ * Caja que contiene a Bolivia, con un margen. Latitud y longitud invertidas siguen dentro del rango
+ * válido del planeta, así que solo esta caja permite detectarlas.
+ */
+export const BOLIVIA_BBOX = { lonMin: -69.7, lonMax: -57.4, latMin: -22.95, latMax: -9.6 };
+
+export type LoteErrorCodigo = 'vacio' | 'tamano' | 'json_invalido' | 'tipo' | 'sin_rutas' | 'demasiadas';
+export type LoteMotivoRechazo = 'datos_invalidos' | 'geometria' | 'fuera_de_bolivia' | 'codigo_repetido_en_archivo';
+
+export interface RutaLoteEntrada {
+  /** Posición de la ruta en el archivo, desde 0 */
+  indice: number;
+  codigo_ruta: string;
+  ruta: string;
+  descripcion_ruta: string | null;
+  codigo_zona: string;
+  poligono: PoligonoGeoJson;
+}
+
+export interface RutaLoteRechazada {
+  indice: number;
+  codigo_ruta: string | null;
+  motivo: LoteMotivoRechazo;
+  mensaje: string;
+}
+
+export type LoteInterpretado =
+  | { ok: true; rutas: RutaLoteEntrada[]; rechazadas: RutaLoteRechazada[] }
+  | { ok: false; error: LoteErrorCodigo; mensaje: string };
+
+const falloLote = (error: LoteErrorCodigo, mensaje: string): LoteInterpretado => ({ ok: false, error, mensaje });
+
+const enBolivia = ([lon, lat]: Posicion) =>
+  lon >= BOLIVIA_BBOX.lonMin && lon <= BOLIVIA_BBOX.lonMax && lat >= BOLIVIA_BBOX.latMin && lat <= BOLIVIA_BBOX.latMax;
+
+/** Texto de una propiedad: `undefined` si falta, `null` si está pero no es texto */
+function propiedadTexto(props: Record<string, unknown>, nombre: string): string | null | undefined {
+  const valor = props[nombre];
+  if (valor === undefined) return undefined;
+  return typeof valor === 'string' ? valor : null;
+}
+
+function codigoDeZonaValido(codigo: string): string | null {
+  if (!codigo) return 'El código de la zona es obligatorio.';
+  if (codigo.length > CODIGO_MAX) return `El código de la zona no puede superar ${CODIGO_MAX} caracteres.`;
+  if (!CODIGO_REGEX.test(codigo)) return 'El código de la zona admite solo letras, números, guion o guion bajo, sin espacios.';
+  return null;
+}
+
+/**
+ * Lee el texto de un archivo GeoJSON `FeatureCollection` con muchas rutas. Un problema del archivo
+ * lo rechaza completo (A1); un problema de una ruta rechaza solo esa ruta y el resto sigue (A2).
+ */
+export function interpretarLoteRutas(texto: string): LoteInterpretado {
+  if (new TextEncoder().encode(texto).length > LOTE_MAX_BYTES) {
+    return falloLote('tamano', `El archivo supera el tamaño máximo de ${LOTE_MAX_BYTES / 1024 / 1024} MB.`);
+  }
+  if (!texto.trim()) return falloLote('vacio', 'El archivo está vacío.');
+
+  let raiz: unknown;
+  try {
+    raiz = JSON.parse(texto);
+  } catch {
+    return falloLote('json_invalido', 'El archivo no es un JSON válido.');
+  }
+  if (!esObjeto(raiz) || raiz.type !== 'FeatureCollection' || !Array.isArray(raiz.features)) {
+    return falloLote('tipo', 'El archivo debe ser un GeoJSON de tipo FeatureCollection con una ruta por Feature.');
+  }
+  if (raiz.features.length === 0) return falloLote('sin_rutas', 'El archivo no contiene ninguna ruta.');
+  if (raiz.features.length > LOTE_MAX_RUTAS) {
+    return falloLote('demasiadas', `El archivo trae ${raiz.features.length} rutas y el máximo por lote es ${LOTE_MAX_RUTAS}.`);
+  }
+
+  const rutas: RutaLoteEntrada[] = [];
+  const rechazadas: RutaLoteRechazada[] = [];
+  // Código de ruta -> posición (desde 1) de la primera ruta aceptada con ese código
+  const aceptadas = new Map<string, number>();
+
+  raiz.features.forEach((entidad: unknown, indice: number) => {
+    const rechazar = (codigo: string | null, motivo: LoteMotivoRechazo, mensaje: string) =>
+      rechazadas.push({ indice, codigo_ruta: codigo, motivo, mensaje });
+
+    const feature = esObjeto(entidad) ? entidad : {};
+    const props = esObjeto(feature.properties) ? feature.properties : null;
+    const codigoCrudo = props ? propiedadTexto(props, 'codigo_ruta') : undefined;
+    const codigoParaInforme = typeof codigoCrudo === 'string' && codigoCrudo.trim() ? codigoCrudo.trim().toUpperCase() : null;
+
+    if (!props) {
+      return rechazar(null, 'datos_invalidos', 'La ruta no trae propiedades (codigo_ruta, ruta y codigo_zona).');
+    }
+
+    const ruta = propiedadTexto(props, 'ruta');
+    const zona = propiedadTexto(props, 'codigo_zona');
+    const descripcion = propiedadTexto(props, 'descripcion_ruta');
+    if (codigoCrudo === null || ruta === null || zona === null || descripcion === null) {
+      return rechazar(codigoParaInforme, 'datos_invalidos', 'Las propiedades de la ruta deben ser texto.');
+    }
+
+    const datos = validarRuta(
+      { codigo_ruta: codigoCrudo ?? '', ruta: ruta ?? '', descripcion_ruta: descripcion ?? '', id_zona: null },
+      { exigirZona: false }
+    );
+    const codigoZona = (zona ?? '').trim().toUpperCase();
+    const errorZona = codigoDeZonaValido(codigoZona);
+    if (!datos.isValid || errorZona) {
+      const motivos = [...Object.values(datos.errors), ...(errorZona ? [errorZona] : [])];
+      return rechazar(codigoParaInforme, 'datos_invalidos', motivos.join(' '));
+    }
+
+    const geometria = interpretarGeoJson(JSON.stringify(feature.geometry ?? null));
+    if (!geometria.ok) return rechazar(datos.data.codigo_ruta, 'geometria', geometria.mensaje);
+
+    if (!geometria.poligono.coordinates.every((anillo) => anillo.every(enBolivia))) {
+      return rechazar(
+        datos.data.codigo_ruta,
+        'fuera_de_bolivia',
+        'El polígono está fuera de Bolivia: revisa que las coordenadas sean [longitud, latitud] y no [latitud, longitud].'
+      );
+    }
+
+    const primera = aceptadas.get(datos.data.codigo_ruta);
+    if (primera !== undefined) {
+      return rechazar(
+        datos.data.codigo_ruta,
+        'codigo_repetido_en_archivo',
+        `El código ${datos.data.codigo_ruta} ya aparece en la posición ${primera} del archivo.`
+      );
+    }
+    aceptadas.set(datos.data.codigo_ruta, indice + 1);
+
+    rutas.push({
+      indice,
+      codigo_ruta: datos.data.codigo_ruta,
+      ruta: datos.data.ruta,
+      descripcion_ruta: datos.data.descripcion_ruta,
+      codigo_zona: codigoZona,
+      poligono: geometria.poligono,
+    });
+  });
+
+  return { ok: true, rutas, rechazadas };
+}
