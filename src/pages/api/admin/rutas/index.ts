@@ -55,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       JSON.stringify(geometria.poligono),
       idsZona
     );
-    if (!guardado.ok) return responderFalloGuardado(res, guardado, codigoDeZona(zonas, idZona));
+    if (!guardado.ok) return responderFalloGuardado(res, guardado, codigoDeZona(zonas, idZona), validacion.data.codigo_ruta);
 
     await registrarBitacoraDesdeSesion(
       caller,

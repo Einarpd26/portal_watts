@@ -71,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const guardado = await guardarRuta(id, { ...validacion.data, id_zona: ruta.data.id_zona }, poligono, idsZona);
-    if (!guardado.ok) return responderFalloGuardado(res, guardado, codigoDeZona(zonas, ruta.data.id_zona));
+    if (!guardado.ok) return responderFalloGuardado(res, guardado, codigoDeZona(zonas, ruta.data.id_zona), validacion.data.codigo_ruta);
 
     await registrarBitacoraDesdeSesion(
       caller,

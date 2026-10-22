@@ -324,4 +324,4 @@ FROM (VALUES
 ) AS r(codigo, nombre, descripcion, x0, y0, zona, sucursal)
 JOIN public.sucursales s ON s.nombre_sucursal = r.sucursal
 JOIN public.zonas z ON z.codigo_zona = r.zona AND z.id_sucursal = s.id
-ON CONFLICT (codigo_ruta, id_zona) DO NOTHING;
+ON CONFLICT (codigo_ruta) DO NOTHING;

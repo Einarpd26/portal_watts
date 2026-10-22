@@ -120,6 +120,15 @@ export function interpretarGeoJson(texto: string): GeoJsonInterpretado {
   return { ok: true, poligono: { type: 'Polygon', coordinates: normalizados } };
 }
 
+/**
+ * Mensaje del rechazo por código de ruta repetido. El código es único en todo el sistema (ADR-002 D8),
+ * así que se informa la zona de la ruta que ya lo usa, aunque esté fuera del alcance de quien opera.
+ */
+export function mensajeCodigoDuplicado(codigoRuta: string, codigoZona?: string | null): string {
+  const quien = codigoZona ? `una ruta de la zona ${codigoZona}` : 'otra ruta';
+  return `El código ${codigoRuta} ya lo usa ${quien}. El código de una ruta es único en todo el sistema.`;
+}
+
 export interface RutaEntrada {
   codigo_ruta: string;
   ruta: string;

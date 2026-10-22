@@ -4,6 +4,7 @@ import { alcanceDeRutas, PERMISO_RUTAS } from '@/utils/rutaScope';
 import { zonasEnAlcance, type GuardadoRuta } from '@/lib/rutas';
 import type { UserSession, ZonaDeRuta } from '@/types';
 import { descripcionSuperposicion, mensajeCobertura, mensajeInvasion, revisionDeZonasAjenas } from '@/utils/invasionZona';
+import { mensajeCodigoDuplicado } from '@/utils/rutaValidation';
 
 export interface ContextoRutas {
   caller: UserSession;
@@ -44,7 +45,6 @@ const MENSAJES_GEOMETRIA: Record<string, string> = {
   no_poligono: 'La geometría debe ser de tipo Polygon.',
   geometria_invalida: 'El polígono no es válido (por ejemplo, se cruza a sí mismo).',
   superposicion: 'La ruta se superpone con otra ruta existente.',
-  duplicado: 'Ya existe una ruta con ese código en la zona.',
   zona_invalida: 'La zona indicada no existe.',
   no_encontrada: 'La ruta no existe.',
 };
@@ -59,7 +59,8 @@ export const codigoDeZona = (zonas: ZonaDeRuta[], idZona: number) => zonas.find(
 export function responderFalloGuardado(
   res: NextApiResponse,
   fallo: Extract<GuardadoRuta, { ok: false }>,
-  codigoZona: string
+  codigoZona: string,
+  codigoRuta: string
 ) {
   const mensaje = MENSAJES_GEOMETRIA[fallo.error] ?? 'No se pudo guardar la ruta.';
   switch (fallo.error) {
@@ -83,7 +84,7 @@ export function responderFalloGuardado(
         conflictos: fallo.conflictos ?? [],
       });
     case 'duplicado':
-      return res.status(409).json({ error: mensaje });
+      return res.status(409).json({ error: mensajeCodigoDuplicado(codigoRuta, fallo.codigo_zona_duplicada) });
     case 'no_encontrada':
       return res.status(404).json({ error: mensaje });
     case 'geojson_invalido':
