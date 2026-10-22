@@ -45,3 +45,6 @@ next-env.d.ts
 
 # worker de MapLibre copiado por scripts/copiar-worker-maplibre.mjs
 /public/maplibre/
+
+# Capturas y descargas de las pruebas en el navegador
+/e2e/salida/
