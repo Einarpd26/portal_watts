@@ -3,7 +3,7 @@
 -- y rutas_exportar y zonas_contorno (respaldo con geometría completa y contorno derivado, ADR-002 D6),
 -- y la envolvente de zona con su regla de no invasión (ADR-002 D7).
 BEGIN;
-SELECT plan(45);
+SELECT plan(46);
 
 -- Caja contigua a R-N4 (que ocupa x -63.17..-63.16): solo comparten borde
 SELECT is(
@@ -20,6 +20,9 @@ SELECT is(
 SELECT is(
   public.ruta_evaluar('{"type":"Polygon","coordinates":[[[-63.160005,-17.79],[-63.15,-17.79],[-63.15,-17.78],[-63.160005,-17.78],[-63.160005,-17.79]]]}') -> 'conflictos' -> 0 ->> 'codigo_ruta',
   'R-N4', 'un desborde real de 5e-6 grados se detecta como superposición');
+SELECT ok(
+  (public.ruta_evaluar('{"type":"Polygon","coordinates":[[[-63.160005,-17.79],[-63.15,-17.79],[-63.15,-17.78],[-63.160005,-17.78],[-63.160005,-17.79]]]}') -> 'conflictos' -> 0 ->> 'area_ruta_m2')::numeric > 0,
+  'cada conflicto informa el área de la ruta en conflicto');
 
 -- Tipos y validez
 SELECT is(public.ruta_evaluar('{"type":"Point","coordinates":[-63.1,-17.7]}') ->> 'error', 'no_poligono', 'un Point no es una ruta');
