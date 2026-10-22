@@ -64,7 +64,7 @@ const coleccion = (poligonos: Array<{ poligono: PoligonoRuta; propiedades: Recor
 });
 
 /** Caja [oeste, sur, este, norte] que contiene todos los polígonos, o null si no hay ninguno */
-function cajaDe(poligonos: Array<PoligonoRuta | MultiPoligonoGeoJson>): [number, number, number, number] | null {
+export function cajaDe(poligonos: Array<PoligonoRuta | MultiPoligonoGeoJson>): [number, number, number, number] | null {
   let caja: [number, number, number, number] | null = null;
   // El anillo exterior basta para la caja; un MultiPolygon aporta el de cada parte
   const anillos = poligonos.flatMap((p) => (p.type === 'Polygon' ? [p.coordinates[0] ?? []] : p.coordinates.map((c) => c[0] ?? [])));
