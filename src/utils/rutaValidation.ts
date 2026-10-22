@@ -206,8 +206,16 @@ export function validarRuta(entrada: RutaEntrada, opciones: { exigirZona: boolea
 // superposición, invasión, cobertura ajena) las decide la base de datos con PostGIS.
 // ---------------------------------------------------------------------------------------------
 
-// Vercel rechaza con 413 los cuerpos de más de 4,5 MB. El archivo viaja como cuerpo directo de la petición
-// (no dentro de un JSON), así que 4 MB dejan 0,5 MB de margen. Las 306 rutas reales del ERP pesan unos 0,8 MB.
+/**
+ * Tope que la plataforma de despliegue (Vercel) impone al cuerpo de una petición: lo que pasa de aquí se
+ * rechaza con 413 antes de llegar al código. Si se cambia de proveedor, este es el número a revisar.
+ */
+export const CUERPO_MAX_PLATAFORMA_BYTES = 4_500_000;
+
+// El archivo viaja como cuerpo directo de la petición (no dentro de un JSON), así que 4 MB dejan ~0,3 MB de
+// margen bajo el tope de la plataforma. Las 306 rutas reales del ERP pesan unos 0,8 MB. Si se cambia, hay que
+// ajustar también `sizeLimit` en `pages/api/admin/rutas/lote.ts` (Next exige allí un valor literal);
+// `tests/loteLimite.test.ts` avisa si quedan desalineados.
 export const LOTE_MAX_BYTES = 4 * 1024 * 1024;
 export const LOTE_MAX_RUTAS = 500;
 

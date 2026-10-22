@@ -7,8 +7,9 @@ import { interpretarLoteRutas } from '@/utils/rutaValidation';
 import { logger } from '@/lib/logger';
 
 // Next exige un literal estático. El archivo (4 MB, LOTE_MAX_BYTES) viaja como cuerpo directo (text/plain),
-// sin envolverlo en un JSON: escapar comillas y saltos de línea lo engordaría hasta un 10 % y Vercel rechaza
-// con 413 los cuerpos de más de 4,5 MB. Con 4,2 MB de tope el cuerpo no pasa de lo que pesa el archivo.
+// sin envolverlo en un JSON: escapar comillas y saltos de línea lo engorda (medido con las rutas del ERP: 1 % el
+// archivo compacto, 5 % con sangría; más si tiene muchos saltos de línea) y Vercel rechaza con 413 los cuerpos de
+// más de 4,5 MB. Con 4,2 MB de tope el cuerpo no pasa de lo que pesa el archivo.
 export const config = { api: { bodyParser: { sizeLimit: '4.2mb' } } };
 
 const MAX_NOMBRE_ARCHIVO = 200;
