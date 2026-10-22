@@ -67,8 +67,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             error: mensajeCoberturaTraslado(resultado.conflictos ?? []),
             conflictos: resultado.conflictos ?? [],
           });
-        case 'duplicado':
-          return res.status(409).json({ error: 'La zona de destino ya tiene una ruta con ese código.' });
         case 'no_encontrada':
           return res.status(404).json({ error: 'La ruta no existe.' });
         case 'zona_invalida':

@@ -3,7 +3,7 @@
 -- y rutas_exportar y zonas_contorno (respaldo con geometría completa y contorno derivado, ADR-002 D6),
 -- y la envolvente de zona con su regla de no invasión (ADR-002 D7).
 BEGIN;
-SELECT plan(43);
+SELECT plan(45);
 
 -- Caja contigua a R-N4 (que ocupa x -63.17..-63.16): solo comparten borde
 SELECT is(
@@ -38,6 +38,16 @@ SELECT is(
   public.ruta_guardar((SELECT id FROM public.zonas WHERE codigo_zona = 'ZN'), 'R-N5', 'Otra', NULL, NULL,
     '{"type":"Polygon","coordinates":[[[-63.15,-17.79],[-63.14,-17.79],[-63.14,-17.78],[-63.15,-17.78],[-63.15,-17.79]]]}') ->> 'error',
   'duplicado', 'el código repetido en la zona se informa como duplicado');
+-- ADR-002 D8: el código de ruta es único en todo el sistema, también frente a otra zona. El control
+-- va antes de evaluar el polígono, así que un polígono lejano no lo enmascara con otro error.
+SELECT is(
+  public.ruta_guardar((SELECT id FROM public.zonas WHERE codigo_zona = 'ZS'), 'R-N5', 'Homónima en otra zona', NULL, NULL,
+    '{"type":"Polygon","coordinates":[[[-58.0,-12.0],[-57.9,-12.0],[-57.9,-11.9],[-58.0,-11.9],[-58.0,-12.0]]]}') ->> 'error',
+  'duplicado', 'el código de ruta tampoco se repite en otra zona');
+SELECT is(
+  public.ruta_guardar((SELECT id FROM public.zonas WHERE codigo_zona = 'ZS'), 'R-N5', 'Homónima en otra zona', NULL, NULL,
+    '{"type":"Polygon","coordinates":[[[-58.0,-12.0],[-57.9,-12.0],[-57.9,-11.9],[-58.0,-11.9],[-58.0,-12.0]]]}') ->> 'codigo_zona',
+  'ZN', 'el duplicado informa la zona de la ruta que ya usa el código');
 SELECT is(
   public.ruta_guardar((SELECT id FROM public.zonas WHERE codigo_zona = 'ZN'), 'R-N6', 'Pisa', NULL, NULL,
     '{"type":"Polygon","coordinates":[[[-63.195,-17.795],[-63.185,-17.795],[-63.185,-17.785],[-63.195,-17.785],[-63.195,-17.795]]]}') ->> 'error',

@@ -4,6 +4,7 @@ import {
   GEOJSON_MAX_BYTES,
   GEOJSON_MAX_VERTICES,
   interpretarGeoJson,
+  mensajeCodigoDuplicado,
   validarRuta,
   type RutaEntrada,
 } from "../src/utils/rutaValidation.ts";
@@ -121,4 +122,16 @@ test("rutas: exige la zona solo en el alta", () => {
 test("rutas: rechaza nombre corto y descripción larga", () => {
   const r = validarRuta({ ...valida, ruta: "A", descripcion_ruta: "x".repeat(256) }, { exigirZona: true });
   assert.ok(r.errors.ruta && r.errors.descripcion_ruta);
+});
+
+test("rutas: el mensaje de código repetido nombra la zona que ya lo usa (ADR-002 D8)", () => {
+  assert.equal(
+    mensajeCodigoDuplicado("R-N1", "ZN"),
+    "El código R-N1 ya lo usa una ruta de la zona ZN. El código de una ruta es único en todo el sistema."
+  );
+});
+
+test("rutas: el mensaje de código repetido no inventa una zona si no se conoce", () => {
+  assert.equal(mensajeCodigoDuplicado("R-N1"), "El código R-N1 ya lo usa otra ruta. El código de una ruta es único en todo el sistema.");
+  assert.equal(mensajeCodigoDuplicado("R-N1", ""), "El código R-N1 ya lo usa otra ruta. El código de una ruta es único en todo el sistema.");
 });

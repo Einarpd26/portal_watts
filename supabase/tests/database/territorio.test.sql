@@ -1,7 +1,7 @@
 -- Pruebas de la base de datos del Módulo 2 (zonas y rutas). Ejecutar con: npx supabase test db
 -- Reglas verificadas: ADR-002 (no superposición por interiores), RN-01, restricciones y privilegios.
 BEGIN;
-SELECT plan(29);
+SELECT plan(30);
 
 SELECT has_extension('extensions', 'postgis', 'PostGIS está instalado');
 SELECT has_table('public', 'zonas', 'existe zonas');
@@ -55,6 +55,10 @@ SELECT throws_ok(
 SELECT throws_ok(
   $$INSERT INTO public.zonas (codigo_zona, zona, id_sucursal) SELECT 'ZN', 'Duplicada', id FROM public.sucursales WHERE nombre_sucursal = 'Santa Cruz'$$,
   '23505', NULL, 'el código de zona es único dentro de la sucursal');
+SELECT throws_ok(
+  $$INSERT INTO public.rutas (codigo_ruta, ruta, localizacion, id_zona)
+    SELECT 'R-N1', 'Homónima', ST_MakeEnvelope(-58.0, -12.0, -57.9, -11.9, 4326), id FROM public.zonas WHERE codigo_zona = 'ZS'$$,
+  '23505', NULL, 'el código de ruta es único en todo el sistema (ADR-002 D8)');
 SELECT throws_ok(
   $$INSERT INTO public.supervisor_zonas (id_supervisor, id_zona)
     SELECT p.id, z.id FROM public.personas p, public.zonas z WHERE p.ci = '6394812' AND z.codigo_zona = 'ZN'$$,

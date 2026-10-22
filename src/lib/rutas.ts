@@ -240,7 +240,7 @@ export async function evaluarRuta(
 
 export type GuardadoRuta =
   | { ok: true; id: number }
-  | { ok: false; error: RutaError; detalle?: string; conflictos?: ConflictoRuta[] };
+  | { ok: false; error: RutaError; detalle?: string; conflictos?: ConflictoRuta[]; codigo_zona_duplicada?: string };
 
 /**
  * Alta (`id` null) o edición de una ruta. La evaluación y la inserción corren en una sola
@@ -268,6 +268,7 @@ export async function guardarRuta(
     error: data.error as RutaError,
     detalle: typeof data.detalle === 'string' ? data.detalle : undefined,
     conflictos: todosLosConflictos(data, idsZonaEnAlcance),
+    codigo_zona_duplicada: typeof data.codigo_zona === 'string' ? data.codigo_zona : undefined,
   };
 }
 
