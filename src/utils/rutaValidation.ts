@@ -206,7 +206,9 @@ export function validarRuta(entrada: RutaEntrada, opciones: { exigirZona: boolea
 // superposición, invasión, cobertura ajena) las decide la base de datos con PostGIS.
 // ---------------------------------------------------------------------------------------------
 
-export const LOTE_MAX_BYTES = 5 * 1024 * 1024;
+// Vercel rechaza con 413 los cuerpos de más de 4,5 MB. El archivo viaja como cuerpo directo de la petición
+// (no dentro de un JSON), así que 4 MB dejan 0,5 MB de margen. Las 306 rutas reales del ERP pesan unos 0,8 MB.
+export const LOTE_MAX_BYTES = 4 * 1024 * 1024;
 export const LOTE_MAX_RUTAS = 500;
 
 /**

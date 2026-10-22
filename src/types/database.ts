@@ -491,6 +491,10 @@ export type Database = {
         }
         Returns: Json
       }
+      ruta_lote_procesar: {
+        Args: { p_confirmar?: boolean; p_id_sucursal: number; p_ids_zona?: number[]; p_items: Json }
+        Returns: Json
+      }
       ruta_trasladar: {
         Args: { p_id: number; p_id_zona_destino: number }
         Returns: Json
