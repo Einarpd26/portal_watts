@@ -2,7 +2,7 @@
 -- Cubre ruta_lote_procesar: rutas nuevas, actualizadas y sin cambios, modo parcial, orden del lote,
 -- ruta en otra zona, zona inexistente, alcance y vista previa que no guarda nada.
 BEGIN;
-SELECT plan(23);
+SELECT plan(27);
 
 -- Ayuda: una ruta del lote con un polígono rectangular (x0, y0, x1, y1)
 CREATE FUNCTION pg_temp.item(p_indice int, p_codigo text, p_nombre text, p_zona text, x0 numeric, y0 numeric, x1 numeric, y1 numeric)
@@ -96,6 +96,25 @@ SELECT public.ruta_lote_procesar((SELECT suc FROM ctx), jsonb_build_array(
 SELECT is((SELECT r -> 'resultados' -> 0 ->> 'estado' FROM orden), 'nueva', 'la primera ruta del lote se acepta');
 SELECT is((SELECT r -> 'resultados' -> 1 ->> 'motivo' FROM orden), 'superposicion', 'la segunda se rechaza por pisar a la primera del mismo lote');
 SELECT is((SELECT r -> 'resultados' -> 1 -> 'conflictos' -> 0 ->> 'codigo_ruta' FROM orden), 'L-P1', 'el conflicto nombra a la ruta del propio lote');
+
+-- Informe de correcciones (ADR-002 D9, punto 10): el rechazo trae las áreas para calcular qué parte de cada ruta se pisa
+SELECT ok(
+  (SELECT (r -> 'resultados' -> 1 ->> 'area_m2')::numeric > 0 FROM orden),
+  'el rechazo informa el área de la ruta que se intentó guardar');
+SELECT ok(
+  (SELECT (r -> 'resultados' -> 1 -> 'conflictos' -> 0 ->> 'area_ruta_m2')::numeric
+          >= (r -> 'resultados' -> 1 -> 'conflictos' -> 0 ->> 'area_m2')::numeric FROM orden),
+  'cada conflicto informa el área de la ruta en conflicto, al menos tan grande como lo que se pisa');
+
+-- Una actualización devuelve el polígono anterior (la bitácora lo guarda para poder revertir)
+CREATE TEMP TABLE act AS
+SELECT public.ruta_lote_procesar((SELECT suc FROM ctx), jsonb_build_array(
+  pg_temp.item(0, 'L-A', 'Lote A renombrada', 'ZC', -62.00, -17.00, -61.993, -16.993)), NULL, true) AS r;
+SELECT is((SELECT r -> 'resultados' -> 0 ->> 'estado' FROM act), 'actualizada', 'la ruta con otro polígono se actualiza');
+SELECT ok(
+  (SELECT ST_Equals(ST_SetSRID(ST_GeomFromGeoJSON((r -> 'resultados' -> 0 -> 'geojson_anterior')::text), 4326),
+                    ST_MakeEnvelope(-62.00, -17.00, -61.995, -16.995, 4326)) FROM act),
+  'la actualización informa el polígono que tenía antes');
 
 SELECT * FROM finish();
 ROLLBACK;
