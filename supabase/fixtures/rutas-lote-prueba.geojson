@@ -1,0 +1,688 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "PRB-N01",
+        "ruta": "Prueba Centro 1",
+        "codigo_zona": "ZC",
+        "descripcion_ruta": "Zona Centro, primera cuadra"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -63.15,
+              -17.79
+            ],
+            [
+              -63.15,
+              -17.78
+            ],
+            [
+              -63.14,
+              -17.78
+            ],
+            [
+              -63.14,
+              -17.79
+            ],
+            [
+              -63.15,
+              -17.79
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "PRB-N02",
+        "ruta": "Prueba Centro 2",
+        "codigo_zona": "ZC"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -63.14,
+              -17.79
+            ],
+            [
+              -63.14,
+              -17.78
+            ],
+            [
+              -63.13,
+              -17.78
+            ],
+            [
+              -63.13,
+              -17.79
+            ],
+            [
+              -63.14,
+              -17.79
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "PRB-N03",
+        "ruta": "Prueba Centro 3",
+        "codigo_zona": "ZC"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -63.13,
+              -17.79
+            ],
+            [
+              -63.13,
+              -17.78
+            ],
+            [
+              -63.12,
+              -17.78
+            ],
+            [
+              -63.12,
+              -17.79
+            ],
+            [
+              -63.13,
+              -17.79
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "PRB-N04",
+        "ruta": "Prueba Norte 5",
+        "codigo_zona": "ZN"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -63.16,
+              -17.79
+            ],
+            [
+              -63.16,
+              -17.78
+            ],
+            [
+              -63.15,
+              -17.78
+            ],
+            [
+              -63.15,
+              -17.79
+            ],
+            [
+              -63.16,
+              -17.79
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "PRB-N05",
+        "ruta": "Prueba Sur 5",
+        "codigo_zona": "ZS"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -63.16,
+              -17.8
+            ],
+            [
+              -63.16,
+              -17.79
+            ],
+            [
+              -63.15,
+              -17.79
+            ],
+            [
+              -63.15,
+              -17.8
+            ],
+            [
+              -63.16,
+              -17.8
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "R-N1",
+        "ruta": "Ruta Norte 1 (ajustada)",
+        "codigo_zona": "ZN",
+        "descripcion_ruta": "Sector norte, primera cuadra"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -63.199,
+              -17.789
+            ],
+            [
+              -63.199,
+              -17.781
+            ],
+            [
+              -63.191,
+              -17.781
+            ],
+            [
+              -63.191,
+              -17.789
+            ],
+            [
+              -63.199,
+              -17.789
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "R-S1",
+        "ruta": "Ruta Sur 1",
+        "codigo_zona": "ZS",
+        "descripcion_ruta": "Sector sur, primera cuadra"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -63.2,
+              -17.8
+            ],
+            [
+              -63.2,
+              -17.79
+            ],
+            [
+              -63.19,
+              -17.79
+            ],
+            [
+              -63.19,
+              -17.8
+            ],
+            [
+              -63.2,
+              -17.8
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "PRB-N01",
+        "ruta": "Prueba repetida",
+        "codigo_zona": "ZC"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -63.3,
+              -17.79
+            ],
+            [
+              -63.3,
+              -17.78
+            ],
+            [
+              -63.29,
+              -17.78
+            ],
+            [
+              -63.29,
+              -17.79
+            ],
+            [
+              -63.3,
+              -17.79
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "PRB R05",
+        "ruta": "Codigo con espacio",
+        "codigo_zona": "ZC"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -63.31,
+              -17.79
+            ],
+            [
+              -63.31,
+              -17.78
+            ],
+            [
+              -63.3,
+              -17.78
+            ],
+            [
+              -63.3,
+              -17.79
+            ],
+            [
+              -63.31,
+              -17.79
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "PRB-R03",
+        "ruta": "Latitud y longitud invertidas",
+        "codigo_zona": "ZN"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -17.79,
+              -63.2
+            ],
+            [
+              -17.79,
+              -63.19
+            ],
+            [
+              -17.78,
+              -63.19
+            ],
+            [
+              -17.78,
+              -63.2
+            ],
+            [
+              -17.79,
+              -63.2
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "PRB-R06",
+        "ruta": "No es un poligono",
+        "codigo_zona": "ZN"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -63.18,
+          -17.78
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "PRB-R01",
+        "ruta": "Zona que no existe",
+        "codigo_zona": "ZX"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -63.32,
+              -17.79
+            ],
+            [
+              -63.32,
+              -17.78
+            ],
+            [
+              -63.31,
+              -17.78
+            ],
+            [
+              -63.31,
+              -17.79
+            ],
+            [
+              -63.32,
+              -17.79
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "R-S2",
+        "ruta": "Ruta que ya esta en ZS",
+        "codigo_zona": "ZN"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -63.19,
+              -17.8
+            ],
+            [
+              -63.19,
+              -17.79
+            ],
+            [
+              -63.18,
+              -17.79
+            ],
+            [
+              -63.18,
+              -17.8
+            ],
+            [
+              -63.19,
+              -17.8
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "PRB-R07",
+        "ruta": "Lazo (se cruza a si misma)",
+        "codigo_zona": "ZC"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -63.34,
+              -17.79
+            ],
+            [
+              -63.33,
+              -17.78
+            ],
+            [
+              -63.33,
+              -17.79
+            ],
+            [
+              -63.34,
+              -17.78
+            ],
+            [
+              -63.34,
+              -17.79
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "PRB-R08",
+        "ruta": "Astilla sobre R-N3",
+        "codigo_zona": "ZN"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -63.18,
+              -17.78005
+            ],
+            [
+              -63.18,
+              -17.77005
+            ],
+            [
+              -63.17,
+              -17.77005
+            ],
+            [
+              -63.17,
+              -17.78005
+            ],
+            [
+              -63.18,
+              -17.78005
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "PRB-R09",
+        "ruta": "Solape chico sobre R-N4",
+        "codigo_zona": "ZN"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -63.17,
+              -17.7805
+            ],
+            [
+              -63.17,
+              -17.7705
+            ],
+            [
+              -63.16,
+              -17.7705
+            ],
+            [
+              -63.16,
+              -17.7805
+            ],
+            [
+              -63.17,
+              -17.7805
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "PRB-R10",
+        "ruta": "Solape parcial sobre R-S3 y R-S4",
+        "codigo_zona": "ZS"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -63.175,
+              -17.805
+            ],
+            [
+              -63.175,
+              -17.795
+            ],
+            [
+              -63.165,
+              -17.795
+            ],
+            [
+              -63.165,
+              -17.805
+            ],
+            [
+              -63.175,
+              -17.805
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "PRB-R11",
+        "ruta": "Contenida en R-S1",
+        "codigo_zona": "ZS"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -63.197,
+              -17.797
+            ],
+            [
+              -63.197,
+              -17.793
+            ],
+            [
+              -63.193,
+              -17.793
+            ],
+            [
+              -63.193,
+              -17.797
+            ],
+            [
+              -63.197,
+              -17.797
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "PRB-R12",
+        "ruta": "Contiene a R-S1 y R-S2",
+        "codigo_zona": "ZS"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -63.205,
+              -17.805
+            ],
+            [
+              -63.205,
+              -17.785
+            ],
+            [
+              -63.185,
+              -17.785
+            ],
+            [
+              -63.185,
+              -17.805
+            ],
+            [
+              -63.205,
+              -17.805
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "codigo_ruta": "PRB-R13",
+        "ruta": "Invade a Zona Centro",
+        "codigo_zona": "ZN"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -63.12,
+              -17.79
+            ],
+            [
+              -63.12,
+              -17.78
+            ],
+            [
+              -63.11,
+              -17.78
+            ],
+            [
+              -63.11,
+              -17.79
+            ],
+            [
+              -63.12,
+              -17.79
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

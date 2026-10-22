@@ -5,6 +5,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import { ZonasPanel } from '@/components/territorio/ZonasPanel';
 import { RutasPanel } from '@/components/territorio/RutasPanel';
+import { ImportarRutasPanel } from '@/components/territorio/ImportarRutasPanel';
 import AppLayout from '@/components/layout/AppLayout';
 import { cn } from '@/utils/cn';
 import { logger } from '@/lib/logger';
@@ -13,7 +14,7 @@ import type { PageWithLayout } from '@/types';
 const PERMISO_ZONAS = 'territorio:gestionar';
 const PERMISO_RUTAS = 'rutas:gestionar';
 
-type Pestana = 'zonas' | 'rutas';
+type Pestana = 'zonas' | 'rutas' | 'importar';
 
 const TerritorioPage: PageWithLayout = () => {
   const router = useRouter();
@@ -36,10 +37,11 @@ const TerritorioPage: PageWithLayout = () => {
   if (!puedeZonas && !puedeRutas) return null;
 
   // Cada pestaña exige su propio permiso; la elegida se corrige si el permiso no alcanza
-  const activa: Pestana = elegida === 'rutas' && puedeRutas ? 'rutas' : puedeZonas ? 'zonas' : 'rutas';
+  const activa: Pestana =
+    (elegida === 'rutas' || elegida === 'importar') && puedeRutas ? elegida : puedeZonas ? 'zonas' : 'rutas';
   const pestanas: Array<{ id: Pestana; etiqueta: string }> = [
     ...(puedeZonas ? [{ id: 'zonas' as const, etiqueta: 'Zonas' }] : []),
-    ...(puedeRutas ? [{ id: 'rutas' as const, etiqueta: 'Rutas' }] : []),
+    ...(puedeRutas ? [{ id: 'rutas' as const, etiqueta: 'Rutas' }, { id: 'importar' as const, etiqueta: 'Importar rutas' }] : []),
   ];
 
   return (
@@ -70,7 +72,9 @@ const TerritorioPage: PageWithLayout = () => {
         )}
       </header>
 
-      {activa === 'zonas' ? <ZonasPanel /> : <RutasPanel />}
+      {activa === 'zonas' && <ZonasPanel />}
+      {activa === 'rutas' && <RutasPanel />}
+      {activa === 'importar' && <ImportarRutasPanel />}
     </div>
   );
 };
