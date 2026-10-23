@@ -8,7 +8,7 @@ import Alert from '@/components/ui/Alert';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import { COLOR_ESTADO, COLOR_SIN_EVALUAR, ESTADOS_ORDEN, ETIQUETA_ESTADO, estadoPorIndice } from '@/utils/importacionRutas';
-import { LOTE_MAX_BYTES } from '@/utils/rutaValidation';
+import { LOTE_MAX_BYTES, LOTE_MAX_RUTAS } from '@/utils/rutaValidation';
 import { logger } from '@/lib/logger';
 
 // MapLibre necesita WebGL y el navegador: solo se carga en el cliente y solo en esta pestaña (ADR-002 §4)
@@ -97,7 +97,7 @@ export function ImportarRutasPanel() {
                 {g.archivo.rechazadas.length > 0 && `, ${g.archivo.rechazadas.length} con errores en el archivo`}.
               </p>
             ) : (
-              <p className="text-xs text-gray-500">FeatureCollection de polígonos, hasta {LOTE_MAX_BYTES / 1024 / 1024} MB.</p>
+              <p className="text-xs text-gray-500">FeatureCollection de polígonos, hasta {LOTE_MAX_RUTAS} rutas y {LOTE_MAX_BYTES / 1024 / 1024} MB.</p>
             )}
           </section>
 
