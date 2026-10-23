@@ -160,7 +160,7 @@ test("lote: rechaza completo un archivo con más rutas que el máximo", () => {
   assert.equal(r.ok, false);
   if (!r.ok) {
     assert.equal(r.error, "demasiadas");
-    assert.match(r.mensaje, /500/);
+    assert.match(r.mensaje, new RegExp(String(LOTE_MAX_RUTAS)));
   }
 });
 

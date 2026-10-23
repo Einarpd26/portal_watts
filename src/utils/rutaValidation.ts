@@ -217,7 +217,11 @@ export const CUERPO_MAX_PLATAFORMA_BYTES = 4_500_000;
 // ajustar también `sizeLimit` en `pages/api/admin/rutas/lote.ts` (Next exige allí un valor literal);
 // `tests/loteLimite.test.ts` avisa si quedan desalineados.
 export const LOTE_MAX_BYTES = 4 * 1024 * 1024;
-export const LOTE_MAX_RUTAS = 500;
+// El tope es por tiempo, no por tamaño: la base alojada corta toda operación a los 8 s (`statement_timeout` del
+// rol `authenticator`, verificado) y el lote evalúa cada ruta contra las demás, así que el tiempo crece más rápido
+// que la cantidad. Con las rutas reales de Interdepartamental (vista previa, entorno local): 250 rutas, 2,5 s;
+// 300, 4,6 s; 400, 8,7 s; 500, 12,2 s. Si se cambia, ajustar también `LOTE_MAX_RUTAS` del exportador de inventory-manager.
+export const LOTE_MAX_RUTAS = 250;
 
 /**
  * Caja que contiene a Bolivia, con un margen. Latitud y longitud invertidas siguen dentro del rango
