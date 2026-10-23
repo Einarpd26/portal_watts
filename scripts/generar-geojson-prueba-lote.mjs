@@ -41,7 +41,7 @@ const features = [
   ruta('PRB-R09', 'Solape chico sobre R-N4', 'ZN', celda(-63.17, -17.7805)), // 5 %
   ruta('PRB-R10', 'Solape parcial sobre R-S3 y R-S4', 'ZS', celda(-63.175, -17.805)), // 25 % de cada una
   ruta('PRB-R11', 'Contenida en R-S1', 'ZS', celda(-63.197, -17.797, 0.004)), // dentro de otra ruta
-  ruta('PRB-R12', 'Contiene a R-S1 y R-S2', 'ZS', caja(-63.205, -17.805, -63.185, -17.785)), // contiene a otras
+  ruta('PRB-R12', 'Contiene a R-S1', 'ZS', caja(-63.205, -17.805, -63.185, -17.785)), // contiene a otras
   ruta('PRB-R13', 'Invade a Zona Centro', 'ZN', celda(-63.12, -17.79)), // el contorno de ZN taparia las rutas de ZC
 ];
 

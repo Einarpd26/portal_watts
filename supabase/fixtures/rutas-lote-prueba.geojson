@@ -618,7 +618,7 @@
       "type": "Feature",
       "properties": {
         "codigo_ruta": "PRB-R12",
-        "ruta": "Contiene a R-S1 y R-S2",
+        "ruta": "Contiene a R-S1",
         "codigo_zona": "ZS"
       },
       "geometry": {
