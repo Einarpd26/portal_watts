@@ -355,24 +355,60 @@ export function useGestionRutas(): UseGestionRutasReturn {
   // ---- Respaldo en GeoJSON
   const exportar = useCallback(
     async (objetivo: ObjetivoExportacion) => {
-      const consulta =
-        objetivo.tipo === 'ruta' ? `?id_ruta=${objetivo.id}` : objetivo.tipo === 'zona' ? `?id_zona=${objetivo.id}` : '';
-      setIsExportando(true);
-      try {
-        const res = await fetch(`/api/admin/rutas/exportar${consulta}`);
-        if (!res.ok) {
-          showToast('error', await leerError(res, 'No se pudo exportar.'));
-          return;
-        }
+      const base = '/api/admin/rutas/exportar';
+      const filtro =
+        objetivo.tipo === 'ruta' ? `id_ruta=${objetivo.id}` : objetivo.tipo === 'zona' ? `id_zona=${objetivo.id}` : '';
+      const url = (extra: string) => `${base}?${[filtro, extra].filter(Boolean).join('&')}`;
+
+      const descargar = async (res: Response) => {
         const nombre =
           /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? 'territorio.geojson';
-        const url = URL.createObjectURL(await res.blob());
+        const enlaceBlob = URL.createObjectURL(await res.blob());
         const enlace = document.createElement('a');
-        enlace.href = url;
+        enlace.href = enlaceBlob;
         enlace.download = nombre;
         enlace.click();
-        URL.revokeObjectURL(url);
-        showToast('success', `Se descargó ${nombre}.`);
+        URL.revokeObjectURL(enlaceBlob);
+        return nombre;
+      };
+
+      setIsExportando(true);
+      try {
+        if (objetivo.tipo === 'ruta') {
+          const res = await fetch(url(''));
+          if (!res.ok) {
+            showToast('error', await leerError(res, 'No se pudo exportar.'));
+            return;
+          }
+          showToast('success', `Se descargó ${await descargar(res)}.`);
+          return;
+        }
+
+        // Zona o todo (ADR-002 D10): un archivo por sucursal y por tanda de rutas, uno por petición
+        const resumen = await fetch(url('resumen=1'));
+        if (!resumen.ok) {
+          showToast('error', await leerError(resumen, 'No se pudo exportar.'));
+          return;
+        }
+        const { archivos } = (await resumen.json()) as { archivos: Array<{ nombre: string }> };
+        if (archivos.length === 0) {
+          showToast('error', 'No hay rutas para exportar.');
+          return;
+        }
+        for (const [i, archivo] of archivos.entries()) {
+          const res = await fetch(url(`archivo=${encodeURIComponent(archivo.nombre)}`));
+          if (!res.ok) {
+            showToast('error', await leerError(res, `No se pudo descargar ${archivo.nombre}.`));
+            return;
+          }
+          await descargar(res);
+          // Los navegadores descartan descargas disparadas sin pausa una tras otra
+          if (i < archivos.length - 1) await new Promise((resolver) => setTimeout(resolver, 400));
+        }
+        showToast(
+          'success',
+          archivos.length === 1 ? `Se descargó ${archivos[0].nombre}.` : `Se descargaron ${archivos.length} archivos.`
+        );
       } catch (err: unknown) {
         logger.error('Error exportando el territorio:', err);
         showToast('error', 'Error de red al exportar.');
