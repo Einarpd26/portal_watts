@@ -39,6 +39,7 @@ const accion = (promesa: Promise<void>, contexto: string) => {
 export function ZonasPanel() {
   const g = useGestionTerritorio();
   const [busqueda, setBusqueda] = useState('');
+  const [filtroSucursal, setFiltroSucursal] = useState<number | null>(null);
   const [vistaMovil, setVistaMovil] = useState<VistaMovil>('lista');
   const [panelPlegado, setPanelPlegado] = useState(false);
 
@@ -47,17 +48,43 @@ export function ZonasPanel() {
   useEscapeKey(g.closeForm, editando && !g.isSubmitting && !g.supervisorTarget && !g.deleteTarget);
 
   const coloresZona = useMemo(() => coloresPorZona(g.zonas), [g.zonas]);
-  const mostrarSucursal = g.sucursales.length > 1;
+  // El selector es solo para quien opera varias sucursales (Gerencia global)
+  const puedeElegirSucursal = g.alcanceGlobal && g.sucursales.length > 1;
+  // Con una sucursal elegida el prefijo de sucursal en cada zona sobra
+  const mostrarSucursal = g.sucursales.length > 1 && filtroSucursal === null;
+
+  // El filtro de sucursal alcanza a la lista, al mapa y a la leyenda; los colores salen de todas las
+  // zonas para que cada una conserve el suyo al cambiar de filtro
+  const zonasDeSucursal = useMemo(
+    () => (filtroSucursal === null ? g.zonas : g.zonas.filter((z) => z.id_sucursal === filtroSucursal)),
+    [filtroSucursal, g.zonas]
+  );
+  const rutasDeSucursal = useMemo(() => {
+    if (filtroSucursal === null) return g.rutas;
+    const ids = new Set(zonasDeSucursal.map((z) => z.id));
+    return g.rutas.filter((r) => ids.has(r.id_zona));
+  }, [filtroSucursal, g.rutas, zonasDeSucursal]);
+  const contornosDeSucursal = useMemo(() => {
+    if (filtroSucursal === null) return g.contornos;
+    const ids = new Set(zonasDeSucursal.map((z) => z.id));
+    return g.contornos.filter((c) => ids.has(c.id_zona));
+  }, [filtroSucursal, g.contornos, zonasDeSucursal]);
 
   const zonasFiltradas = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    if (!q) return g.zonas;
-    return g.zonas.filter((z) => z.codigo_zona.toLowerCase().includes(q) || z.zona.toLowerCase().includes(q));
-  }, [busqueda, g.zonas]);
+    if (!q) return zonasDeSucursal;
+    return zonasDeSucursal.filter((z) => z.codigo_zona.toLowerCase().includes(q) || z.zona.toLowerCase().includes(q));
+  }, [busqueda, zonasDeSucursal]);
 
-  const zonaElegida = editando ? null : (g.zonas.find((z) => z.id === g.seleccionId) ?? null);
+  // Cambiar de sucursal deja sin selección: la zona elegida podría quedar fuera del filtro
+  const cambiarSucursal = (id: number | null) => {
+    setFiltroSucursal(id);
+    g.setSeleccionId(null);
+  };
+
+  const zonaElegida = editando ? null : (zonasDeSucursal.find((z) => z.id === g.seleccionId) ?? null);
   // Sin rutas la zona no tiene contorno donde anclar la tarjeta: entonces flota arriba del mapa
-  const conContorno = zonaElegida !== null && g.contornos.some((c) => c.id_zona === zonaElegida.id);
+  const conContorno = zonaElegida !== null && contornosDeSucursal.some((c) => c.id_zona === zonaElegida.id);
   const tarjeta = zonaElegida && (
     <TarjetaZona
       zona={zonaElegida}
@@ -113,6 +140,9 @@ export function ZonasPanel() {
             coloresZona={coloresZona}
             isLoading={g.isLoading}
             mostrarSucursal={mostrarSucursal}
+            sucursales={puedeElegirSucursal ? g.sucursales : []}
+            filtroSucursal={filtroSucursal}
+            onFiltroSucursal={cambiarSucursal}
             busqueda={busqueda}
             onBusqueda={setBusqueda}
             seleccionId={g.seleccionId}
@@ -128,20 +158,20 @@ export function ZonasPanel() {
       >
         <MapaTerritorial
           seleccion="zona"
-          rutas={g.rutas}
+          rutas={rutasDeSucursal}
           seleccionId={g.seleccionId}
           onSeleccionar={g.setSeleccionId}
           vistaPrevia={null}
           vistaPreviaInvalida={false}
           conflictos={[]}
-          contornos={g.contornos}
+          contornos={contornosDeSucursal}
           coloresZona={coloresZona}
           idPantallaCompleta={ID_PANTALLA_COMPLETA}
           dibujo={null}
           tarjetaSeleccion={conContorno ? tarjeta : null}
         />
 
-        <LeyendaMapa zonas={g.zonas} coloresZona={coloresZona} />
+        <LeyendaMapa zonas={zonasDeSucursal} coloresZona={coloresZona} />
 
         <div className="absolute left-2 top-2 z-10">
           <BotonPlegarPanel plegado={panelPlegado} onAlternar={() => setPanelPlegado((v) => !v)} />
