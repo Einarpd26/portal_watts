@@ -5,7 +5,7 @@ import type { RutaItem } from '@/types';
 
 interface TarjetaRutaProps {
   ruta: RutaItem;
-  codigoZona: string;
+  nombreZona: string;
   color: string | undefined;
   isExportando: boolean;
   onEditarPoligono: () => void;
@@ -22,7 +22,7 @@ interface TarjetaRutaProps {
  */
 export function TarjetaRuta({
   ruta,
-  codigoZona,
+  nombreZona,
   color,
   isExportando,
   onEditarPoligono,
@@ -45,7 +45,7 @@ export function TarjetaRuta({
             {ruta.codigo_ruta} · {ruta.ruta}
           </p>
           <p className="truncate text-xs text-gray-500">
-            Zona {codigoZona}
+            {nombreZona}
             {ruta.descripcion_ruta ? ` · ${ruta.descripcion_ruta}` : ''}
           </p>
         </div>
