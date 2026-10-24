@@ -93,7 +93,7 @@ export function RutasPanel() {
   const tarjeta = rutaElegida && (
     <TarjetaRuta
       ruta={rutaElegida}
-      codigoZona={g.zonas.find((z) => z.id === rutaElegida.id_zona)?.codigo_zona ?? '—'}
+      nombreZona={g.zonas.find((z) => z.id === rutaElegida.id_zona)?.zona ?? '—'}
       color={coloresZona.get(rutaElegida.id_zona)}
       isExportando={g.isExportando}
       onEditarPoligono={() => {

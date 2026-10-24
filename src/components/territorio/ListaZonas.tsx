@@ -1,14 +1,20 @@
 "use client";
 
 import Button from '@/components/ui/Button';
+import Select from '@/components/ui/Select';
 import { cn } from '@/utils/cn';
 import type { ZonaItem } from '@/types';
+import type { SucursalOpcion } from '@/hooks/useGestionTerritorio';
 
 interface ListaZonasProps {
   zonas: ZonaItem[];
   coloresZona: Map<number, string>;
   isLoading: boolean;
   mostrarSucursal: boolean;
+  /** Opciones del selector de sucursal; vacío cuando quien opera no puede cambiar de sucursal */
+  sucursales: SucursalOpcion[];
+  filtroSucursal: number | null;
+  onFiltroSucursal: (id: number | null) => void;
   busqueda: string;
   onBusqueda: (texto: string) => void;
   seleccionId: number | null;
@@ -24,6 +30,9 @@ export function ListaZonas({
   coloresZona,
   isLoading,
   mostrarSucursal,
+  sucursales,
+  filtroSucursal,
+  onFiltroSucursal,
   busqueda,
   onBusqueda,
   seleccionId,
@@ -32,7 +41,22 @@ export function ListaZonas({
 }: ListaZonasProps) {
   return (
     <>
-      <div className="shrink-0 border-b border-gray-200 bg-gray-50 px-3 py-3">
+      <div className="shrink-0 space-y-2 border-b border-gray-200 bg-gray-50 px-3 py-3">
+        {sucursales.length > 1 && (
+          <Select
+            label="Sucursal"
+            compact
+            value={filtroSucursal ?? ''}
+            onChange={(e) => onFiltroSucursal(e.target.value ? Number(e.target.value) : null)}
+          >
+            <option value="">Todas las sucursales</option>
+            {sucursales.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nombre}
+              </option>
+            ))}
+          </Select>
+        )}
         <label className="relative block">
           <span className="sr-only">Buscar zona</span>
           <svg

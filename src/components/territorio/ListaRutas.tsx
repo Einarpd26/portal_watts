@@ -42,7 +42,7 @@ export function ListaRutas({
   onTrasladar,
 }: ListaRutasProps) {
   const sinZonas = !isLoading && zonas.length === 0;
-  const codigoZona = (id: number) => zonas.find((z) => z.id === id)?.codigo_zona ?? '—';
+  const nombreZona = (id: number) => zonas.find((z) => z.id === id)?.zona ?? '—';
 
   return (
     <>
@@ -127,7 +127,7 @@ export function ListaRutas({
                     {r.codigo_ruta} · {r.ruta}
                   </span>
                   <span className="block truncate text-xs text-gray-500">
-                    Zona {codigoZona(r.id_zona)}
+                    {nombreZona(r.id_zona)}
                     {r.descripcion_ruta ? ` · ${r.descripcion_ruta}` : ''}
                   </span>
                 </span>
