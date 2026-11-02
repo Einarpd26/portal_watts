@@ -225,6 +225,28 @@ export interface EquiposListado {
   alcance_global: boolean;
 }
 
+// 10c. Slots de planificación del supervisor (CU-08)
+export interface SlotItem {
+  id: number;
+  nombre: string | null;
+  orden: number;
+  id_vendedor: number | null;
+  vendedor_nombre: string | null;
+}
+
+export interface VendedorDisponible {
+  id_persona: number;
+  nombre: string;
+}
+
+export interface SlotsListado {
+  slots: SlotItem[];
+  /** Vendedores del equipo que todavía no ocupan ningún slot */
+  disponibles: VendedorDisponible[];
+  /** false: quien consulta no es un supervisor (p. ej. Gerencia), así que no tiene equipo propio */
+  es_supervisor: boolean;
+}
+
 // 11. Rutas comerciales (CU-05)
 export interface PoligonoRuta {
   type: 'Polygon';

@@ -37,7 +37,7 @@ interface BitacoraApiResponse {
   };
 }
 
-const MODULOS = ['TODOS', 'AUTENTICACION', 'ACCESOS', 'PERSONAL', 'TERRITORIO', 'SISTEMA'];
+const MODULOS = ['TODOS', 'AUTENTICACION', 'ACCESOS', 'PERSONAL', 'TERRITORIO', 'PLANIFICACION', 'SISTEMA'];
 const ACCIONES = ['TODAS', ...ACCIONES_BITACORA];
 
 function getModuloBadgeClasses(modulo: string): string {
@@ -50,6 +50,8 @@ function getModuloBadgeClasses(modulo: string): string {
       return 'bg-emerald-50 text-emerald-700 border-emerald-200';
     case 'TERRITORIO':
       return 'bg-amber-50 text-amber-700 border-amber-200';
+    case 'PLANIFICACION':
+      return 'bg-cyan-50 text-cyan-700 border-cyan-200';
     case 'SISTEMA':
       return 'bg-gray-100 text-gray-700 border-gray-200';
     default:
@@ -82,6 +84,8 @@ function getAccionBadgeClasses(accion: string): string {
     case 'CREAR_ZONA':
     case 'ASIGNAR_SUPERVISOR_ZONA':
     case 'ASIGNAR_VENDEDOR_EQUIPO':
+    case 'CREAR_SLOT':
+    case 'ASIGNAR_VENDEDOR_SLOT':
       return 'bg-sky-100 text-sky-800';
     case 'EDITAR_PERSONAL':
     case 'EDITAR_SUCURSAL':
@@ -97,6 +101,8 @@ function getAccionBadgeClasses(accion: string): string {
     case 'ELIMINAR_ZONA':
     case 'QUITAR_SUPERVISOR_ZONA':
     case 'QUITAR_VENDEDOR_EQUIPO':
+    case 'QUITAR_VENDEDOR_SLOT':
+    case 'ELIMINAR_SLOT':
       return 'bg-rose-100 text-rose-800';
     default:
       return 'bg-gray-100 text-gray-700';

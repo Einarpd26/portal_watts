@@ -617,6 +617,34 @@ export type Database = {
           ruta: string
         }[]
       }
+      slot_asignar_vendedor: {
+        Args: {
+          p_id_slot: number
+          p_id_supervisor: number
+          p_id_vendedor?: number
+        }
+        Returns: Json
+      }
+      slot_crear: {
+        Args: { p_id_supervisor: number; p_nombre?: string }
+        Returns: Json
+      }
+      slot_eliminar: {
+        Args: { p_id_slot: number; p_id_supervisor: number }
+        Returns: Json
+      }
+      slot_mover: {
+        Args: {
+          p_direccion: string
+          p_id_slot: number
+          p_id_supervisor: number
+        }
+        Returns: Json
+      }
+      slot_renombrar: {
+        Args: { p_id_slot: number; p_id_supervisor: number; p_nombre: string }
+        Returns: Json
+      }
       supervisor_reemplazar: {
         Args: {
           p_id_inactivo: number

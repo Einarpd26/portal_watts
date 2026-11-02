@@ -31,7 +31,7 @@ export const DASHBOARD_TAB: NavItem = {
 export const OPERATION_GROUP_LABEL = "Operación";
 export const OPERATION_GROUP: NavItem[] = [
   { label: "Mapa", href: "/mapa", requiredPermissions: ["mapa:consultar"], available: false },
-  { label: "Planificación", href: "/planificacion", requiredPermissions: ["planificacion:asignar"], available: false },
+  { label: "Planificación", href: "/planificacion", requiredPermissions: ["planificacion:asignar"], available: true },
 ];
 
 // Grupo "Gestión": administración corporativa de la sucursal.
