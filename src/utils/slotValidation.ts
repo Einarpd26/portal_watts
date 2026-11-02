@@ -7,6 +7,7 @@ export type ErrorSlot =
   | 'vendedor_ocupado'
   | 'direccion_invalida'
   | 'nombre_invalido'
+  | 'orden_invalido'
   | 'error';
 
 const ERRORES_DE_NEGOCIO: readonly ErrorSlot[] = [
@@ -16,6 +17,7 @@ const ERRORES_DE_NEGOCIO: readonly ErrorSlot[] = [
   'vendedor_ocupado',
   'direccion_invalida',
   'nombre_invalido',
+  'orden_invalido',
 ];
 
 /** Largo máximo del nombre de un slot (el diseño de datos lo define de 50 caracteres) */
@@ -87,6 +89,16 @@ export function validarRenombre(cuerpo: unknown): { ok: true; nombre: string } |
   return { ok: true, nombre: limpio };
 }
 
+/** Cuerpo de PUT /api/planificacion/slots/orden: los ids de todos sus slots, en el orden nuevo */
+export function validarOrdenSlots(cuerpo: unknown): { ok: true; ids: number[] } | { ok: false; mensaje: string } {
+  const ids = (cuerpo as { ids?: unknown } | null)?.ids;
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > 500 || !ids.every(esIdValido)) {
+    return { ok: false, mensaje: 'Indica el orden de tus slots.' };
+  }
+  if (new Set(ids).size !== ids.length) return { ok: false, mensaje: 'El orden tiene slots repetidos.' };
+  return { ok: true, ids };
+}
+
 /** Cuerpo de POST /api/planificacion/slots/[id]/mover */
 export function validarMovimiento(cuerpo: unknown): { ok: true; direccion: 'arriba' | 'abajo' } | { ok: false; mensaje: string } {
   const direccion = (cuerpo as { direccion?: unknown } | null)?.direccion;
@@ -107,6 +119,8 @@ export function respuestaDeErrorSlot(error: ErrorSlot): { status: number; mensaj
       return { status: 409, mensaje: 'Ese vendedor ya ocupa otro slot: libéralo primero.' };
     case 'direccion_invalida':
       return { status: 400, mensaje: 'La dirección debe ser «arriba» o «abajo».' };
+    case 'orden_invalido':
+      return { status: 409, mensaje: 'Tus slots cambiaron: se recargó la lista, vuelve a intentarlo.' };
     case 'nombre_invalido':
       return { status: 400, mensaje: `El nombre del slot es obligatorio y de hasta ${MAX_NOMBRE_SLOT} caracteres.` };
     default:

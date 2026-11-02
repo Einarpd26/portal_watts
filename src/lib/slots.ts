@@ -168,3 +168,14 @@ export async function eliminarSlot(idSlot: number, idSupervisor: number): Promis
   const resultado = interpretarResultadoSlot(data);
   return resultado.ok ? { ok: true, data: null } : resultado;
 }
+
+/** Guarda el orden completo de los slots del supervisor (arrastre de filas, CU-08 A2) */
+export async function reordenarSlots(idSupervisor: number, ids: number[]): Promise<SlotResultado<null>> {
+  const { data, error } = await createAdminClient().rpc('slot_reordenar', {
+    p_id_supervisor: idSupervisor,
+    p_ids: ids,
+  });
+  if (error) return { ok: false, error: 'error' };
+  const resultado = interpretarResultadoSlot(data);
+  return resultado.ok ? { ok: true, data: null } : resultado;
+}

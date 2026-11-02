@@ -41,6 +41,7 @@ const PlanificacionPage: PageWithLayout = () => {
     cambiarFrecuencia,
     quitarVisita,
     moverVisita,
+    reordenarSlots,
   } = useGestionSlots();
 
   const nombreDeSlot = (idSlot: number) => {
@@ -123,6 +124,7 @@ const PlanificacionPage: PageWithLayout = () => {
               onEliminar={(id) => void eliminarSlot(id)}
               onMover={(id, direccion) => void moverSlot(id, direccion)}
               onAgregarVisita={(idSlot, dia) => setVisitaModal({ tipo: 'agregar', idSlot, dia, nombreSlot: nombreDeSlot(idSlot) })}
+              onReordenar={(ids) => void reordenarSlots(ids)}
               onMoverVisita={(idVisita, idSlot, dia) => void moverVisita(idVisita, idSlot, dia)}
               onSeleccionarVisita={(visita) => setVisitaModal({ tipo: 'editar', visita, nombreSlot: nombreDeSlot(visita.id_slot) })}
             />

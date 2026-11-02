@@ -8,6 +8,7 @@ import {
   validarAsignacionSlot,
   validarMovimiento,
   validarNuevoSlot,
+  validarOrdenSlots,
   validarRenombre,
 } from "../src/utils/slotValidation.ts";
 
@@ -68,4 +69,16 @@ test("renombre: el nombre es obligatorio, se recorta y respeta el máximo", () =
 test("respuesta HTTP: un nombre inválido es 400", () => {
   assert.equal(respuestaDeErrorSlot("nombre_invalido").status, 400);
   assert.deepEqual(interpretarResultadoSlot({ ok: false, error: "nombre_invalido" }), { ok: false, error: "nombre_invalido" });
+});
+
+test("orden de slots: lista de ids positivos, sin repetidos", () => {
+  assert.deepEqual(validarOrdenSlots({ ids: [3, 1, 2] }), { ok: true, ids: [3, 1, 2] });
+  for (const malo of [undefined, {}, { ids: [] }, { ids: "1,2" }, { ids: [1, 0] }, { ids: [1, "2"] }, { ids: [1, 1] }]) {
+    assert.equal(validarOrdenSlots(malo).ok, false);
+  }
+});
+
+test("respuesta HTTP: un orden desactualizado es 409", () => {
+  assert.equal(respuestaDeErrorSlot("orden_invalido").status, 409);
+  assert.deepEqual(interpretarResultadoSlot({ ok: false, error: "orden_invalido" }), { ok: false, error: "orden_invalido" });
 });

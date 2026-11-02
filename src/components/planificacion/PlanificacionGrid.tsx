@@ -6,12 +6,17 @@ import {
   DragOverlay,
   MouseSensor,
   TouchSensor,
+  closestCenter,
   pointerWithin,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
+  type Modifier,
 } from '@dnd-kit/core';
+import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { DIAS_ORDEN, DIA_LABELS, type DiaKey } from '@/utils/diasSemana';
 import { rutasDuplicadasEnSemana } from '@/utils/planificacionDuplicados';
 import { datosArrastreVisita, datosCeldaDestino, puedeSoltarVisita } from '@/utils/planificacionMover';
@@ -33,7 +38,30 @@ interface PlanificacionGridProps {
   onSeleccionarVisita: (visita: VisitaPlanificada) => void;
   /** Mueve una visita a otra celda (el padre llama a la API y muestra el resultado) */
   onMoverVisita: (idVisita: number, idSlot: number, dia: DiaKey) => void;
+  /** Reordena los slots arrastrando una fila: recibe los ids en el orden nuevo */
+  onReordenar: (idsEnOrden: number[]) => void;
 }
+
+// Un solo DndContext con dos tipos de arrastre, distinguidos por `data.type`:
+//  - filas de slot (useSortable, sin type): solo en vertical y dentro de la tabla.
+//  - 'visita' (chip entre celdas): movimiento libre, solo sobre celdas.
+const esArrastreVisita = (active: { data: { current?: Record<string, unknown> } } | null) =>
+  active?.data.current?.type === 'visita';
+
+const soloParaFilas =
+  (modifier: Modifier): Modifier =>
+  (args) =>
+    esArrastreVisita(args.active) ? args.transform : modifier(args);
+
+const MODIFICADORES: Modifier[] = [soloParaFilas(restrictToVerticalAxis), soloParaFilas(restrictToParentElement)];
+
+const colision: CollisionDetection = (args) => {
+  const esVisita = esArrastreVisita(args.active);
+  const contenedores = args.droppableContainers.filter((c) => (c.data.current?.type === 'celda') === esVisita);
+  return esVisita
+    ? pointerWithin({ ...args, droppableContainers: contenedores })
+    : closestCenter({ ...args, droppableContainers: contenedores });
+};
 
 /** Grilla de planificación: una fila por slot y una columna por día de visita (lunes a sábado) */
 export default function PlanificacionGrid({
@@ -49,6 +77,7 @@ export default function PlanificacionGrid({
   onAgregarVisita,
   onSeleccionarVisita,
   onMoverVisita,
+  onReordenar,
 }: PlanificacionGridProps) {
   // RN-04: una ruta planificada más de una vez en la semana (en cualquier slot y día) es duplicada
   const duplicadas = useMemo(() => rutasDuplicadasEnSemana(visitas), [visitas]);
@@ -71,18 +100,31 @@ export default function PlanificacionGrid({
   const alSoltar = useCallback(
     ({ active, over }: DragEndEvent) => {
       setArrastrada(null);
+
       const arrastre = datosArrastreVisita(active.data.current);
-      const celda = datosCeldaDestino(over?.data.current);
-      if (!arrastre || !celda || !puedeSoltarVisita(celda.destino, arrastre.origen)) return;
-      onMoverVisita(arrastre.origen.idVisita, celda.destino.idSlot, celda.destino.dia);
+      if (arrastre) {
+        const celda = datosCeldaDestino(over?.data.current);
+        if (celda && puedeSoltarVisita(celda.destino, arrastre.origen)) {
+          onMoverVisita(arrastre.origen.idVisita, celda.destino.idSlot, celda.destino.dia);
+        }
+        return;
+      }
+
+      // Fila de slot
+      if (!over || active.id === over.id) return;
+      const antes = slots.findIndex((sl) => sl.id === active.id);
+      const despues = slots.findIndex((sl) => sl.id === over.id);
+      if (antes === -1 || despues === -1) return;
+      onReordenar(arrayMove(slots, antes, despues).map((sl) => sl.id));
     },
-    [onMoverVisita]
+    [slots, onMoverVisita, onReordenar]
   );
 
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={pointerWithin}
+      collisionDetection={colision}
+      modifiers={MODIFICADORES}
       onDragStart={alEmpezar}
       onDragCancel={() => setArrastrada(null)}
       onDragEnd={alSoltar}
@@ -102,6 +144,7 @@ export default function PlanificacionGrid({
           </tr>
         </thead>
         <tbody className="bg-white">
+          <SortableContext items={slots.map((sl) => sl.id)} strategy={verticalListSortingStrategy}>
           {slots.map((slot, i) => (
             <FilaSlot
               key={slot.id}
@@ -121,6 +164,7 @@ export default function PlanificacionGrid({
               onSeleccionarVisita={onSeleccionarVisita}
             />
           ))}
+          </SortableContext>
         </tbody>
       </table>
     </div>

@@ -158,6 +158,31 @@ export function useGestionSlots() {
     }
   };
 
+  // Reordenar también es optimista: la fila queda donde se soltó y, si el servidor lo rechaza, se
+  // recarga la lista con el orden real
+  const reordenarSlots = async (ids: number[]) => {
+    const orden = new Map(ids.map((id, i) => [id, i]));
+    setListado((prev) => ({
+      ...prev,
+      slots: [...prev.slots].sort((a, b) => (orden.get(a.id) ?? 0) - (orden.get(b.id) ?? 0)).map((s) => ({ ...s, orden: orden.get(s.id) ?? s.orden })),
+    }));
+    try {
+      const res = await fetch('/api/planificacion/slots/orden', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) {
+        setToast({ type: 'error', message: await mensajeDeErrorApi(res, 'No se pudo reordenar los slots.') });
+        await cargar();
+      }
+    } catch (err: unknown) {
+      logger.error('Error reordenando los slots:', err);
+      setToast({ type: 'error', message: 'No se pudo reordenar los slots.' });
+      await cargar();
+    }
+  };
+
   const quitarVisita = (idVisita: number) =>
     ejecutar(
       () => fetch(`/api/planificacion/visitas/${idVisita}`, { method: 'DELETE' }),
@@ -192,5 +217,6 @@ export function useGestionSlots() {
     cambiarFrecuencia,
     quitarVisita,
     moverVisita,
+    reordenarSlots,
   };
 }

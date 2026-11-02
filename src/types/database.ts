@@ -717,6 +717,10 @@ export type Database = {
         Args: { p_id_slot: number; p_id_supervisor: number; p_nombre: string }
         Returns: Json
       }
+      slot_reordenar: {
+        Args: { p_id_supervisor: number; p_ids: number[] }
+        Returns: Json
+      }
       supervisor_reemplazar: {
         Args: {
           p_id_inactivo: number
