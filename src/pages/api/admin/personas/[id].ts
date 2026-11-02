@@ -117,18 +117,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (insError) {
       logger.error('Error creando nueva asignación:', insError);
       if (active) {
-        await supabase.from('asignaciones_laborales').update({ estado: 'activo', fecha_fin: null }).eq('id', active.id);
+        const { error: rollbackError } = await supabase
+          .from('asignaciones_laborales')
+          .update({ estado: 'activo', fecha_fin: null })
+          .eq('id', active.id);
+        if (rollbackError) logger.error('Error restaurando la asignación vigente:', rollbackError);
       }
       return res.status(500).json({ error: 'Error al crear la nueva asignación laboral' });
     }
 
     // Si ya tiene cuenta con alcance de sucursal, el alcance debe seguir a la asignación
     if (persona.auth_user_id && active?.id_sucursal !== id_sucursal) {
-      await supabase
+      const { error: alcanceError } = await supabase
         .from('usuario_roles')
         .update({ id_sucursal })
         .eq('id_persona', id)
         .eq('alcance_tipo', 'SUCURSAL');
+      if (alcanceError) {
+        logger.error('Error actualizando el alcance de acceso:', alcanceError);
+        return res.status(500).json({
+          error: 'La asignación cambió, pero no se pudo actualizar la sucursal de su acceso. Reintentá la edición.',
+        });
+      }
     }
   }
 
