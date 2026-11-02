@@ -12,3 +12,7 @@ export const DIA_LABELS: Record<DiaKey, string> = {
   VI: 'Viernes',
   SA: 'Sábado',
 };
+
+export function esDia(valor: unknown): valor is DiaKey {
+  return typeof valor === 'string' && (DIAS_ORDEN as readonly string[]).includes(valor);
+}

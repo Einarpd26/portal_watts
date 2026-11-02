@@ -1,10 +1,11 @@
 "use client";
 
 import { useRef, useState, type KeyboardEvent } from 'react';
-import { DIAS_ORDEN } from '@/utils/diasSemana';
+import { DIAS_ORDEN, type DiaKey } from '@/utils/diasSemana';
+import CeldaDia from './CeldaDia';
 import { MAX_NOMBRE_SLOT } from '@/utils/slotValidation';
 import { cn } from '@/utils/cn';
-import type { SlotItem, VendedorDisponible } from '@/types';
+import type { SlotItem, VendedorDisponible, VisitaPlanificada } from '@/types';
 
 interface FilaSlotProps {
   slot: SlotItem;
@@ -12,6 +13,9 @@ interface FilaSlotProps {
   total: number;
   /** Vendedores del equipo sin slot, que se pueden asignar a este */
   disponibles: VendedorDisponible[];
+  /** Visitas de este slot */
+  visitas: VisitaPlanificada[];
+  duplicadas: ReadonlySet<number>;
   /** Modo edición: habilita renombrar, asignar, reordenar y eliminar */
   editMode: boolean;
   deshabilitado: boolean;
@@ -19,6 +23,8 @@ interface FilaSlotProps {
   onRenombrar: (idSlot: number, nombre: string) => void;
   onEliminar: (idSlot: number) => void;
   onMover: (idSlot: number, direccion: 'arriba' | 'abajo') => void;
+  onAgregarVisita: (idSlot: number, dia: DiaKey) => void;
+  onSeleccionarVisita: (visita: VisitaPlanificada) => void;
 }
 
 const BOTON_FLECHA =
@@ -29,12 +35,16 @@ export default function FilaSlot({
   posicion,
   total,
   disponibles,
+  visitas,
+  duplicadas,
   editMode,
   deshabilitado,
   onAsignar,
   onRenombrar,
   onEliminar,
   onMover,
+  onAgregarVisita,
+  onSeleccionarVisita,
 }: FilaSlotProps) {
   const nombre = slot.nombre ?? `Slot ${posicion}`;
   const [editando, setEditando] = useState(false);
@@ -179,11 +189,16 @@ export default function FilaSlot({
         </div>
       </td>
 
-      {/* Celdas de día: sin rutas por ahora; el siguiente paso las llena con la planificación (CU-09) */}
       {DIAS_ORDEN.map((dia) => (
-        <td key={dia} className="min-w-0 overflow-hidden border-r border-gray-200 bg-zinc-50 p-2 last:border-r-0" aria-label={`${nombre}, ${dia}`}>
-          <div className="min-h-[2rem]" />
-        </td>
+        <CeldaDia
+          key={dia}
+          visitas={visitas.filter((v) => v.dia === dia)}
+          duplicadas={duplicadas}
+          editMode={editMode}
+          etiqueta={`${nombre}, ${dia}`}
+          onAgregar={() => onAgregarVisita(slot.id, dia)}
+          onSeleccionar={onSeleccionarVisita}
+        />
       ))}
     </tr>
   );

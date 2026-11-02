@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { logger } from '@/lib/logger';
-import type { EquipoSupervisor, EquiposListado, VendedorSinEquipo } from '@/types';
+import { mensajeDeErrorApi } from '@/utils/apiError';
+import type { EquipoSupervisor, EquiposListado, VendedorSinEquipo, ZonaSinSupervisor } from '@/types';
 
 type Toast = { type: 'success' | 'error'; message: string };
 
@@ -12,12 +13,7 @@ export interface VendedorObjetivo {
   id_supervisor_actual: number | null;
 }
 
-const LISTADO_VACIO: EquiposListado = { equipos: [], sin_supervisor: [], alcance_global: false };
-
-async function mensajeDeError(res: Response, porDefecto: string): Promise<string> {
-  const cuerpo = (await res.json().catch(() => null)) as { error?: string } | null;
-  return cuerpo?.error ?? porDefecto;
-}
+const LISTADO_VACIO: EquiposListado = { equipos: [], sin_supervisor: [], zonas_sin_supervisor: [], alcance_global: false };
 
 export function useGestionEquipos() {
   const [listado, setListado] = useState<EquiposListado>(LISTADO_VACIO);
@@ -29,6 +25,8 @@ export function useGestionEquipos() {
   const [supervisorSeleccion, setSupervisorSeleccion] = useState<number | null>(null);
   const [reemplazoTarget, setReemplazoTarget] = useState<EquipoSupervisor | null>(null);
   const [reemplazoSeleccion, setReemplazoSeleccion] = useState<number | null>(null);
+  const [zonaTarget, setZonaTarget] = useState<ZonaSinSupervisor | null>(null);
+  const [zonaSeleccion, setZonaSeleccion] = useState<number | null>(null);
 
   const clearToast = useCallback(() => setToast(null), []);
 
@@ -36,7 +34,7 @@ export function useGestionEquipos() {
     try {
       const res = await fetch('/api/admin/equipos');
       if (!res.ok) {
-        setToast({ type: 'error', message: await mensajeDeError(res, 'No se pudieron cargar los equipos.') });
+        setToast({ type: 'error', message: await mensajeDeErrorApi(res, 'No se pudieron cargar los equipos.') });
         return;
       }
       setListado((await res.json()) as EquiposListado);
@@ -74,7 +72,7 @@ export function useGestionEquipos() {
         body: JSON.stringify({ id_supervisor: supervisorSeleccion }),
       });
       if (!res.ok) {
-        setToast({ type: 'error', message: await mensajeDeError(res, 'No se pudo actualizar el equipo.') });
+        setToast({ type: 'error', message: await mensajeDeErrorApi(res, 'No se pudo actualizar el equipo.') });
       } else {
         const cuerpo = (await res.json()) as { slots_liberados?: number };
         const liberados = cuerpo.slots_liberados ?? 0;
@@ -114,11 +112,11 @@ export function useGestionEquipos() {
         body: JSON.stringify({ id_inactivo: reemplazoTarget.id_persona, id_nuevo: reemplazoSeleccion }),
       });
       if (!res.ok) {
-        setToast({ type: 'error', message: await mensajeDeError(res, 'No se pudo reemplazar al supervisor.') });
+        setToast({ type: 'error', message: await mensajeDeErrorApi(res, 'No se pudo reemplazar al supervisor.') });
       } else {
         setToast({
           type: 'success',
-          message: 'Supervisor reemplazado. El equipo y los slots pasaron con su planificación; asigna las zonas desde Territorio.',
+          message: 'Supervisor reemplazado. El equipo y los slots pasaron con su planificación; asigna sus zonas en «Zonas sin supervisor».',
         });
       }
     } catch (err: unknown) {
@@ -126,6 +124,37 @@ export function useGestionEquipos() {
       setToast({ type: 'error', message: 'No se pudo reemplazar al supervisor.' });
     } finally {
       setReemplazoTarget(null);
+      setIsSubmitting(false);
+      await cargar();
+    }
+  };
+
+  // --- Asignar una zona sin supervisor (CU-07): reutiliza la API de zonas ---
+  const openZona = (zona: ZonaSinSupervisor) => {
+    setZonaTarget(zona);
+    setZonaSeleccion(null);
+  };
+  const closeZona = () => setZonaTarget(null);
+
+  const submitZona = async () => {
+    if (!zonaTarget || zonaSeleccion === null) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/admin/zonas/${zonaTarget.id}/supervisor`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_persona: zonaSeleccion }),
+      });
+      if (!res.ok) {
+        setToast({ type: 'error', message: await mensajeDeErrorApi(res, 'No se pudo asignar la zona.') });
+      } else {
+        setToast({ type: 'success', message: `La zona ${zonaTarget.codigo_zona} tiene supervisor.` });
+      }
+    } catch (err: unknown) {
+      logger.error('Error asignando el supervisor de la zona:', err);
+      setToast({ type: 'error', message: 'No se pudo asignar la zona.' });
+    } finally {
+      setZonaTarget(null);
       setIsSubmitting(false);
       await cargar();
     }
@@ -151,5 +180,11 @@ export function useGestionEquipos() {
     openReemplazo,
     closeReemplazo,
     submitReemplazo,
+    zonaTarget,
+    zonaSeleccion,
+    setZonaSeleccion,
+    openZona,
+    closeZona,
+    submitZona,
   };
 }

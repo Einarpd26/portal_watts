@@ -1,31 +1,42 @@
 "use client";
 
-import { DIAS_ORDEN, DIA_LABELS } from '@/utils/diasSemana';
+import { useMemo } from 'react';
+import { DIAS_ORDEN, DIA_LABELS, type DiaKey } from '@/utils/diasSemana';
+import { rutasDuplicadasEnSemana } from '@/utils/planificacionDuplicados';
 import FilaSlot from './FilaSlot';
-import type { SlotItem, VendedorDisponible } from '@/types';
+import type { SlotItem, VendedorDisponible, VisitaPlanificada } from '@/types';
 
 interface PlanificacionGridProps {
   slots: SlotItem[];
   disponibles: VendedorDisponible[];
+  visitas: VisitaPlanificada[];
   editMode: boolean;
   deshabilitado: boolean;
   onAsignar: (idSlot: number, idVendedor: number | null) => void;
   onRenombrar: (idSlot: number, nombre: string) => void;
   onEliminar: (idSlot: number) => void;
   onMover: (idSlot: number, direccion: 'arriba' | 'abajo') => void;
+  onAgregarVisita: (idSlot: number, dia: DiaKey) => void;
+  onSeleccionarVisita: (visita: VisitaPlanificada) => void;
 }
 
 /** Grilla de planificación: una fila por slot y una columna por día de visita (lunes a sábado) */
 export default function PlanificacionGrid({
   slots,
   disponibles,
+  visitas,
   editMode,
   deshabilitado,
   onAsignar,
   onRenombrar,
   onEliminar,
   onMover,
+  onAgregarVisita,
+  onSeleccionarVisita,
 }: PlanificacionGridProps) {
+  // RN-04: una ruta planificada más de una vez en la semana (en cualquier slot y día) es duplicada
+  const duplicadas = useMemo(() => rutasDuplicadasEnSemana(visitas), [visitas]);
+
   return (
     <div className="overflow-x-auto rounded-xl border border-gray-200">
       <table className="w-full table-fixed border-collapse text-sm">
@@ -49,12 +60,16 @@ export default function PlanificacionGrid({
               posicion={i + 1}
               total={slots.length}
               disponibles={disponibles}
+              visitas={visitas.filter((v) => v.id_slot === slot.id)}
+              duplicadas={duplicadas}
               editMode={editMode}
               deshabilitado={deshabilitado}
               onAsignar={onAsignar}
               onRenombrar={onRenombrar}
               onEliminar={onEliminar}
               onMover={onMover}
+              onAgregarVisita={onAgregarVisita}
+              onSeleccionarVisita={onSeleccionarVisita}
             />
           ))}
         </tbody>

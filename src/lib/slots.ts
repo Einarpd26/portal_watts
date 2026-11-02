@@ -1,13 +1,19 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { primero } from '@/utils/postgrest';
 import { interpretarResultadoSlot, type ErrorSlot } from '@/utils/slotValidation';
-import type { SlotsListado } from '@/types';
+import type { Frecuencia, RutaPlanificable, SlotsListado, VisitaPlanificada } from '@/types';
+import type { DiaKey } from '@/utils/diasSemana';
 
 export type SlotResultado<T> = { ok: true; data: T } | { ok: false; error: ErrorSlot };
 
-/** Slots del supervisor y los vendedores de su equipo que todavía no ocupan ninguno (CU-08) */
+/**
+ * Slots del supervisor con sus visitas, los vendedores de su equipo que todavía no ocupan ninguno
+ * (CU-08) y las rutas de sus zonas. Las visitas de rutas que ya no son de sus zonas se ocultan: la
+ * planificación se conserva, pero el supervisor que perdió la zona deja de verla (RN-05).
+ */
 export async function listarSlots(idSupervisor: number): Promise<SlotResultado<Omit<SlotsListado, 'es_supervisor'>>> {
   const db = createAdminClient();
-  const [slotsRes, equipoRes] = await Promise.all([
+  const [slotsRes, equipoRes, zonasRes] = await Promise.all([
     db
       .from('vendedor_slots')
       .select('id, nombre, orden, id_vendedor')
@@ -15,8 +21,9 @@ export async function listarSlots(idSupervisor: number): Promise<SlotResultado<O
       .order('orden', { ascending: true })
       .order('id', { ascending: true }),
     db.from('supervisor_vendedores').select('id_vendedor').eq('id_supervisor', idSupervisor),
+    db.from('supervisor_zonas').select('id_zona').eq('id_supervisor', idSupervisor),
   ]);
-  if (slotsRes.error || equipoRes.error) return { ok: false, error: 'error' };
+  if (slotsRes.error || equipoRes.error || zonasRes.error) return { ok: false, error: 'error' };
 
   const slots = slotsRes.data ?? [];
   const idsEquipo = (equipoRes.data ?? []).map((v) => v.id_vendedor);
@@ -27,6 +34,51 @@ export async function listarSlots(idSupervisor: number): Promise<SlotResultado<O
     const { data, error } = await db.from('personas').select('id, nombres, apellidos').in('id', idsPersonas);
     if (error) return { ok: false, error: 'error' };
     for (const p of data ?? []) nombres.set(p.id, `${p.apellidos}, ${p.nombres}`);
+  }
+
+  // Rutas de las zonas que supervisa hoy y sus visitas planificadas
+  const idsZona = (zonasRes.data ?? []).map((z) => z.id_zona);
+  let rutas: RutaPlanificable[] = [];
+  let visitas: VisitaPlanificada[] = [];
+  if (idsZona.length > 0) {
+    const { data, error } = await db
+      .from('rutas')
+      .select('id, codigo_ruta, ruta, zonas!inner ( codigo_zona )')
+      .in('id_zona', idsZona)
+      .order('codigo_ruta', { ascending: true });
+    if (error) return { ok: false, error: 'error' };
+    rutas = (data ?? []).map((r) => ({
+      id: r.id,
+      codigo_ruta: r.codigo_ruta,
+      ruta: r.ruta,
+      codigo_zona: primero(r.zonas)?.codigo_zona ?? '',
+    }));
+
+    const idsSlot = slots.map((s) => s.id);
+    if (idsSlot.length > 0 && rutas.length > 0) {
+      const porId = new Map(rutas.map((r) => [r.id, r]));
+      const visitasRes = await db
+        .from('planificacion_rutas')
+        .select('id, id_vendedor_slot, id_ruta, dia_semana, frecuencia')
+        .in('id_vendedor_slot', idsSlot)
+        .in('id_ruta', rutas.map((r) => r.id))
+        .order('id', { ascending: true });
+      if (visitasRes.error) return { ok: false, error: 'error' };
+      visitas = (visitasRes.data ?? []).flatMap((v) => {
+        const ruta = porId.get(v.id_ruta);
+        return ruta
+          ? [{
+              id: v.id,
+              id_slot: v.id_vendedor_slot,
+              id_ruta: v.id_ruta,
+              codigo_ruta: ruta.codigo_ruta,
+              ruta: ruta.ruta,
+              dia: v.dia_semana as DiaKey,
+              frecuencia: v.frecuencia as Frecuencia,
+            }]
+          : [];
+      });
+    }
   }
 
   const ocupados = new Set(slots.flatMap((s) => (s.id_vendedor === null ? [] : [s.id_vendedor])));
@@ -40,6 +92,8 @@ export async function listarSlots(idSupervisor: number): Promise<SlotResultado<O
         id_vendedor: s.id_vendedor,
         vendedor_nombre: s.id_vendedor === null ? null : (nombres.get(s.id_vendedor) ?? null),
       })),
+      visitas,
+      rutas,
       disponibles: idsEquipo
         .filter((id) => !ocupados.has(id))
         .map((id) => ({ id_persona: id, nombre: nombres.get(id) ?? `Persona ${id}` }))

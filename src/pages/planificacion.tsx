@@ -8,6 +8,7 @@ import Alert from '@/components/ui/Alert';
 import Button from '@/components/ui/Button';
 import AppLayout from '@/components/layout/AppLayout';
 import PlanificacionGrid from '@/components/planificacion/PlanificacionGrid';
+import VisitaModal, { type VisitaModalEstado } from '@/components/planificacion/VisitaModal';
 import { logger } from '@/lib/logger';
 import type { PageWithLayout } from '@/types';
 
@@ -24,6 +25,7 @@ const PlanificacionPage: PageWithLayout = () => {
   }, [authLoading, user, router]);
 
   const [editMode, setEditMode] = useState(false);
+  const [visitaModal, setVisitaModal] = useState<VisitaModalEstado | null>(null);
   const {
     listado,
     isLoading,
@@ -35,7 +37,21 @@ const PlanificacionPage: PageWithLayout = () => {
     renombrarSlot,
     eliminarSlot,
     moverSlot,
+    agregarVisita,
+    cambiarFrecuencia,
+    quitarVisita,
   } = useGestionSlots();
+
+  const nombreDeSlot = (idSlot: number) => {
+    const i = listado.slots.findIndex((s) => s.id === idSlot);
+    return listado.slots[i]?.nombre ?? `Slot ${i + 1}`;
+  };
+
+  // El modal se cierra al terminar, con éxito o con error: abierto taparía el aviso del resultado
+  const cerrarDespues = (accion: Promise<void>) => {
+    setVisitaModal(null);
+    void accion;
+  };
 
   if (authLoading || !user) return null;
   if (!user.permisos.includes('planificacion:asignar')) return null;
@@ -98,16 +114,30 @@ const PlanificacionPage: PageWithLayout = () => {
             <PlanificacionGrid
               slots={listado.slots}
               disponibles={listado.disponibles}
+              visitas={listado.visitas}
               editMode={editMode}
               deshabilitado={isSubmitting}
               onAsignar={(id, idVendedor) => void asignarVendedor(id, idVendedor)}
               onRenombrar={(id, nombre) => void renombrarSlot(id, nombre)}
               onEliminar={(id) => void eliminarSlot(id)}
               onMover={(id, direccion) => void moverSlot(id, direccion)}
+              onAgregarVisita={(idSlot, dia) => setVisitaModal({ tipo: 'agregar', idSlot, dia, nombreSlot: nombreDeSlot(idSlot) })}
+              onSeleccionarVisita={(visita) => setVisitaModal({ tipo: 'editar', visita, nombreSlot: nombreDeSlot(visita.id_slot) })}
             />
           </>
         )}
       </div>
+
+      <VisitaModal
+        estado={visitaModal}
+        rutas={listado.rutas}
+        visitas={listado.visitas}
+        isSubmitting={isSubmitting}
+        onAgregar={(idSlot, idRuta, dia, frecuencia) => cerrarDespues(agregarVisita(idSlot, idRuta, dia, frecuencia))}
+        onCambiarFrecuencia={(id, frecuencia) => cerrarDespues(cambiarFrecuencia(id, frecuencia))}
+        onQuitar={(id) => cerrarDespues(quitarVisita(id))}
+        onCancel={() => setVisitaModal(null)}
+      />
     </div>
   );
 };

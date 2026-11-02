@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { primero } from '@/utils/postgrest';
 import { PG_FOREIGN_KEY_VIOLATION, PG_UNIQUE_VIOLATION } from '@/lib/pgErrors';
 import type { SupervisorCandidato, ZonaItem } from '@/types';
 import type { ZonaNormalizada } from '@/utils/zonaValidation';
@@ -20,12 +21,6 @@ export interface ZonaBasica {
 }
 
 type CamposEditables = Pick<ZonaNormalizada, 'codigo_zona' | 'zona' | 'descripcion_zona' | 'canal_venta'>;
-
-// PostgREST devuelve una relación a-uno como objeto o como arreglo según la restricción de unicidad
-function primero<T>(valor: T | T[] | null | undefined): T | null {
-  if (Array.isArray(valor)) return valor[0] ?? null;
-  return valor ?? null;
-}
 
 const nombreCompleto = (p: { nombres: string; apellidos: string } | null) =>
   p ? `${p.apellidos}, ${p.nombres}` : '';

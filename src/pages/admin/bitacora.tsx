@@ -86,6 +86,7 @@ function getAccionBadgeClasses(accion: string): string {
     case 'ASIGNAR_VENDEDOR_EQUIPO':
     case 'CREAR_SLOT':
     case 'ASIGNAR_VENDEDOR_SLOT':
+    case 'PLANIFICAR_RUTA':
       return 'bg-sky-100 text-sky-800';
     case 'EDITAR_PERSONAL':
     case 'EDITAR_SUCURSAL':
@@ -93,6 +94,7 @@ function getAccionBadgeClasses(accion: string): string {
     case 'EDITAR_ZONA':
     case 'CAMBIO_PASSWORD':
     case 'REEMPLAZAR_SUPERVISOR':
+    case 'CAMBIAR_FRECUENCIA_VISITA':
       return 'bg-amber-100 text-amber-800';
     case 'BAJA_PERSONAL':
     case 'REVOCAR_ACCESO':
@@ -103,6 +105,7 @@ function getAccionBadgeClasses(accion: string): string {
     case 'QUITAR_VENDEDOR_EQUIPO':
     case 'QUITAR_VENDEDOR_SLOT':
     case 'ELIMINAR_SLOT':
+    case 'QUITAR_VISITA':
       return 'bg-rose-100 text-rose-800';
     default:
       return 'bg-gray-100 text-gray-700';

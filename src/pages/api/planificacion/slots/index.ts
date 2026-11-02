@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     if (req.method === 'GET') {
       // Quien no es supervisor (p. ej. Gerencia) no tiene equipo propio: se informa, no es un error
-      if (!esSupervisor) return res.status(200).json({ slots: [], disponibles: [], es_supervisor: false });
+      if (!esSupervisor) return res.status(200).json({ slots: [], visitas: [], rutas: [], disponibles: [], es_supervisor: false });
       const resultado = await listarSlots(caller.id_persona);
       if (!resultado.ok) return res.status(500).json({ error: 'No se pudieron consultar los slots.' });
       return res.status(200).json({ ...resultado.data, es_supervisor: true });

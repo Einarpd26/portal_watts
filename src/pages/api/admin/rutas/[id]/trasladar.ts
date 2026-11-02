@@ -89,9 +89,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         id_zona_origen: ruta.data.id_zona,
         id_zona_destino,
         id_sucursal: ruta.data.id_sucursal,
+        // RF-09: el traslado elimina la planificación vigente de la ruta
+        planificaciones_eliminadas: resultado.planificaciones_eliminadas,
       }
     );
-    return res.status(200).json({ id });
+    return res.status(200).json({ id, planificaciones_eliminadas: resultado.planificaciones_eliminadas });
   } catch (err: unknown) {
     logger.error(`Error en /api/admin/rutas/${id}/trasladar:`, err);
     return res.status(500).json({ error: 'Ocurrió un error inesperado.' });

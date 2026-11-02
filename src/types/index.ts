@@ -2,6 +2,7 @@
 // Barrel export de Tipos del Proyecto Portal Watts
 // ==============================================================================
 
+import type { DiaKey } from '@/utils/diasSemana';
 import { Database } from './database';
 
 // Re-exportar el tipo global de la base de datos
@@ -218,9 +219,20 @@ export interface VendedorSinEquipo {
   sucursal_nombre: string;
 }
 
+/** Zona sin supervisor responsable: se asigna desde la pantalla de equipos (CU-07) */
+export interface ZonaSinSupervisor {
+  id: number;
+  codigo_zona: string;
+  zona: string;
+  id_sucursal: number;
+  sucursal_nombre: string;
+  total_rutas: number;
+}
+
 export interface EquiposListado {
   equipos: EquipoSupervisor[];
   sin_supervisor: VendedorSinEquipo[];
+  zonas_sin_supervisor: ZonaSinSupervisor[];
   /** Opera con alcance global: ve todas las sucursales */
   alcance_global: boolean;
 }
@@ -239,8 +251,33 @@ export interface VendedorDisponible {
   nombre: string;
 }
 
+export type Frecuencia = 'semanal' | 'impar' | 'par' | 'eventual';
+
+/** Ruta planificada en un slot, un día de la semana y con una frecuencia (CU-09) */
+export interface VisitaPlanificada {
+  id: number;
+  id_slot: number;
+  id_ruta: number;
+  codigo_ruta: string;
+  ruta: string;
+  dia: DiaKey;
+  frecuencia: Frecuencia;
+}
+
+/** Ruta de una zona que el supervisor supervisa: se puede planificar en sus slots */
+export interface RutaPlanificable {
+  id: number;
+  codigo_ruta: string;
+  ruta: string;
+  codigo_zona: string;
+}
+
 export interface SlotsListado {
   slots: SlotItem[];
+  /** Visitas de sus slots, solo de rutas de las zonas que hoy supervisa (las demás se ocultan) */
+  visitas: VisitaPlanificada[];
+  /** Rutas de sus zonas, para elegir al planificar */
+  rutas: RutaPlanificable[];
   /** Vendedores del equipo que todavía no ocupan ningún slot */
   disponibles: VendedorDisponible[];
   /** false: quien consulta no es un supervisor (p. ej. Gerencia), así que no tiene equipo propio */

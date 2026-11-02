@@ -253,6 +253,51 @@ export type Database = {
         }
         Relationships: []
       }
+      planificacion_rutas: {
+        Row: {
+          created_at: string
+          dia_semana: string
+          frecuencia: Database["public"]["Enums"]["frecuencia_visita_enum"]
+          id: number
+          id_ruta: number
+          id_vendedor_slot: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dia_semana: string
+          frecuencia?: Database["public"]["Enums"]["frecuencia_visita_enum"]
+          id?: never
+          id_ruta: number
+          id_vendedor_slot: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dia_semana?: string
+          frecuencia?: Database["public"]["Enums"]["frecuencia_visita_enum"]
+          id?: never
+          id_ruta?: number
+          id_vendedor_slot?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planificacion_rutas_id_ruta_fkey"
+            columns: ["id_ruta"]
+            isOneToOne: false
+            referencedRelation: "rutas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planificacion_rutas_id_vendedor_slot_fkey"
+            columns: ["id_vendedor_slot"]
+            isOneToOne: false
+            referencedRelation: "vendedor_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       roles: {
         Row: {
           codigo: string
@@ -565,6 +610,24 @@ export type Database = {
         }
         Returns: Json
       }
+      planificacion_agregar: {
+        Args: {
+          p_dia: string
+          p_frecuencia?: string
+          p_id_ruta: number
+          p_id_slot: number
+          p_id_supervisor: number
+        }
+        Returns: Json
+      }
+      planificacion_cambiar_frecuencia: {
+        Args: { p_frecuencia: string; p_id: number; p_id_supervisor: number }
+        Returns: Json
+      }
+      planificacion_quitar: {
+        Args: { p_id: number; p_id_supervisor: number }
+        Returns: Json
+      }
       ruta_evaluar: {
         Args: { p_excluir_id?: number; p_geojson: string; p_id_zona?: number }
         Returns: Json
@@ -690,7 +753,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      frecuencia_visita_enum: "semanal" | "impar" | "par" | "eventual"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -820,7 +883,9 @@ export const Constants = {
     Enums: {},
   },
   public: {
-    Enums: {},
+    Enums: {
+      frecuencia_visita_enum: ["semanal", "impar", "par", "eventual"],
+    },
   },
 } as const
 

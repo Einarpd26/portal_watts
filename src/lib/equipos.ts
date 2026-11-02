@@ -1,4 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { primero } from '@/utils/postgrest';
+import { listarZonas } from '@/lib/zonas';
 import { alcanceDeListado, type AlcanceSolicitante } from '@/utils/sucursalScope';
 import { interpretarResultadoEquipo, type ErrorEquipo } from '@/utils/equipoValidation';
 import type { EquipoSupervisor, EquiposListado, VendedorSinEquipo } from '@/types';
@@ -9,12 +11,6 @@ export type EquipoResultado<T> = { ok: true; data: T } | { ok: false; error: Err
 const CARGO_VENDEDOR = 'Vendedor';
 
 type Persona = { nombres: string; apellidos: string } | null;
-
-// PostgREST devuelve una relación a-uno como objeto o como arreglo según la restricción de unicidad
-function primero<T>(valor: T | T[] | null | undefined): T | null {
-  if (Array.isArray(valor)) return valor[0] ?? null;
-  return valor ?? null;
-}
 
 const nombreCompleto = (p: Persona) => (p ? `${p.apellidos}, ${p.nombres}` : '');
 
@@ -33,7 +29,7 @@ export function sucursalDeAlcance(solicitante: AlcanceSolicitante): number | nul
 export async function listarEquipos(solicitante: AlcanceSolicitante): Promise<EquipoResultado<EquiposListado>> {
   const alcance = alcanceDeListado(solicitante);
   if (alcance.tipo === 'denegado') {
-    return { ok: true, data: { equipos: [], sin_supervisor: [], alcance_global: false } };
+    return { ok: true, data: { equipos: [], sin_supervisor: [], zonas_sin_supervisor: [], alcance_global: false } };
   }
   const enAlcance = (idSucursal: number) => alcance.tipo === 'global' || idSucursal === alcance.id_sucursal;
 
@@ -56,6 +52,20 @@ export async function listarEquipos(solicitante: AlcanceSolicitante): Promise<Eq
   if (rolesRes.error || vinculosRes.error || slotsRes.error || vendedoresRes.error) {
     return { ok: false, error: 'error' };
   }
+
+  // Zonas sin supervisor: al retirarse un supervisor quedan así (CU-07 A4) hasta que se asignen a otro
+  const zonasRes = await listarZonas(alcance.tipo === 'sucursal' ? alcance.id_sucursal : null);
+  if (!zonasRes.ok) return { ok: false, error: 'error' };
+  const zonasSinSupervisor = zonasRes.data
+    .filter((z) => z.supervisor === null)
+    .map((z) => ({
+      id: z.id,
+      codigo_zona: z.codigo_zona,
+      zona: z.zona,
+      id_sucursal: z.id_sucursal,
+      sucursal_nombre: z.sucursal_nombre,
+      total_rutas: z.total_rutas,
+    }));
 
   const vinculos = vinculosRes.data ?? [];
   const slots = slotsRes.data ?? [];
@@ -146,7 +156,15 @@ export async function listarEquipos(solicitante: AlcanceSolicitante): Promise<Eq
     .map(([id, v]) => ({ id_persona: id, nombre: v.nombre, id_sucursal: v.id_sucursal, sucursal_nombre: v.sucursal_nombre }))
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
-  return { ok: true, data: { equipos, sin_supervisor: sinSupervisor, alcance_global: alcance.tipo === 'global' } };
+  return {
+    ok: true,
+    data: {
+      equipos,
+      sin_supervisor: sinSupervisor,
+      zonas_sin_supervisor: zonasSinSupervisor,
+      alcance_global: alcance.tipo === 'global',
+    },
+  };
 }
 
 /** Asigna, cambia (idSupervisor) o quita (null) el supervisor de un vendedor (ADR-003 D3 y D4) */

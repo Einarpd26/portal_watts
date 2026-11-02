@@ -1,15 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { logger } from '@/lib/logger';
-import type { SlotsListado } from '@/types';
+import { mensajeDeErrorApi } from '@/utils/apiError';
+import type { DiaKey } from '@/utils/diasSemana';
+import type { Frecuencia, SlotsListado } from '@/types';
 
 type Toast = { type: 'success' | 'error'; message: string };
 
-const LISTADO_VACIO: SlotsListado = { slots: [], disponibles: [], es_supervisor: true };
-
-async function mensajeDeError(res: Response, porDefecto: string): Promise<string> {
-  const cuerpo = (await res.json().catch(() => null)) as { error?: string } | null;
-  return cuerpo?.error ?? porDefecto;
-}
+const LISTADO_VACIO: SlotsListado = { slots: [], visitas: [], rutas: [], disponibles: [], es_supervisor: true };
 
 export function useGestionSlots() {
   const [listado, setListado] = useState<SlotsListado>(LISTADO_VACIO);
@@ -23,7 +20,7 @@ export function useGestionSlots() {
     try {
       const res = await fetch('/api/planificacion/slots');
       if (!res.ok) {
-        setToast({ type: 'error', message: await mensajeDeError(res, 'No se pudieron cargar los slots.') });
+        setToast({ type: 'error', message: await mensajeDeErrorApi(res, 'No se pudieron cargar los slots.') });
         return;
       }
       setListado((await res.json()) as SlotsListado);
@@ -49,7 +46,7 @@ export function useGestionSlots() {
     try {
       const res = await solicitud();
       if (!res.ok) {
-        setToast({ type: 'error', message: await mensajeDeError(res, fallo) });
+        setToast({ type: 'error', message: await mensajeDeErrorApi(res, fallo) });
       } else if (exito) {
         setToast({ type: 'success', message: exito });
       }
@@ -100,6 +97,37 @@ export function useGestionSlots() {
       'No se pudo eliminar el slot.'
     );
 
+  const agregarVisita = (idSlot: number, idRuta: number, dia: DiaKey, frecuencia: Frecuencia) =>
+    ejecutar(
+      () =>
+        fetch('/api/planificacion/visitas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_slot: idSlot, id_ruta: idRuta, dia, frecuencia }),
+        }),
+      'Ruta planificada.',
+      'No se pudo planificar la ruta.'
+    );
+
+  const cambiarFrecuencia = (idVisita: number, frecuencia: Frecuencia) =>
+    ejecutar(
+      () =>
+        fetch(`/api/planificacion/visitas/${idVisita}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ frecuencia }),
+        }),
+      'Frecuencia actualizada.',
+      'No se pudo cambiar la frecuencia.'
+    );
+
+  const quitarVisita = (idVisita: number) =>
+    ejecutar(
+      () => fetch(`/api/planificacion/visitas/${idVisita}`, { method: 'DELETE' }),
+      'Ruta quitada de la planificación.',
+      'No se pudo quitar la ruta.'
+    );
+
   const moverSlot = (idSlot: number, direccion: 'arriba' | 'abajo') =>
     ejecutar(
       () =>
@@ -123,5 +151,8 @@ export function useGestionSlots() {
     renombrarSlot,
     eliminarSlot,
     moverSlot,
+    agregarVisita,
+    cambiarFrecuencia,
+    quitarVisita,
   };
 }

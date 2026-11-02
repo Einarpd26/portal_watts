@@ -44,6 +44,12 @@ const GestionEquiposPage: PageWithLayout = () => {
     openReemplazo,
     closeReemplazo,
     submitReemplazo,
+    zonaTarget,
+    zonaSeleccion,
+    setZonaSeleccion,
+    openZona,
+    closeZona,
+    submitZona,
   } = useGestionEquipos();
 
   if (authLoading || !user) return null;
@@ -105,6 +111,32 @@ const GestionEquiposPage: PageWithLayout = () => {
                 </div>
               </section>
             )}
+
+            <section aria-labelledby="titulo-zonas" className="space-y-3">
+              <h2 id="titulo-zonas" className="text-sm font-bold uppercase tracking-wider text-gray-500">
+                Zonas sin supervisor ({listado.zonas_sin_supervisor.length})
+              </h2>
+              {listado.zonas_sin_supervisor.length === 0 ? (
+                <p className="text-sm text-gray-400">Todas las zonas tienen supervisor.</p>
+              ) : (
+                <ul className="divide-y divide-gray-100 rounded-2xl border border-amber-200 bg-white shadow-sm">
+                  {listado.zonas_sin_supervisor.map((z) => (
+                    <li key={z.id} className="flex items-center justify-between gap-3 px-5 py-3">
+                      <span className="text-sm text-gray-800">
+                        {z.codigo_zona} — {z.zona}
+                        <span className="ml-2 text-xs text-gray-400">
+                          {listado.alcance_global && `${z.sucursal_nombre} · `}
+                          {z.total_rutas} {z.total_rutas === 1 ? 'ruta' : 'rutas'}
+                        </span>
+                      </span>
+                      <Button size="sm" onClick={() => openZona(z)}>
+                        Asignar supervisor
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
 
             <section aria-labelledby="titulo-sin-supervisor" className="space-y-3">
               <h2 id="titulo-sin-supervisor" className="text-sm font-bold uppercase tracking-wider text-gray-500">
@@ -179,6 +211,27 @@ const GestionEquiposPage: PageWithLayout = () => {
       />
 
       <SeleccionSupervisorModal
+        open={zonaTarget !== null}
+        titulo="Supervisor de la zona"
+        descripcion={
+          zonaTarget && (
+            <>
+              {zonaTarget.codigo_zona} — {zonaTarget.zona}. Quien la reciba verá la planificación de sus rutas que ya
+              estuviera en sus slots.
+            </>
+          )
+        }
+        candidatos={supervisoresActivos}
+        idSucursal={zonaTarget?.id_sucursal ?? 0}
+        seleccion={zonaSeleccion}
+        onSeleccion={setZonaSeleccion}
+        textoConfirmar="Asignar"
+        isSubmitting={isSubmitting}
+        onConfirm={() => void submitZona()}
+        onCancel={closeZona}
+      />
+
+      <SeleccionSupervisorModal
         open={reemplazoTarget !== null}
         titulo="Reemplazar supervisor"
         descripcion={
@@ -186,7 +239,7 @@ const GestionEquiposPage: PageWithLayout = () => {
             <>
               Los {reemplazoTarget.vendedores.length} vendedores y los {reemplazoTarget.total_slots} slots de{' '}
               {reemplazoTarget.nombre} pasan al supervisor que elijas, con su planificación. Las zonas se asignan aparte
-              desde Territorio.
+              en «Zonas sin supervisor».
             </>
           )
         }

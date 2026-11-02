@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { primero } from '@/utils/postgrest';
 import type { Json } from '@/types/database';
 import type {
   ConflictoRuta,
@@ -40,12 +41,6 @@ type FilaCobertura = {
   area_m2: number;
   geojson: PoligonoRuta;
 };
-
-// PostgREST devuelve una relación a-uno como objeto o como arreglo según la restricción de unicidad
-function primero<T>(valor: T | T[] | null | undefined): T | null {
-  if (Array.isArray(valor)) return valor[0] ?? null;
-  return valor ?? null;
-}
 
 const esObjeto = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
@@ -273,7 +268,7 @@ export async function guardarRuta(
 }
 
 export type TrasladoRuta =
-  | { ok: true }
+  | { ok: true; planificaciones_eliminadas: number }
   | { ok: false; error: RutaError; conflictos?: ConflictoRuta[] };
 
 /**
@@ -293,7 +288,10 @@ export async function trasladarRuta(
     p_id_zona_destino: idZonaDestino,
   });
   if (error || !esObjeto(data)) return { ok: false, error: 'error' };
-  if (data.ok === true) return { ok: true };
+  if (data.ok === true) {
+    const eliminadas = data.planificaciones_eliminadas;
+    return { ok: true, planificaciones_eliminadas: typeof eliminadas === 'number' ? eliminadas : 0 };
+  }
   return {
     ok: false,
     error: data.error as RutaError,
