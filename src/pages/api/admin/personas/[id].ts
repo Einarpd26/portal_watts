@@ -34,12 +34,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const supabase = createAdminClient();
 
-  const { data: persona } = await supabase
+  const { data: persona, error: personaError } = await supabase
     .from('personas')
     .select('id, ci, auth_user_id, fecha_baja, asignaciones_laborales ( id, id_cargo, id_sucursal, fecha_inicio, estado )')
     .eq('id', id)
     .maybeSingle();
 
+  if (personaError) {
+    logger.error('Error consultando la persona:', personaError);
+    return res.status(500).json({ error: 'Error al consultar el colaborador' });
+  }
   if (!persona) return res.status(404).json({ error: 'Colaborador no encontrado' });
   if (persona.fecha_baja !== null) {
     return res.status(400).json({ error: 'No se puede editar un colaborador dado de baja' });
@@ -69,7 +73,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // CI único (excluyendo a la propia persona)
   if (ci.trim() !== persona.ci) {
-    const { data: dup } = await supabase.from('personas').select('id').eq('ci', ci.trim()).neq('id', id).maybeSingle();
+    const { data: dup, error: dupError } = await supabase
+      .from('personas')
+      .select('id')
+      .eq('ci', ci.trim())
+      .neq('id', id)
+      .maybeSingle();
+    if (dupError) {
+      logger.error('Error verificando el CI duplicado:', dupError);
+      return res.status(500).json({ error: 'Error al verificar el CI' });
+    }
     if (dup) return res.status(409).json({ error: 'Ya existe un colaborador con ese CI' });
   }
 
