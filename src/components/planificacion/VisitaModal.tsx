@@ -55,6 +55,25 @@ function ContenidoVisitaModal({
     return q ? rutas.filter((r) => `${r.codigo_ruta} ${r.ruta} ${r.codigo_zona}`.toLowerCase().includes(q)) : rutas;
   }, [rutas, filtro]);
 
+  // Las rutas sin planificar van primero (son las que falta asignar); las ya planificadas quedan abajo,
+  // con los días en que se visitan. Siguen siendo elegibles: planificarlas otra vez las marca duplicadas.
+  const { sinPlanificar, yaPlanificadas, diasPorRuta } = useMemo(() => {
+    const dias = new Map<number, Set<DiaKey>>();
+    for (const v of visitas) {
+      if (!dias.has(v.id_ruta)) dias.set(v.id_ruta, new Set());
+      dias.get(v.id_ruta)?.add(v.dia);
+    }
+    return {
+      sinPlanificar: filtradas.filter((r) => !dias.has(r.id)),
+      yaPlanificadas: filtradas.filter((r) => dias.has(r.id)),
+      diasPorRuta: dias,
+    };
+  }, [filtradas, visitas]);
+  const totalSinPlanificar = useMemo(() => {
+    const planificadas = new Set(visitas.map((v) => v.id_ruta));
+    return rutas.filter((r) => !planificadas.has(r.id)).length;
+  }, [rutas, visitas]);
+
   // ¿Quedaría duplicada con lo que se está eligiendo? Se simula la semana con y sin la visita.
   const quedaDuplicada = useMemo(() => {
     if (idRuta === null) return false;
@@ -88,6 +107,11 @@ function ContenidoVisitaModal({
           </p>
         ) : (
           <div className="mb-4 space-y-2">
+            <p className="text-xs text-gray-500">
+              {totalSinPlanificar === 0
+                ? 'Todas tus rutas ya están planificadas.'
+                : `${totalSinPlanificar} de ${rutas.length} rutas sin planificar.`}
+            </p>
             <Input
               label="Buscar ruta"
               value={filtro}
@@ -95,30 +119,29 @@ function ContenidoVisitaModal({
               placeholder="Código, nombre o zona"
               disabled={isSubmitting}
             />
-            <ul className="max-h-48 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200" role="listbox" aria-label="Rutas de tus zonas">
-              {filtradas.length === 0 ? (
+            <ul className="max-h-56 overflow-y-auto rounded-lg border border-gray-200" role="listbox" aria-label="Rutas de tus zonas">
+              {filtradas.length === 0 && (
                 <li className="px-3 py-2 text-xs text-gray-400">
                   {rutas.length === 0 ? 'Tus zonas todavía no tienen rutas.' : 'Sin resultados.'}
                 </li>
-              ) : (
-                filtradas.map((r) => (
-                  <li key={r.id}>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={idRuta === r.id}
-                      onClick={() => setIdRuta(r.id)}
-                      className={cn(
-                        'w-full px-3 py-2 text-left text-sm transition hover:bg-gray-50',
-                        idRuta === r.id && 'bg-primary-50 font-semibold text-primary-700'
-                      )}
-                    >
-                      {r.codigo_ruta} — {r.ruta}
-                      <span className="ml-2 text-xs text-gray-400">{r.codigo_zona}</span>
-                    </button>
-                  </li>
-                ))
               )}
+              {sinPlanificar.map((r) => (
+                <OpcionRuta key={r.id} ruta={r} seleccionada={idRuta === r.id} onElegir={setIdRuta} />
+              ))}
+              {yaPlanificadas.length > 0 && (
+                <li className="sticky top-0 border-y border-indigo-100 bg-indigo-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-600" role="presentation">
+                  Ya planificadas ({yaPlanificadas.length})
+                </li>
+              )}
+              {yaPlanificadas.map((r) => (
+                <OpcionRuta
+                  key={r.id}
+                  ruta={r}
+                  seleccionada={idRuta === r.id}
+                  onElegir={setIdRuta}
+                  dias={[...(diasPorRuta.get(r.id) ?? [])]}
+                />
+              ))}
             </ul>
           </div>
         )}
@@ -185,5 +208,45 @@ function ContenidoVisitaModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function OpcionRuta({
+  ruta,
+  seleccionada,
+  onElegir,
+  dias,
+}: {
+  ruta: RutaPlanificable;
+  seleccionada: boolean;
+  onElegir: (id: number) => void;
+  /** Días en que la ruta ya se visita; ausente si todavía no está planificada */
+  dias?: DiaKey[];
+}) {
+  const planificada = dias !== undefined;
+  return (
+    <li>
+      <button
+        type="button"
+        role="option"
+        aria-selected={seleccionada}
+        onClick={() => onElegir(ruta.id)}
+        className={cn(
+          'flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition',
+          planificada ? 'bg-indigo-50/40 text-indigo-700 hover:bg-indigo-50' : 'hover:bg-gray-50',
+          seleccionada && 'bg-primary-50 font-semibold text-primary-700 ring-1 ring-inset ring-primary-300'
+        )}
+      >
+        <span>
+          {ruta.codigo_ruta} — {ruta.ruta}
+          <span className="ml-2 text-xs text-gray-400">{ruta.codigo_zona}</span>
+        </span>
+        {planificada && (
+          <span className="shrink-0 rounded bg-indigo-100 px-1.5 text-[10px] font-semibold text-indigo-700">
+            {dias.map((d) => DIA_LABELS[d].slice(0, 3)).join(', ')}
+          </span>
+        )}
+      </button>
+    </li>
   );
 }
