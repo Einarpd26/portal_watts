@@ -1,7 +1,7 @@
 -- Pruebas de la gestión de slots por el Supervisor (CU-08). Ejecutar con: npx supabase test db
 -- Reglas verificadas: ADR-003 (solo slots propios, solo vendedores del equipo, un vendedor un slot, orden sin huecos).
 BEGIN;
-SELECT plan(18);
+SELECT plan(23);
 
 CREATE TEMP TABLE t (clave text PRIMARY KEY, id bigint NOT NULL);
 
@@ -97,6 +97,25 @@ SELECT is(
 SELECT is(
   (SELECT (public.slot_asignar_vendedor((SELECT id FROM t WHERE clave = 'slot-a'), (SELECT id FROM t WHERE clave = 'ts-s1'), (SELECT id FROM t WHERE clave = 'ts-v1')))->>'ok'),
   'true', 'el vendedor del slot eliminado queda libre para otro slot');
+
+-- Reordenar arrastrando: se envía el orden completo
+SELECT is(
+  (SELECT (public.slot_reordenar((SELECT id FROM t WHERE clave = 'ts-s1'),
+     ARRAY[(SELECT id FROM t WHERE clave = 'slot-c'), (SELECT id FROM t WHERE clave = 'slot-a')]))->>'ok'),
+  'true', 'guarda el orden completo de los slots');
+SELECT is(
+  (SELECT string_agg(id::text, ',' ORDER BY orden) FROM public.vendedor_slots WHERE id_supervisor = (SELECT id FROM t WHERE clave = 'ts-s1')),
+  (SELECT (SELECT id FROM t WHERE clave = 'slot-c') || ',' || (SELECT id FROM t WHERE clave = 'slot-a')), 'el orden queda como se envió');
+SELECT is(
+  (SELECT string_agg(orden::text, ',' ORDER BY orden) FROM public.vendedor_slots WHERE id_supervisor = (SELECT id FROM t WHERE clave = 'ts-s1')),
+  '0,1', 'la numeración queda sin huecos');
+SELECT is(
+  (SELECT (public.slot_reordenar((SELECT id FROM t WHERE clave = 'ts-s1'), ARRAY[(SELECT id FROM t WHERE clave = 'slot-a')]))->>'error'),
+  'orden_invalido', 'rechaza un orden al que le falta un slot propio');
+SELECT is(
+  (SELECT (public.slot_reordenar((SELECT id FROM t WHERE clave = 'ts-s1'),
+     ARRAY[(SELECT id FROM t WHERE clave = 'slot-a'), (SELECT id FROM t WHERE clave = 'slot-a')]))->>'error'),
+  'orden_invalido', 'rechaza un orden con repetidos');
 
 SELECT finish();
 ROLLBACK;
