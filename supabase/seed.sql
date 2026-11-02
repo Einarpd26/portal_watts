@@ -308,7 +308,7 @@ ON CONFLICT (id_zona) DO NOTHING;
 -- superposición (interiores) las acepta.
 INSERT INTO public.rutas (codigo_ruta, ruta, descripcion_ruta, localizacion, id_zona)
 SELECT r.codigo, r.nombre, r.descripcion,
-       ST_MakeEnvelope(r.x0, r.y0, r.x0 + 0.01, r.y0 + 0.01, 4326),
+       extensions.ST_MakeEnvelope(r.x0, r.y0, r.x0 + 0.01, r.y0 + 0.01, 4326),
        z.id
 FROM (VALUES
     ('R-N1', 'Ruta Norte 1', 'Sector norte, primera cuadra', -63.20, -17.79, 'ZN', 'Santa Cruz'),
