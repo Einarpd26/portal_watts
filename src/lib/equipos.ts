@@ -167,6 +167,20 @@ export async function listarEquipos(solicitante: AlcanceSolicitante): Promise<Eq
   };
 }
 
+/**
+ * Si la persona, como supervisor, tiene vendedores a cargo o slots (CU-08 A6, ADR-003 D6). Mientras los
+ * tenga no puede cambiar de sucursal: primero se lo reemplaza.
+ */
+export async function supervisorTieneEquipo(idPersona: number): Promise<EquipoResultado<boolean>> {
+  const db = createAdminClient();
+  const [vinculos, slots] = await Promise.all([
+    db.from('supervisor_vendedores').select('id_vendedor', { count: 'exact', head: true }).eq('id_supervisor', idPersona),
+    db.from('vendedor_slots').select('id', { count: 'exact', head: true }).eq('id_supervisor', idPersona),
+  ]);
+  if (vinculos.error || slots.error) return { ok: false, error: 'error' };
+  return { ok: true, data: (vinculos.count ?? 0) > 0 || (slots.count ?? 0) > 0 };
+}
+
 /** Asigna, cambia (idSupervisor) o quita (null) el supervisor de un vendedor (ADR-003 D3 y D4) */
 export async function asignarVendedorAEquipo(
   idVendedor: number,

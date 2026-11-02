@@ -5,6 +5,7 @@ import { todayBolivia } from '@/utils/boliviaTime';
 import { registrarBitacoraDesdeSesion } from '@/lib/bitacora';
 import { logger } from '@/lib/logger';
 import { enAlcanceDeSucursal } from '@/utils/sucursalScope';
+import { supervisorTieneEquipo } from '@/lib/equipos';
 
 type EditBody = {
   ci?: string;
@@ -52,6 +53,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const destinoEnAlcance = enAlcanceDeSucursal(caller, [id_sucursal]);
   if (!origenEnAlcance || !destinoEnAlcance) {
     return res.status(403).json({ error: 'Solo podés editar personal de tu sucursal' });
+  }
+
+  // CU-08 A6: un supervisor con equipo o slots no cambia de sucursal; primero se lo reemplaza.
+  // Se comprueba antes de modificar nada.
+  if (active && active.id_sucursal !== id_sucursal) {
+    const equipo = await supervisorTieneEquipo(id);
+    if (!equipo.ok) return res.status(500).json({ error: 'No se pudo verificar el equipo del colaborador' });
+    if (equipo.data) {
+      return res.status(409).json({
+        error: 'Este colaborador tiene vendedores o slots a su cargo. Reemplazalo primero desde Equipos para cambiarlo de sucursal.',
+      });
+    }
   }
 
   // CI único (excluyendo a la propia persona)
