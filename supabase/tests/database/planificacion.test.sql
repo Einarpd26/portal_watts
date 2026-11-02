@@ -2,7 +2,7 @@
 -- Reglas verificadas: RN-04 (duplicadas permitidas), RN-05 (solo rutas de las zonas del supervisor) y
 -- RF-09 (trasladar una ruta elimina su planificación).
 BEGIN;
-SELECT plan(16);
+SELECT plan(23);
 
 CREATE TEMP TABLE t (clave text PRIMARY KEY, id bigint NOT NULL);
 
@@ -93,13 +93,53 @@ SELECT is(
   (SELECT count(*)::int FROM public.planificacion_rutas WHERE id_ruta = (SELECT id FROM t WHERE clave = 'tp-r1')),
   2, 'quedan las otras dos visitas de la ruta');
 
+-- Mover una visita a otra celda (arrastre en la grilla)
+INSERT INTO t SELECT 'visita-mv', id FROM public.planificacion_rutas WHERE id_vendedor_slot = (SELECT id FROM t WHERE clave = 'slot1');
+SELECT is(
+  (SELECT (public.planificacion_mover((SELECT id FROM t WHERE clave = 'visita-mv'), (SELECT id FROM t WHERE clave = 'tp-s1'),
+                                      (SELECT id FROM t WHERE clave = 'slot2'), 'VI'))->>'ok'),
+  'true', 'mueve una visita a otro slot y otro día');
+SELECT is(
+  (SELECT dia_semana || ':' || (id_vendedor_slot = (SELECT id FROM t WHERE clave = 'slot2'))::text
+     FROM public.planificacion_rutas WHERE id = (SELECT id FROM t WHERE clave = 'visita-mv')),
+  'VI:true', 'la visita conserva su id y queda en la celda de destino');
+SELECT is(
+  (SELECT (public.planificacion_mover((SELECT id FROM t WHERE clave = 'visita-mv'), (SELECT id FROM t WHERE clave = 'tp-s1'),
+                                      (SELECT id FROM t WHERE clave = 'slot2'), 'DO'))->>'error'),
+  'dia_invalido', 'rechaza mover a un día fuera de lunes a sábado');
+SELECT is(
+  (SELECT (public.planificacion_mover((SELECT id FROM t WHERE clave = 'visita-mv'), (SELECT id FROM t WHERE clave = 'tp-s1'),
+                                      (SELECT id FROM t WHERE clave = 'slot3'), 'LU'))->>'error'),
+  'no_encontrada', 'no se mueve a un slot de otro supervisor');
+SELECT is(
+  (SELECT (public.planificacion_mover((SELECT id FROM t WHERE clave = 'visita-mv'), (SELECT id FROM t WHERE clave = 'tp-s2'),
+                                      (SELECT id FROM t WHERE clave = 'slot3'), 'LU'))->>'error'),
+  'no_encontrada', 'un supervisor no mueve visitas ajenas');
+
+-- Destino con la misma visita (slot, ruta, día y frecuencia): se rechaza
+SELECT public.planificacion_agregar((SELECT id FROM t WHERE clave = 'slot1'), (SELECT id FROM t WHERE clave = 'tp-s1'),
+                                    (SELECT id FROM t WHERE clave = 'tp-r1'), 'VI', 'impar');
+SELECT is(
+  (SELECT (public.planificacion_mover((SELECT id FROM t WHERE clave = 'visita-mv'), (SELECT id FROM t WHERE clave = 'tp-s1'),
+                                      (SELECT id FROM t WHERE clave = 'slot1'), 'VI'))->>'error'),
+  'ya_planificada', 'rechaza mover a una celda que ya tiene esa misma visita');
+
+-- RN-05: si la zona ya no es del supervisor, la visita queda oculta y tampoco se mueve
+DELETE FROM public.supervisor_zonas WHERE id_zona = (SELECT id FROM t WHERE clave = 'tpa');
+SELECT is(
+  (SELECT (public.planificacion_mover((SELECT id FROM t WHERE clave = 'visita-mv'), (SELECT id FROM t WHERE clave = 'tp-s1'),
+                                      (SELECT id FROM t WHERE clave = 'slot1'), 'SA'))->>'error'),
+  'no_encontrada', 'no se mueve una visita de una ruta que ya no es de sus zonas (RN-05)');
+INSERT INTO public.supervisor_zonas (id_supervisor, id_zona)
+VALUES ((SELECT id FROM t WHERE clave = 'tp-s1'), (SELECT id FROM t WHERE clave = 'tpa'));
+
 -- RF-09: trasladar a la misma zona conserva la planificación; a otra zona la elimina
 SELECT is(
   (SELECT (public.ruta_trasladar((SELECT id FROM t WHERE clave = 'tp-r1'), (SELECT id FROM t WHERE clave = 'tpa')))->>'planificaciones_eliminadas'),
   '0', 'trasladar a la misma zona no elimina la planificación');
 SELECT is(
   (SELECT (public.ruta_trasladar((SELECT id FROM t WHERE clave = 'tp-r1'), (SELECT id FROM t WHERE clave = 'tpc')))->>'planificaciones_eliminadas'),
-  '2', 'trasladar a otra zona elimina la planificación vigente de la ruta (RF-09)');
+  '3', 'trasladar a otra zona elimina la planificación vigente de la ruta (RF-09)');
 SELECT is(
   (SELECT count(*)::int FROM public.planificacion_rutas WHERE id_ruta = (SELECT id FROM t WHERE clave = 'tp-r1')),
   0, 'la ruta trasladada queda sin planificación');
