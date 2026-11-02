@@ -38,6 +38,7 @@ export const OPERATION_GROUP: NavItem[] = [
 export const MANAGEMENT_GROUP_LABEL = "Gestión";
 export const MANAGEMENT_GROUP: NavItem[] = [
   { label: "Personal", href: "/admin/personal", requiredPermissions: ["personal:gestionar"], available: true },
+  { label: "Equipos", href: "/admin/equipos", requiredPermissions: ["personal:gestionar"], available: true },
   { label: "Accesos", href: "/admin/usuarios", requiredPermissions: ["cuentas:gestionar"], available: true },
   { label: "Bitácora", href: "/admin/bitacora", requiredPermissions: ["bitacora:consultar"], available: true },
   { label: "Catálogos", href: "/admin/catalogos", requiredPermissions: ["catalogos:gestionar"], available: true },

@@ -190,6 +190,41 @@ export interface SupervisorCandidato {
   id_sucursal: number;
 }
 
+// 10b. Equipos de supervisor (CU-08, ADR-003)
+export interface VendedorDeEquipo {
+  id_persona: number;
+  nombre: string;
+  id_sucursal: number;
+  /** Si ocupa un slot de planificación del equipo */
+  tiene_slot: boolean;
+}
+
+export interface EquipoSupervisor {
+  id_persona: number;
+  nombre: string;
+  id_sucursal: number;
+  sucursal_nombre: string;
+  /** false: se le revocó el acceso o tiene baja; su equipo espera un reemplazo (ADR-003 D6) */
+  activo: boolean;
+  vendedores: VendedorDeEquipo[];
+  /** Cantidad de slots (con o sin vendedor) que conserva a su nombre */
+  total_slots: number;
+}
+
+export interface VendedorSinEquipo {
+  id_persona: number;
+  nombre: string;
+  id_sucursal: number;
+  sucursal_nombre: string;
+}
+
+export interface EquiposListado {
+  equipos: EquipoSupervisor[];
+  sin_supervisor: VendedorSinEquipo[];
+  /** Opera con alcance global: ve todas las sucursales */
+  alcance_global: boolean;
+}
+
 // 11. Rutas comerciales (CU-05)
 export interface PoligonoRuta {
   type: 'Polygon';

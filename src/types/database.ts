@@ -345,6 +345,42 @@ export type Database = {
         }
         Relationships: []
       }
+      supervisor_vendedores: {
+        Row: {
+          created_at: string
+          id: number
+          id_supervisor: number
+          id_vendedor: number
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          id_supervisor: number
+          id_vendedor: number
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          id_supervisor?: number
+          id_vendedor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supervisor_vendedores_id_supervisor_fkey"
+            columns: ["id_supervisor"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_vendedores_id_vendedor_fkey"
+            columns: ["id_vendedor"]
+            isOneToOne: true
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supervisor_zonas: {
         Row: {
           created_at: string
@@ -430,6 +466,51 @@ export type Database = {
           },
         ]
       }
+      vendedor_slots: {
+        Row: {
+          created_at: string
+          id: number
+          id_supervisor: number
+          id_vendedor: number | null
+          nombre: string | null
+          orden: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          id_supervisor: number
+          id_vendedor?: number | null
+          nombre?: string | null
+          orden: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          id_supervisor?: number
+          id_vendedor?: number | null
+          nombre?: string | null
+          orden?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendedor_slots_id_supervisor_fkey"
+            columns: ["id_supervisor"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendedor_slots_id_vendedor_fkey"
+            columns: ["id_vendedor"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       zonas: {
         Row: {
           canal_venta: string | null
@@ -476,6 +557,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      equipo_asignar_vendedor: {
+        Args: {
+          p_id_sucursal_alcance?: number
+          p_id_supervisor?: number
+          p_id_vendedor: number
+        }
+        Returns: Json
+      }
       ruta_evaluar: {
         Args: { p_excluir_id?: number; p_geojson: string; p_id_zona?: number }
         Returns: Json
@@ -492,7 +581,12 @@ export type Database = {
         Returns: Json
       }
       ruta_lote_procesar: {
-        Args: { p_confirmar?: boolean; p_id_sucursal: number; p_ids_zona?: number[]; p_items: Json }
+        Args: {
+          p_confirmar?: boolean
+          p_id_sucursal: number
+          p_ids_zona?: number[]
+          p_items: Json
+        }
         Returns: Json
       }
       ruta_trasladar: {
@@ -522,6 +616,22 @@ export type Database = {
           id_zona: number
           ruta: string
         }[]
+      }
+      supervisor_reemplazar: {
+        Args: {
+          p_id_inactivo: number
+          p_id_nuevo: number
+          p_id_sucursal_alcance?: number
+        }
+        Returns: Json
+      }
+      supervisor_sucursal_activa: {
+        Args: { p_id_persona: number }
+        Returns: number
+      }
+      vendedor_sucursal_activa: {
+        Args: { p_id_persona: number }
+        Returns: number
       }
       zona_cambiar_sucursal: {
         Args: {

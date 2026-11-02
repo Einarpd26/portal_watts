@@ -81,12 +81,14 @@ function getAccionBadgeClasses(accion: string): string {
     case 'CREAR_CARGO':
     case 'CREAR_ZONA':
     case 'ASIGNAR_SUPERVISOR_ZONA':
+    case 'ASIGNAR_VENDEDOR_EQUIPO':
       return 'bg-sky-100 text-sky-800';
     case 'EDITAR_PERSONAL':
     case 'EDITAR_SUCURSAL':
     case 'EDITAR_CARGO':
     case 'EDITAR_ZONA':
     case 'CAMBIO_PASSWORD':
+    case 'REEMPLAZAR_SUPERVISOR':
       return 'bg-amber-100 text-amber-800';
     case 'BAJA_PERSONAL':
     case 'REVOCAR_ACCESO':
@@ -94,6 +96,7 @@ function getAccionBadgeClasses(accion: string): string {
     case 'ELIMINAR_CARGO':
     case 'ELIMINAR_ZONA':
     case 'QUITAR_SUPERVISOR_ZONA':
+    case 'QUITAR_VENDEDOR_EQUIPO':
       return 'bg-rose-100 text-rose-800';
     default:
       return 'bg-gray-100 text-gray-700';
