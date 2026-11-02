@@ -7,14 +7,12 @@
 --   · RF-09: al trasladar una ruta a otra zona se elimina su planificación vigente.
 -- ==============================================================================
 
-CREATE TYPE public.frecuencia_visita_enum AS ENUM ('semanal', 'impar', 'par', 'eventual');
-
 CREATE TABLE IF NOT EXISTS public.planificacion_rutas (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_vendedor_slot bigint NOT NULL REFERENCES public.vendedor_slots(id) ON DELETE CASCADE,
     id_ruta bigint NOT NULL REFERENCES public.rutas(id) ON DELETE CASCADE,
     dia_semana char(2) NOT NULL CHECK (dia_semana IN ('LU', 'MA', 'MI', 'JU', 'VI', 'SA')),
-    frecuencia public.frecuencia_visita_enum NOT NULL DEFAULT 'semanal',
+    frecuencia text NOT NULL DEFAULT 'semanal' CHECK (frecuencia IN ('semanal', 'impar', 'par', 'eventual')),
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
     -- Solo impide la fila idéntica; las visitas repetidas de una ruta se permiten y se marcan (RN-04)
@@ -75,7 +73,7 @@ BEGIN
     END IF;
 
     INSERT INTO public.planificacion_rutas (id_vendedor_slot, id_ruta, dia_semana, frecuencia)
-    VALUES (p_id_slot, p_id_ruta, p_dia, p_frecuencia::public.frecuencia_visita_enum)
+    VALUES (p_id_slot, p_id_ruta, p_dia, p_frecuencia)
     RETURNING id INTO v_id;
 
     RETURN jsonb_build_object('ok', true, 'id', v_id);
@@ -104,7 +102,7 @@ BEGIN
     END IF;
 
     UPDATE public.planificacion_rutas pr
-       SET frecuencia = p_frecuencia::public.frecuencia_visita_enum
+       SET frecuencia = p_frecuencia
       FROM public.vendedor_slots vs
      WHERE pr.id = p_id AND vs.id = pr.id_vendedor_slot AND vs.id_supervisor = p_id_supervisor;
     IF NOT FOUND THEN

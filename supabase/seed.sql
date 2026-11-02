@@ -418,7 +418,7 @@ WHERE NOT EXISTS (
 -- Daniel: al reemplazarlo por Rosa Vargas esas visitas quedan ocultas para ella (ADR-003 D9), porque no son
 -- de sus zonas. Se insertan directo porque la función de planificación no lo permitiría hoy (RN-05).
 INSERT INTO public.planificacion_rutas (id_vendedor_slot, id_ruta, dia_semana, frecuencia)
-SELECT sl.id, r.id, v.dia, v.frecuencia::public.frecuencia_visita_enum
+SELECT sl.id, r.id, v.dia, v.frecuencia
 FROM (VALUES
     ('6394812', 'Slot 1', 'R-N1', 'LU', 'semanal'),
     ('6394812', 'Slot 2', 'R-N1', 'JU', 'semanal'),

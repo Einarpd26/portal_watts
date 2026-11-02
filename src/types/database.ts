@@ -257,7 +257,7 @@ export type Database = {
         Row: {
           created_at: string
           dia_semana: string
-          frecuencia: Database["public"]["Enums"]["frecuencia_visita_enum"]
+          frecuencia: string
           id: number
           id_ruta: number
           id_vendedor_slot: number
@@ -266,7 +266,7 @@ export type Database = {
         Insert: {
           created_at?: string
           dia_semana: string
-          frecuencia?: Database["public"]["Enums"]["frecuencia_visita_enum"]
+          frecuencia?: string
           id?: never
           id_ruta: number
           id_vendedor_slot: number
@@ -275,7 +275,7 @@ export type Database = {
         Update: {
           created_at?: string
           dia_semana?: string
-          frecuencia?: Database["public"]["Enums"]["frecuencia_visita_enum"]
+          frecuencia?: string
           id?: never
           id_ruta?: number
           id_vendedor_slot?: number
@@ -766,7 +766,7 @@ export type Database = {
       }
     }
     Enums: {
-      frecuencia_visita_enum: "semanal" | "impar" | "par" | "eventual"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -896,9 +896,7 @@ export const Constants = {
     Enums: {},
   },
   public: {
-    Enums: {
-      frecuencia_visita_enum: ["semanal", "impar", "par", "eventual"],
-    },
+    Enums: {},
   },
 } as const
 

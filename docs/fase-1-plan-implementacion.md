@@ -42,7 +42,7 @@ flowchart LR
 * **Tareas Técnicas:**
   1. Reemplazar la migración obsoleta por una nueva migración limpia `supabase/migrations/<timestamp>_capa1_identidad_rbac.sql`:
      * Tablas base: `sucursales`, `cargos`, `personas`, `asignaciones_laborales`, `roles`, `usuario_roles`.
-     * Enum: `alcance_tipo_enum` (`GLOBAL`, `SUCURSAL`).
+     * `alcance_tipo`: texto con `CHECK` (`GLOBAL`, `SUCURSAL`); no se usan tipos `ENUM` de dominio.
      * Constraints e Invariantes de dominio (ADR-001):
        * `CHECK ((alcance_tipo = 'GLOBAL' AND id_sucursal IS NULL) OR (alcance_tipo = 'SUCURSAL' AND id_sucursal IS NOT NULL))`
        * Índice condicional: `UNIQUE (id_persona) WHERE (estado = 'activo')` en `asignaciones_laborales`.

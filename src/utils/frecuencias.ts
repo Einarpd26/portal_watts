@@ -1,4 +1,4 @@
-// Frecuencias de visita de la planificación (CU-09): igual que el tipo frecuencia_visita_enum de la base
+// Frecuencias de visita de la planificación (CU-09): igual que el CHECK de planificacion_rutas.frecuencia en la base
 import type { Frecuencia } from '@/types';
 
 export const FRECUENCIAS: readonly Frecuencia[] = ['semanal', 'impar', 'par', 'eventual'];
