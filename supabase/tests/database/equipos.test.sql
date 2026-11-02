@@ -82,7 +82,7 @@ SELECT is(
   (SELECT count(*)::int FROM public.vendedor_slots WHERE id_supervisor = (SELECT id FROM t WHERE clave = 't-s1')),
   2, 'el slot no se borra al reasignar al vendedor');
 SELECT is(
-  (SELECT id_vendedor FROM public.vendedor_slots WHERE nombre = 'Slot 1'),
+  (SELECT id_vendedor FROM public.vendedor_slots WHERE nombre = 'Slot 1' AND id_supervisor = (SELECT id FROM t WHERE clave = 't-s1')),
   NULL::bigint, 'el slot queda vacío');
 
 -- 5. Quitar al vendedor del equipo
@@ -95,7 +95,8 @@ SELECT is(
 
 -- 6. Reemplazar supervisor: se arma el equipo de s1 (activo) y se prueba el rechazo
 SELECT public.equipo_asignar_vendedor((SELECT id FROM t WHERE clave = 't-v1'), (SELECT id FROM t WHERE clave = 't-s1'));
-UPDATE public.vendedor_slots SET id_vendedor = (SELECT id FROM t WHERE clave = 't-v1') WHERE nombre = 'Slot 1';
+UPDATE public.vendedor_slots SET id_vendedor = (SELECT id FROM t WHERE clave = 't-v1')
+ WHERE nombre = 'Slot 1' AND id_supervisor = (SELECT id FROM t WHERE clave = 't-s1');
 
 SELECT is(
   (SELECT (public.supervisor_reemplazar((SELECT id FROM t WHERE clave = 't-s1'), (SELECT id FROM t WHERE clave = 't-s2')))->>'error'),

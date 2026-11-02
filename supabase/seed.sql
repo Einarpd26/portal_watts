@@ -325,3 +325,82 @@ FROM (VALUES
 JOIN public.sucursales s ON s.nombre_sucursal = r.sucursal
 JOIN public.zonas z ON z.codigo_zona = r.zona AND z.id_sucursal = s.id
 ON CONFLICT (codigo_ruta) DO NOTHING;
+
+-- ------------------------------------------------------------------------------
+-- 9. EQUIPOS DE SUPERVISOR Y SLOTS (Módulo 3, CU-08, ADR-003)
+-- ------------------------------------------------------------------------------
+-- Escenarios para probar /admin/equipos con el Fiscalizador de Santa Cruz y con Gerencia:
+--   · Daniel Acosta (supervisor activo): 2 vendedores y 3 slots (uno vacío).
+--   · Rosa Vargas (supervisora activa, sin equipo): destino típico de «Reemplazar supervisor».
+--   · Jorge Salvatierra (supervisor retirado: sin rol y con baja): conserva 2 vendedores y 3 slots.
+--   · Elena Gutiérrez y Ramiro Choque (Santa Cruz) y Sergio Egüez (Interdepartamental): sin supervisor.
+-- El Fiscalizador de Santa Cruz no debe ver a Sergio (otra sucursal); Gerencia sí.
+INSERT INTO public.personas (ci, nombres, apellidos, telefono, fecha_baja)
+VALUES
+    ('6394813', 'Rosa Elena', 'Vargas Soliz', '72233446', NULL),
+    ('6394814', 'Jorge Luis', 'Salvatierra Peña', '72233447', '2026-10-15T00:00:00-04:00'),
+    ('7483922', 'Pedro Pablo', 'Rojas Cuéllar', '73344557', NULL),
+    ('7483923', 'Lucía Fernanda', 'Mamani Quispe', '73344558', NULL),
+    ('7483924', 'Mario Iván', 'Cuéllar Soria', '73344559', NULL),
+    ('7483925', 'Elena Beatriz', 'Gutiérrez Pinto', '73344560', NULL),
+    ('7483926', 'Ramiro', 'Choque Vaca', '73344561', NULL),
+    ('7483927', 'Sergio Andrés', 'Egüez Lijerón', '73344562', NULL)
+ON CONFLICT (ci) DO NOTHING;
+
+-- Asignaciones laborales: Jorge figura con su asignación cerrada (inactivo), como tras una baja
+INSERT INTO public.asignaciones_laborales (id_persona, id_cargo, id_sucursal, fecha_inicio, fecha_fin, estado)
+SELECT p.id, c.id, s.id, '2026-01-01'::date, a.fecha_fin, a.estado
+FROM (VALUES
+    ('6394813', 'Supervisor', 'Santa Cruz', NULL::date, 'activo'),
+    ('6394814', 'Supervisor', 'Santa Cruz', '2026-10-15'::date, 'inactivo'),
+    ('7483922', 'Vendedor', 'Santa Cruz', NULL::date, 'activo'),
+    ('7483923', 'Vendedor', 'Santa Cruz', NULL::date, 'activo'),
+    ('7483924', 'Vendedor', 'Santa Cruz', NULL::date, 'activo'),
+    ('7483925', 'Vendedor', 'Santa Cruz', NULL::date, 'activo'),
+    ('7483926', 'Vendedor', 'Santa Cruz', NULL::date, 'activo'),
+    ('7483927', 'Vendedor', 'Interdepartamental', NULL::date, 'activo')
+) AS a(ci, cargo, sucursal, fecha_fin, estado)
+JOIN public.personas p ON p.ci = a.ci
+JOIN public.cargos c ON c.nombre_cargo = a.cargo
+JOIN public.sucursales s ON s.nombre_sucursal = a.sucursal
+WHERE NOT EXISTS (
+    SELECT 1 FROM public.asignaciones_laborales al
+    WHERE al.id_persona = p.id AND al.id_cargo = c.id AND al.id_sucursal = s.id
+);
+
+-- Rol de acceso: solo la supervisora activa. Jorge ya no tiene acceso (fue revocado al retirarse).
+INSERT INTO public.usuario_roles (id_persona, id_rol, alcance_tipo, id_sucursal)
+SELECT p.id, r.id, 'SUCURSAL', s.id
+FROM public.personas p, public.roles r, public.sucursales s
+WHERE p.ci = '6394813' AND r.codigo = 'SUPERVISOR' AND s.nombre_sucursal = 'Santa Cruz'
+ON CONFLICT DO NOTHING;
+
+-- Equipos: los vendedores de Daniel Acosta (activo) y de Jorge Salvatierra (retirado)
+INSERT INTO public.supervisor_vendedores (id_supervisor, id_vendedor)
+SELECT s.id, v.id
+FROM (VALUES
+    ('6394812', '7483921'),
+    ('6394812', '7483922'),
+    ('6394814', '7483923'),
+    ('6394814', '7483924')
+) AS e(ci_supervisor, ci_vendedor)
+JOIN public.personas s ON s.ci = e.ci_supervisor
+JOIN public.personas v ON v.ci = e.ci_vendedor
+ON CONFLICT (id_vendedor) DO NOTHING;
+
+-- Slots: cada supervisor con sus vendedores y un slot vacío
+INSERT INTO public.vendedor_slots (nombre, orden, id_supervisor, id_vendedor)
+SELECT sl.nombre, sl.orden, s.id, v.id
+FROM (VALUES
+    ('Slot 1', 0, '6394812', '7483921'),
+    ('Slot 2', 1, '6394812', '7483922'),
+    ('Slot 3', 2, '6394812', NULL),
+    ('Slot 1', 0, '6394814', '7483923'),
+    ('Slot 2', 1, '6394814', '7483924'),
+    ('Slot 3', 2, '6394814', NULL)
+) AS sl(nombre, orden, ci_supervisor, ci_vendedor)
+JOIN public.personas s ON s.ci = sl.ci_supervisor
+LEFT JOIN public.personas v ON v.ci = sl.ci_vendedor
+WHERE NOT EXISTS (
+    SELECT 1 FROM public.vendedor_slots x WHERE x.id_supervisor = s.id AND x.nombre = sl.nombre
+);
