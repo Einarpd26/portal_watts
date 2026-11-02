@@ -404,3 +404,35 @@ LEFT JOIN public.personas v ON v.ci = sl.ci_vendedor
 WHERE NOT EXISTS (
     SELECT 1 FROM public.vendedor_slots x WHERE x.id_supervisor = s.id AND x.nombre = sl.nombre
 );
+
+-- ------------------------------------------------------------------------------
+-- 10. PLANIFICACIÓN DE RUTAS POR DÍA (Módulo 3, CU-09, RN-04 y RN-05)
+-- ------------------------------------------------------------------------------
+-- Escenarios para probar la grilla de /planificacion con Daniel Acosta (zonas ZN y ZS):
+--   · R-N1: semanal el lunes (Slot 1) y el jueves (Slot 2)  -> marcada «Duplicada».
+--   · R-N2: impar el martes (Slot 1) y par el martes (Slot 2) -> par quincenal, NO se marca.
+--   · R-N3: semanal el miércoles (Slot 1) y eventual el viernes (Slot 2) -> la eventual no cuenta, NO se marca.
+--   · R-S1 (lunes, Slot 2) y R-S2 (sábado, Slot 1): una sola visita, sin marca.
+--   · R-N4, R-S3 y R-S4 quedan SIN planificar: aparecen arriba en el selector de rutas.
+-- Jorge Salvatierra (supervisor retirado) conserva planificación sobre rutas de ZN y ZS, que hoy supervisa
+-- Daniel: al reemplazarlo por Rosa Vargas esas visitas quedan ocultas para ella (ADR-003 D9), porque no son
+-- de sus zonas. Se insertan directo porque la función de planificación no lo permitiría hoy (RN-05).
+INSERT INTO public.planificacion_rutas (id_vendedor_slot, id_ruta, dia_semana, frecuencia)
+SELECT sl.id, r.id, v.dia, v.frecuencia::public.frecuencia_visita_enum
+FROM (VALUES
+    ('6394812', 'Slot 1', 'R-N1', 'LU', 'semanal'),
+    ('6394812', 'Slot 2', 'R-N1', 'JU', 'semanal'),
+    ('6394812', 'Slot 1', 'R-N2', 'MA', 'impar'),
+    ('6394812', 'Slot 2', 'R-N2', 'MA', 'par'),
+    ('6394812', 'Slot 1', 'R-N3', 'MI', 'semanal'),
+    ('6394812', 'Slot 2', 'R-N3', 'VI', 'eventual'),
+    ('6394812', 'Slot 2', 'R-S1', 'LU', 'semanal'),
+    ('6394812', 'Slot 1', 'R-S2', 'SA', 'semanal'),
+    ('6394814', 'Slot 1', 'R-S3', 'LU', 'semanal'),
+    ('6394814', 'Slot 1', 'R-S4', 'MA', 'impar'),
+    ('6394814', 'Slot 2', 'R-N4', 'JU', 'semanal')
+) AS v(ci_supervisor, slot, codigo_ruta, dia, frecuencia)
+JOIN public.personas p ON p.ci = v.ci_supervisor
+JOIN public.vendedor_slots sl ON sl.id_supervisor = p.id AND sl.nombre = v.slot
+JOIN public.rutas r ON r.codigo_ruta = v.codigo_ruta
+ON CONFLICT ON CONSTRAINT unique_planificacion_ruta DO NOTHING;
