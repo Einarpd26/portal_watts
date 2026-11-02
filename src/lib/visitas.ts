@@ -52,3 +52,21 @@ export async function quitarVisita(idSupervisor: number, idVisita: number): Prom
   const resultado = interpretarResultadoVisita(data);
   return resultado.ok ? { ok: true, data: null } : resultado;
 }
+
+/** Mueve una visita propia a otro slot y día (arrastre en la grilla); conserva su frecuencia */
+export async function moverVisita(
+  idSupervisor: number,
+  idVisita: number,
+  idSlotDestino: number,
+  diaDestino: DiaKey
+): Promise<VisitaResultado<null>> {
+  const { data, error } = await createAdminClient().rpc('planificacion_mover', {
+    p_id: idVisita,
+    p_id_supervisor: idSupervisor,
+    p_id_slot_destino: idSlotDestino,
+    p_dia_destino: diaDestino,
+  });
+  if (error) return { ok: false, error: 'error' };
+  const resultado = interpretarResultadoVisita(data);
+  return resultado.ok ? { ok: true, data: null } : resultado;
+}

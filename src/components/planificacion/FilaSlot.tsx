@@ -192,6 +192,8 @@ export default function FilaSlot({
       {DIAS_ORDEN.map((dia) => (
         <CeldaDia
           key={dia}
+          idSlot={slot.id}
+          dia={dia}
           visitas={visitas.filter((v) => v.dia === dia)}
           duplicadas={duplicadas}
           editMode={editMode}

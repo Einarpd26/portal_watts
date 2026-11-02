@@ -624,6 +624,15 @@ export type Database = {
         Args: { p_frecuencia: string; p_id: number; p_id_supervisor: number }
         Returns: Json
       }
+      planificacion_mover: {
+        Args: {
+          p_dia_destino: string
+          p_id: number
+          p_id_slot_destino: number
+          p_id_supervisor: number
+        }
+        Returns: Json
+      }
       planificacion_quitar: {
         Args: { p_id: number; p_id_supervisor: number }
         Returns: Json

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { logger } from '@/lib/logger';
 import { mensajeDeErrorApi } from '@/utils/apiError';
 import type { DiaKey } from '@/utils/diasSemana';
@@ -15,6 +15,9 @@ export function useGestionSlots() {
   const [toast, setToast] = useState<Toast | null>(null);
 
   const clearToast = useCallback(() => setToast(null), []);
+
+  // Visitas que se están guardando: evita mover dos veces la misma mientras el servidor responde
+  const moviendoRef = useRef(new Set<number>());
 
   const cargar = useCallback(async () => {
     try {
@@ -121,6 +124,40 @@ export function useGestionSlots() {
       'No se pudo cambiar la frecuencia.'
     );
 
+  // Mover es optimista: la grilla se actualiza al soltar y, si el servidor lo rechaza, la visita vuelve a
+  // su celda. Así el chip no regresa a la celda anterior mientras espera la respuesta.
+  const moverVisita = async (idVisita: number, idSlot: number, dia: DiaKey) => {
+    if (moviendoRef.current.has(idVisita)) return;
+    const original = listado.visitas.find((v) => v.id === idVisita);
+    if (!original || (original.id_slot === idSlot && original.dia === dia)) return;
+
+    const colocar = (id_slot: number, dia_destino: DiaKey) =>
+      setListado((prev) => ({
+        ...prev,
+        visitas: prev.visitas.map((v) => (v.id === idVisita ? { ...v, id_slot, dia: dia_destino } : v)),
+      }));
+    const revertir = (mensaje: string) => {
+      colocar(original.id_slot, original.dia);
+      setToast({ type: 'error', message: mensaje });
+    };
+
+    moviendoRef.current.add(idVisita);
+    colocar(idSlot, dia);
+    try {
+      const res = await fetch(`/api/planificacion/visitas/${idVisita}/mover`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_slot: idSlot, dia }),
+      });
+      if (!res.ok) revertir(await mensajeDeErrorApi(res, 'No se pudo mover la ruta.'));
+    } catch (err: unknown) {
+      logger.error('Error moviendo la visita:', err);
+      revertir('No se pudo mover la ruta.');
+    } finally {
+      moviendoRef.current.delete(idVisita);
+    }
+  };
+
   const quitarVisita = (idVisita: number) =>
     ejecutar(
       () => fetch(`/api/planificacion/visitas/${idVisita}`, { method: 'DELETE' }),
@@ -154,5 +191,6 @@ export function useGestionSlots() {
     agregarVisita,
     cambiarFrecuencia,
     quitarVisita,
+    moverVisita,
   };
 }

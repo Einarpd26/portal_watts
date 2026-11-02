@@ -95,6 +95,7 @@ function getAccionBadgeClasses(accion: string): string {
     case 'CAMBIO_PASSWORD':
     case 'REEMPLAZAR_SUPERVISOR':
     case 'CAMBIAR_FRECUENCIA_VISITA':
+    case 'MOVER_VISITA':
       return 'bg-amber-100 text-amber-800';
     case 'BAJA_PERSONAL':
     case 'REVOCAR_ACCESO':

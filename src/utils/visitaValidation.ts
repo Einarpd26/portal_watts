@@ -72,6 +72,14 @@ export function validarCambioFrecuencia(cuerpo: unknown): { ok: true; frecuencia
   return esFrecuencia(frecuencia) ? { ok: true, frecuencia } : { ok: false, mensaje: 'La frecuencia no es válida.' };
 }
 
+/** Cuerpo de POST /api/planificacion/visitas/[id]/mover: la celda de destino (slot y día) */
+export function validarMovimientoVisita(cuerpo: unknown): { ok: true; idSlot: number; dia: DiaKey } | { ok: false; mensaje: string } {
+  const { id_slot, dia } = (cuerpo ?? {}) as Record<string, unknown>;
+  if (!esIdValido(id_slot)) return { ok: false, mensaje: 'Indica el slot de destino.' };
+  if (!esDia(dia)) return { ok: false, mensaje: 'El día debe ser de lunes a sábado.' };
+  return { ok: true, idSlot: id_slot, dia };
+}
+
 /** Estado HTTP y mensaje al usuario para cada error de negocio */
 export function respuestaDeErrorVisita(error: ErrorVisita): { status: number; mensaje: string } {
   switch (error) {
