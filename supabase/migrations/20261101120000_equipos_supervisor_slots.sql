@@ -94,10 +94,11 @@ AS $$
 $$;
 
 -- 4. EQUIPO_ASIGNAR_VENDEDOR: asigna, cambia o quita (p_id_supervisor NULL) el supervisor de un vendedor.
+-- Sin p_id_supervisor se quita al vendedor del equipo.
 -- p_id_sucursal_alcance: sucursal del Fiscalizador que opera; NULL para Gerencia Comercial (global).
 CREATE OR REPLACE FUNCTION public.equipo_asignar_vendedor(
     p_id_vendedor bigint,
-    p_id_supervisor bigint,
+    p_id_supervisor bigint DEFAULT NULL,
     p_id_sucursal_alcance bigint DEFAULT NULL
 )
 RETURNS jsonb
