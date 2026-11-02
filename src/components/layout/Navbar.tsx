@@ -49,6 +49,14 @@ const NAV_ICONS: Record<string, ReactNode> = {
       <path d="M16 5.5a3 3 0 0 1 0 6M21 20c0-2.6-1.7-4.9-4-5.6" />
     </svg>
   ),
+  "/admin/equipos": (
+    <svg className="h-full w-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="6" r="2.5" />
+      <circle cx="5.5" cy="18" r="2.5" />
+      <circle cx="18.5" cy="18" r="2.5" />
+      <path d="M12 8.5v3.5M12 12H5.5v3.5M12 12h6.5v3.5" />
+    </svg>
+  ),
   "/admin/usuarios": (
     <svg className="h-full w-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M12 2 4 6v6c0 4.4 3.4 8.5 8 9.5 4.6-1 8-5.1 8-9.5V6L12 2Z" />
