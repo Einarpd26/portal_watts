@@ -4,10 +4,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGestionSlots } from '@/hooks/useGestionSlots';
+import { useMapaPlanificacion } from '@/hooks/useMapaPlanificacion';
 import Alert from '@/components/ui/Alert';
 import Button from '@/components/ui/Button';
 import AppLayout from '@/components/layout/AppLayout';
 import PlanificacionGrid from '@/components/planificacion/PlanificacionGrid';
+import ConmutadorVista, { type VistaPlanificacion } from '@/components/planificacion/ConmutadorVista';
+import VistaMapaPlanificacion from '@/components/planificacion/VistaMapaPlanificacion';
 import VisitaModal, { type VisitaModalEstado } from '@/components/planificacion/VisitaModal';
 import { logger } from '@/lib/logger';
 import type { PageWithLayout } from '@/types';
@@ -25,6 +28,8 @@ const PlanificacionPage: PageWithLayout = () => {
   }, [authLoading, user, router]);
 
   const [editMode, setEditMode] = useState(false);
+  // La vista inicial es el Mapa, que es la que ayuda a decidir (ADR-004 D1); el Calendario queda a un clic
+  const [vistaElegida, setVistaElegida] = useState<VistaPlanificacion>('mapa');
   const [visitaModal, setVisitaModal] = useState<VisitaModalEstado | null>(null);
   const {
     listado,
@@ -42,7 +47,15 @@ const PlanificacionPage: PageWithLayout = () => {
     quitarVisita,
     moverVisita,
     reordenarSlots,
+    planificarEnMapa,
+    quitarDelMapa,
   } = useGestionSlots();
+  const { mapa, error: mapaError, isLoading: mapaCargando } = useMapaPlanificacion(
+    !isLoading && listado.es_supervisor ? '/api/planificacion/mapa' : null
+  );
+
+  // Sin slots no hay nada que pintar: se queda en el Calendario, donde se agrega el primero
+  const vista: VistaPlanificacion = listado.slots.length === 0 ? 'calendario' : vistaElegida;
 
   const nombreDeSlot = (idSlot: number) => {
     const i = listado.slots.findIndex((s) => s.id === idSlot);
@@ -66,21 +79,25 @@ const PlanificacionPage: PageWithLayout = () => {
             <h1 className="text-xl font-extrabold tracking-tight text-gray-900">Planificación</h1>
             {listado.es_supervisor && (
               <p className="mt-0.5 text-sm text-gray-500">
-                Cada fila es un slot de tu equipo y cada columna, un día de visita. El slot y sus rutas se conservan
-                aunque cambie el vendedor.
+                {vista === 'mapa'
+                  ? 'Elige un día y un slot, y pinta sobre el mapa las rutas que ese slot visita.'
+                  : 'Cada fila es un slot de tu equipo y cada columna, un día de visita. El slot y sus rutas se conservan aunque cambie el vendedor.'}
               </p>
             )}
           </div>
           {listado.es_supervisor && (
-            <div className="flex gap-2">
-              {editMode && (
+            <div className="flex flex-wrap items-center gap-2">
+              {listado.slots.length > 0 && <ConmutadorVista vista={vista} onCambiar={setVistaElegida} />}
+              {vista === 'calendario' && editMode && (
                 <Button variant="secondary" onClick={() => void crearSlot()} disabled={isSubmitting || isLoading}>
                   Agregar slot
                 </Button>
               )}
-              <Button onClick={() => setEditMode((v) => !v)} variant={editMode ? 'primary' : 'secondary'} disabled={isLoading}>
-                {editMode ? 'Listo' : 'Editar'}
-              </Button>
+              {vista === 'calendario' && (
+                <Button onClick={() => setEditMode((v) => !v)} variant={editMode ? 'primary' : 'secondary'} disabled={isLoading}>
+                  {editMode ? 'Listo' : 'Editar'}
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -111,26 +128,44 @@ const PlanificacionPage: PageWithLayout = () => {
           </div>
         ) : (
           <>
-            <p className="text-xs text-gray-500">
-              {listado.disponibles.length === 0
-                ? 'Todos los vendedores de tu equipo tienen slot.'
-                : `${listado.disponibles.length} ${listado.disponibles.length === 1 ? 'vendedor de tu equipo no tiene' : 'vendedores de tu equipo no tienen'} slot.`}
-            </p>
-            <PlanificacionGrid
-              slots={listado.slots}
-              disponibles={listado.disponibles}
-              visitas={listado.visitas}
-              editMode={editMode}
-              deshabilitado={isSubmitting}
-              onAsignar={(id, idVendedor) => void asignarVendedor(id, idVendedor)}
-              onRenombrar={(id, nombre) => void renombrarSlot(id, nombre)}
-              onEliminar={(id) => void eliminarSlot(id)}
-              onMover={(id, direccion) => void moverSlot(id, direccion)}
-              onAgregarVisita={(idSlot, dia) => setVisitaModal({ tipo: 'agregar', idSlot, dia, nombreSlot: nombreDeSlot(idSlot) })}
-              onReordenar={(ids) => void reordenarSlots(ids)}
-              onMoverVisita={(idVisita, idSlot, dia) => void moverVisita(idVisita, idSlot, dia)}
-              onSeleccionarVisita={(visita) => setVisitaModal({ tipo: 'editar', visita, nombreSlot: nombreDeSlot(visita.id_slot) })}
-            />
+            {/* El mapa se monta una vez y se conserva oculto en el Calendario: no pierde el encuadre ni vuelve a pedir los polígonos */}
+            <div hidden={vista !== 'mapa'}>
+              <VistaMapaPlanificacion
+                slots={listado.slots}
+                visitas={listado.visitas}
+                mapa={mapa}
+                cargando={mapaCargando}
+                error={mapaError}
+                edicion={{
+                  deshabilitado: isSubmitting,
+                  planificar: planificarEnMapa,
+                  quitar: quitarDelMapa,
+                  cambiarFrecuencia,
+                }}
+              />
+            </div>
+            <div hidden={vista !== 'calendario'} className="space-y-4">
+              <p className="text-xs text-gray-500">
+                {listado.disponibles.length === 0
+                  ? 'Todos los vendedores de tu equipo tienen slot.'
+                  : `${listado.disponibles.length} ${listado.disponibles.length === 1 ? 'vendedor de tu equipo no tiene' : 'vendedores de tu equipo no tienen'} slot.`}
+              </p>
+              <PlanificacionGrid
+                slots={listado.slots}
+                disponibles={listado.disponibles}
+                visitas={listado.visitas}
+                editMode={editMode}
+                deshabilitado={isSubmitting}
+                onAsignar={(id, idVendedor) => void asignarVendedor(id, idVendedor)}
+                onRenombrar={(id, nombre) => void renombrarSlot(id, nombre)}
+                onEliminar={(id) => void eliminarSlot(id)}
+                onMover={(id, direccion) => void moverSlot(id, direccion)}
+                onAgregarVisita={(idSlot, dia) => setVisitaModal({ tipo: 'agregar', idSlot, dia, nombreSlot: nombreDeSlot(idSlot) })}
+                onReordenar={(ids) => void reordenarSlots(ids)}
+                onMoverVisita={(idVisita, idSlot, dia) => void moverVisita(idVisita, idSlot, dia)}
+                onSeleccionarVisita={(visita) => setVisitaModal({ tipo: 'editar', visita, nombreSlot: nombreDeSlot(visita.id_slot) })}
+              />
+            </div>
           </>
         )}
       </div>

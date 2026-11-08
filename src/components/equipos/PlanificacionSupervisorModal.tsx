@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import PlanificacionGrid from '@/components/planificacion/PlanificacionGrid';
+import ConmutadorVista, { type VistaPlanificacion } from '@/components/planificacion/ConmutadorVista';
+import VistaMapaPlanificacion from '@/components/planificacion/VistaMapaPlanificacion';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { useMapaPlanificacion } from '@/hooks/useMapaPlanificacion';
 import type { EquipoSupervisor, PlanificacionDeSupervisor } from '@/types';
 
 interface PlanificacionSupervisorModalProps {
@@ -17,16 +21,25 @@ interface PlanificacionSupervisorModalProps {
 // La grilla es la misma del supervisor pero en modo lectura: ninguna acción está disponible
 const SIN_ACCION = () => undefined;
 
-export default function PlanificacionSupervisorModal({
+export default function PlanificacionSupervisorModal(props: PlanificacionSupervisorModalProps) {
+  const { objetivo, onClose } = props;
+  useEscapeKey(onClose, objetivo !== null);
+
+  // El contenido se monta de nuevo con cada supervisor: la vista y el mapa no se arrastran de una consulta a otra
+  return objetivo ? <ContenidoPlanificacion key={objetivo.id_persona} {...props} objetivo={objetivo} /> : null;
+}
+
+function ContenidoPlanificacion({
   objetivo,
   planificacion,
   isLoading,
   error,
   onClose,
-}: PlanificacionSupervisorModalProps) {
-  useEscapeKey(onClose, objetivo !== null);
-
-  if (!objetivo) return null;
+}: PlanificacionSupervisorModalProps & { objetivo: EquipoSupervisor }) {
+  // Mismo conmutador que en la planificación del supervisor; aquí no hay pincel ni acciones de edición (ADR-004 D5)
+  const [vista, setVista] = useState<VistaPlanificacion>('mapa');
+  const mapa = useMapaPlanificacion(`/api/admin/equipos/supervisor/${objetivo.id_persona}/mapa`);
+  const hayPlanificacion = planificacion !== null && planificacion.slots.length > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -48,11 +61,14 @@ export default function PlanificacionSupervisorModal({
               que ya no son de sus zonas.
             </p>
           </div>
-          {!objetivo.activo && (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-              Supervisor inactivo
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {!objetivo.activo && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                Supervisor inactivo
+              </span>
+            )}
+            {hayPlanificacion && <ConmutadorVista vista={vista} onCambiar={setVista} />}
+          </div>
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -64,21 +80,36 @@ export default function PlanificacionSupervisorModal({
             <p className="text-sm text-gray-500">Este supervisor todavía no tiene slots.</p>
           ) : (
             planificacion && (
-              <PlanificacionGrid
-                slots={planificacion.slots}
-                disponibles={[]}
-                visitas={planificacion.visitas}
-                editMode={false}
-                deshabilitado
-                onAsignar={SIN_ACCION}
-                onRenombrar={SIN_ACCION}
-                onEliminar={SIN_ACCION}
-                onMover={SIN_ACCION}
-                onAgregarVisita={SIN_ACCION}
-                onSeleccionarVisita={SIN_ACCION}
-                onMoverVisita={SIN_ACCION}
-                onReordenar={SIN_ACCION}
-              />
+              <>
+                <div hidden={vista !== 'mapa'}>
+                  <VistaMapaPlanificacion
+                    slots={planificacion.slots}
+                    visitas={planificacion.visitas}
+                    mapa={mapa.mapa}
+                    cargando={mapa.isLoading}
+                    error={mapa.error}
+                    edicion={null}
+                    claseAltura="h-96 lg:h-128"
+                  />
+                </div>
+                <div hidden={vista !== 'calendario'}>
+                  <PlanificacionGrid
+                    slots={planificacion.slots}
+                    disponibles={[]}
+                    visitas={planificacion.visitas}
+                    editMode={false}
+                    deshabilitado
+                    onAsignar={SIN_ACCION}
+                    onRenombrar={SIN_ACCION}
+                    onEliminar={SIN_ACCION}
+                    onMover={SIN_ACCION}
+                    onAgregarVisita={SIN_ACCION}
+                    onSeleccionarVisita={SIN_ACCION}
+                    onMoverVisita={SIN_ACCION}
+                    onReordenar={SIN_ACCION}
+                  />
+                </div>
+              </>
             )
           )}
         </div>

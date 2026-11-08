@@ -294,6 +294,12 @@ export interface PlanificacionDeSupervisor {
   visitas: VisitaPlanificada[];
 }
 
+/** Territorio para planificar sobre el mapa (ADR-004): rutas con su polígono simplificado y contorno de cada zona */
+export interface MapaPlanificacion {
+  rutas: RutaItem[];
+  contornos: ContornoZona[];
+}
+
 // 11. Rutas comerciales (CU-05)
 export interface PoligonoRuta {
   type: 'Polygon';

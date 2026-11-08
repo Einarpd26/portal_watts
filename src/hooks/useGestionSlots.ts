@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { logger } from '@/lib/logger';
 import { mensajeDeErrorApi } from '@/utils/apiError';
 import type { DiaKey } from '@/utils/diasSemana';
-import type { Frecuencia, SlotsListado } from '@/types';
+import type { Frecuencia, SlotsListado, VisitaPlanificada } from '@/types';
 
 type Toast = { type: 'success' | 'error'; message: string };
 
@@ -18,6 +18,10 @@ export function useGestionSlots() {
 
   // Visitas que se están guardando: evita mover dos veces la misma mientras el servidor responde
   const moviendoRef = useRef(new Set<number>());
+  // Cambios del pincel en vuelo: el listado real se recarga cuando termina el último, no antes, para que
+  // una recarga no borre un cambio optimista que el servidor todavía no confirmó
+  const pendientesRef = useRef(0);
+  const temporalesRef = useRef(0);
 
   const cargar = useCallback(async () => {
     try {
@@ -183,6 +187,77 @@ export function useGestionSlots() {
     }
   };
 
+  // Pincel del mapa (ADR-004 D4): el cambio se ve al instante y se revierte con el motivo si el servidor lo rechaza.
+  // Devuelven el resultado para que la vista arme el «Deshacer».
+  const terminarCambioDelPincel = async () => {
+    pendientesRef.current -= 1;
+    if (pendientesRef.current === 0) await cargar();
+  };
+
+  const planificarEnMapa = async (idSlot: number, idRuta: number, dia: DiaKey, frecuencia: Frecuencia): Promise<VisitaPlanificada | null> => {
+    const ruta = listado.rutas.find((r) => r.id === idRuta);
+    if (!ruta) return null;
+    temporalesRef.current += 1;
+    const temporal: VisitaPlanificada = {
+      id: -temporalesRef.current,
+      id_slot: idSlot,
+      id_ruta: idRuta,
+      codigo_ruta: ruta.codigo_ruta,
+      ruta: ruta.ruta,
+      dia,
+      frecuencia,
+    };
+    const sinTemporal = (prev: SlotsListado) => ({ ...prev, visitas: prev.visitas.filter((v) => v.id !== temporal.id) });
+
+    pendientesRef.current += 1;
+    setListado((prev) => ({ ...prev, visitas: [...prev.visitas, temporal] }));
+    try {
+      const res = await fetch('/api/planificacion/visitas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_slot: idSlot, id_ruta: idRuta, dia, frecuencia }),
+      });
+      if (!res.ok) {
+        setListado(sinTemporal);
+        setToast({ type: 'error', message: await mensajeDeErrorApi(res, 'No se pudo planificar la ruta.') });
+        return null;
+      }
+      const { id } = (await res.json()) as { id: number };
+      const creada = { ...temporal, id };
+      setListado((prev) => ({ ...prev, visitas: prev.visitas.map((v) => (v.id === temporal.id ? creada : v)) }));
+      return creada;
+    } catch (err: unknown) {
+      logger.error('Error planificando la ruta desde el mapa:', err);
+      setListado(sinTemporal);
+      setToast({ type: 'error', message: 'No se pudo planificar la ruta.' });
+      return null;
+    } finally {
+      await terminarCambioDelPincel();
+    }
+  };
+
+  const quitarDelMapa = async (visita: VisitaPlanificada): Promise<boolean> => {
+    pendientesRef.current += 1;
+    setListado((prev) => ({ ...prev, visitas: prev.visitas.filter((v) => v.id !== visita.id) }));
+    const restaurar = () => setListado((prev) => ({ ...prev, visitas: [...prev.visitas, visita] }));
+    try {
+      const res = await fetch(`/api/planificacion/visitas/${visita.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        restaurar();
+        setToast({ type: 'error', message: await mensajeDeErrorApi(res, 'No se pudo quitar la ruta.') });
+        return false;
+      }
+      return true;
+    } catch (err: unknown) {
+      logger.error('Error quitando la ruta desde el mapa:', err);
+      restaurar();
+      setToast({ type: 'error', message: 'No se pudo quitar la ruta.' });
+      return false;
+    } finally {
+      await terminarCambioDelPincel();
+    }
+  };
+
   const quitarVisita = (idVisita: number) =>
     ejecutar(
       () => fetch(`/api/planificacion/visitas/${idVisita}`, { method: 'DELETE' }),
@@ -216,6 +291,8 @@ export function useGestionSlots() {
     agregarVisita,
     cambiarFrecuencia,
     quitarVisita,
+    planificarEnMapa,
+    quitarDelMapa,
     moverVisita,
     reordenarSlots,
   };

@@ -2,9 +2,10 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { primero } from '@/utils/postgrest';
 import { listarZonas } from '@/lib/zonas';
 import { consultarPlanificacion } from '@/lib/slots';
+import { mapaDeConsulta } from '@/lib/mapaPlanificacion';
 import { alcanceDeListado, type AlcanceSolicitante } from '@/utils/sucursalScope';
 import { interpretarResultadoEquipo, type ErrorEquipo } from '@/utils/equipoValidation';
-import type { EquipoSupervisor, EquiposListado, PlanificacionDeSupervisor, VendedorSinEquipo } from '@/types';
+import type { EquipoSupervisor, EquiposListado, MapaPlanificacion, PlanificacionDeSupervisor, VendedorSinEquipo } from '@/types';
 
 export type EquipoResultado<T> = { ok: true; data: T } | { ok: false; error: ErrorEquipo };
 
@@ -169,18 +170,24 @@ export async function listarEquipos(solicitante: AlcanceSolicitante): Promise<Eq
 }
 
 /**
- * Planificación de un supervisor, en solo lectura, para el Fiscalizador (su sucursal) y Gerencia (global)
- * (ADR-003 D10). El alcance sale de la misma lista de equipos de la pantalla Equipos: quien no ve a un
- * supervisor ahí tampoco puede consultar su planificación.
+ * Equipo del supervisor si el solicitante lo ve en la pantalla Equipos: el Fiscalizador, los de su sucursal y
+ * Gerencia, todos. Es el alcance de la consulta de planificación (ADR-003 D10): quien no ve a un supervisor
+ * ahí tampoco puede consultar su planificación ni su mapa.
  */
+async function equipoEnAlcance(solicitante: AlcanceSolicitante, idSupervisor: number): Promise<EquipoResultado<EquipoSupervisor>> {
+  const equipos = await listarEquipos(solicitante);
+  if (!equipos.ok) return equipos;
+  const equipo = equipos.data.equipos.find((e) => e.id_persona === idSupervisor);
+  return equipo ? { ok: true, data: equipo } : { ok: false, error: 'no_encontrado' };
+}
+
+/** Planificación de un supervisor, en solo lectura, para el Fiscalizador (su sucursal) y Gerencia (global) */
 export async function planificacionDeSupervisor(
   solicitante: AlcanceSolicitante,
   idSupervisor: number
 ): Promise<EquipoResultado<PlanificacionDeSupervisor>> {
-  const equipos = await listarEquipos(solicitante);
-  if (!equipos.ok) return equipos;
-  const equipo = equipos.data.equipos.find((e) => e.id_persona === idSupervisor);
-  if (!equipo) return { ok: false, error: 'no_encontrado' };
+  const equipo = await equipoEnAlcance(solicitante, idSupervisor);
+  if (!equipo.ok) return equipo;
 
   const planificacion = await consultarPlanificacion(idSupervisor);
   if (!planificacion.ok) return { ok: false, error: 'error' };
@@ -188,14 +195,26 @@ export async function planificacionDeSupervisor(
     ok: true,
     data: {
       supervisor: {
-        id_persona: equipo.id_persona,
-        nombre: equipo.nombre,
-        sucursal_nombre: equipo.sucursal_nombre,
-        activo: equipo.activo,
+        id_persona: equipo.data.id_persona,
+        nombre: equipo.data.nombre,
+        sucursal_nombre: equipo.data.sucursal_nombre,
+        activo: equipo.data.activo,
       },
       ...planificacion.data,
     },
   };
+}
+
+/** Polígonos de la planificación de un supervisor para verla sobre el mapa, con el mismo alcance (ADR-004 D5) */
+export async function mapaDePlanificacionDeSupervisor(
+  solicitante: AlcanceSolicitante,
+  idSupervisor: number
+): Promise<EquipoResultado<MapaPlanificacion>> {
+  const equipo = await equipoEnAlcance(solicitante, idSupervisor);
+  if (!equipo.ok) return equipo;
+
+  const mapa = await mapaDeConsulta(idSupervisor);
+  return mapa.ok ? mapa : { ok: false, error: 'error' };
 }
 
 /**
