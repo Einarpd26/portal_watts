@@ -74,8 +74,9 @@ const PlanificacionPage: PageWithLayout = () => {
   return (
     <div className="min-h-full bg-gray-50">
       <header className="px-6 pt-6">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
-          <div>
+        {/* Desde sm el título cede espacio (su subtítulo se parte en más líneas) y los botones nunca saltan de fila, aparezca o no «Agregar slot» */}
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 sm:flex-nowrap">
+          <div className="min-w-full sm:min-w-0 sm:flex-1">
             <h1 className="text-xl font-extrabold tracking-tight text-gray-900">Planificación</h1>
             {listado.es_supervisor && (
               <p className="mt-0.5 text-sm text-gray-500">
@@ -86,7 +87,7 @@ const PlanificacionPage: PageWithLayout = () => {
             )}
           </div>
           {listado.es_supervisor && (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               {listado.slots.length > 0 && <ConmutadorVista vista={vista} onCambiar={setVistaElegida} />}
               {vista === 'calendario' && editMode && (
                 <Button variant="secondary" onClick={() => void crearSlot()} disabled={isSubmitting || isLoading}>
