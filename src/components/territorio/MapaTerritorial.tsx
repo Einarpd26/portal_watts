@@ -1,23 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { setWorkerUrl } from 'maplibre-gl';
 import { FullscreenControl, Layer, Map, NavigationControl, Popup, Source } from '@vis.gl/react-maplibre';
 import type { MapEvent, MapLayerMouseEvent, MapRef } from '@vis.gl/react-maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { CapaDibujo } from '@/components/territorio/CapaDibujo';
+import { ESTILO_BASE, VISTA_INICIAL, cajaDe, encuadrarEnCaja } from '@/components/mapa/baseMapa';
 import type { Posicion } from '@/utils/ajusteVertices';
 import { COLOR_CONFLICTO, COLOR_INVALIDO, COLOR_PROPUESTA, PALETA_ZONAS } from '@/utils/coloresTerritorio';
-import type { ConflictoRuta, ContornoZona, MultiPoligonoGeoJson, PoligonoRuta, RutaItem } from '@/types';
+import type { ConflictoRuta, ContornoZona, PoligonoRuta, RutaItem } from '@/types';
 
-// MapLibre 6 no resuelve solo la URL de su worker bajo el empaquetador: se sirve desde public/maplibre/
-// (lo copia scripts/copiar-worker-maplibre.mjs) y debe registrarse antes de crear el mapa (ADR-002 §4).
-setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
-
-// Mapa base de OpenFreeMap (ADR-002 D5); el proveedor definitivo se decide antes de producción
-const ESTILO_BASE = 'https://tiles.openfreemap.org/styles/liberty';
-
-const VISTA_INICIAL = { longitude: -63.18, latitude: -17.78, zoom: 11 };
 // Encuadre moderado: margen de un cuarto del lado menor y tope de zoom de barrio (no de calle)
 const MARGEN_ENCUADRE = 0.25;
 const ZOOM_MAXIMO_ENCUADRE = 14;
@@ -62,21 +54,6 @@ const coleccion = (poligonos: Array<{ poligono: PoligonoRuta; propiedades: Recor
     geometry: poligono,
   })),
 });
-
-/** Caja [oeste, sur, este, norte] que contiene todos los polígonos, o null si no hay ninguno */
-export function cajaDe(poligonos: Array<PoligonoRuta | MultiPoligonoGeoJson>): [number, number, number, number] | null {
-  let caja: [number, number, number, number] | null = null;
-  // El anillo exterior basta para la caja; un MultiPolygon aporta el de cada parte
-  const anillos = poligonos.flatMap((p) => (p.type === 'Polygon' ? [p.coordinates[0] ?? []] : p.coordinates.map((c) => c[0] ?? [])));
-  for (const anillo of anillos) {
-    for (const [lon, lat] of anillo) {
-      caja = caja
-        ? [Math.min(caja[0], lon), Math.min(caja[1], lat), Math.max(caja[2], lon), Math.max(caja[3], lat)]
-        : [lon, lat, lon, lat];
-    }
-  }
-  return caja;
-}
 
 export function MapaTerritorial({
   rutas,
@@ -162,14 +139,11 @@ export function MapaTerritorial({
   const encuadrar = useCallback(
     (duracion: number) => {
       if (!cajaEncuadre) return;
-      const [oeste, sur, este, norte] = cajaEncuadre;
       const mapa = mapaRef.current;
       if (!mapa) return;
       // Margen proporcional a la vista: el polígono queda centrado con su entorno visible, sin
       // acercarse hasta llenar la pantalla
-      const { clientWidth, clientHeight } = mapa.getContainer();
-      const padding = Math.max(48, Math.round(Math.min(clientWidth, clientHeight) * MARGEN_ENCUADRE));
-      mapa.fitBounds([[oeste, sur], [este, norte]], { padding, duration: duracion, maxZoom: ZOOM_MAXIMO_ENCUADRE });
+      encuadrarEnCaja(mapa, cajaEncuadre, { margen: MARGEN_ENCUADRE, margenMinimo: 48, zoomMaximo: ZOOM_MAXIMO_ENCUADRE, duracion });
     },
     [cajaEncuadre]
   );

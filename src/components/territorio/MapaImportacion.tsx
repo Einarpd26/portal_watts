@@ -1,19 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from 'react';
-import { setWorkerUrl } from 'maplibre-gl';
 import { FullscreenControl, Layer, Map, NavigationControl, Source } from '@vis.gl/react-maplibre';
 import type { MapLayerMouseEvent, MapRef } from '@vis.gl/react-maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { cajaDe } from '@/components/territorio/MapaTerritorial';
+import { ESTILO_BASE, VISTA_INICIAL, cajaDe, encuadrarEnCaja, type CajaGeografica } from '@/components/mapa/baseMapa';
 import { COLOR_ESTADO, COLOR_SIN_EVALUAR } from '@/utils/importacionRutas';
 import type { EstadoRuta } from '@/utils/rutaInforme';
 import type { RutaLoteEntrada } from '@/utils/rutaValidation';
 
-// Mismo worker y mapa base que el mapa de territorio (ADR-002 §4, D5)
-setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
-const ESTILO_BASE = 'https://tiles.openfreemap.org/styles/liberty';
-const VISTA_INICIAL = { longitude: -63.18, latitude: -17.78, zoom: 11 };
 const MARGEN_ENCUADRE = 0.15;
 
 interface MapaImportacionProps {
@@ -49,12 +44,10 @@ export function MapaImportacion({ rutas, estados, seleccionIndice, onSeleccionar
     [rutas, estados, seleccionIndice]
   );
 
-  const encuadrar = (caja: [number, number, number, number] | null, duracion: number) => {
+  const encuadrar = (caja: CajaGeografica | null, duracion: number) => {
     const mapa = mapaRef.current;
     if (!caja || !mapa) return;
-    const { clientWidth, clientHeight } = mapa.getContainer();
-    const padding = Math.max(32, Math.round(Math.min(clientWidth, clientHeight) * MARGEN_ENCUADRE));
-    mapa.fitBounds([[caja[0], caja[1]], [caja[2], caja[3]]], { padding, duration: duracion, maxZoom: 16 });
+    encuadrarEnCaja(mapa, caja, { margen: MARGEN_ENCUADRE, margenMinimo: 32, zoomMaximo: 16, duracion });
   };
 
   // Al cargar otro archivo se encuadra el conjunto
