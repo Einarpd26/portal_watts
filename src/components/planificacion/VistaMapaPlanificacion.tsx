@@ -7,6 +7,7 @@ import ListaRutasPlanificacion from './ListaRutasPlanificacion';
 import FichaRuta from './FichaRuta';
 import AvisoPincel from './AvisoPincel';
 import { usePincelPlanificacion, type EdicionDelMapa } from '@/hooks/usePincelPlanificacion';
+import { cn } from '@/utils/cn';
 import { DIAS_ORDEN, type DiaKey } from '@/utils/diasSemana';
 import {
   accionDelPincel,
@@ -144,7 +145,7 @@ export default function VistaMapaPlanificacion({
       </div>
 
       {/* El mapa vive en su propio contexto de apilamiento: sus controles nunca tapan ventanas ni hojas (ADR-004 D7) */}
-      <div className={`relative isolate min-w-0 flex-1 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 ${claseAltura}`}>
+      <div className={cn('relative isolate min-w-0 flex-1 overflow-hidden rounded-xl border border-gray-200 bg-gray-100', claseAltura)}>
         {mapa ? (
           <MapaPlanificacion
             rutas={rutas}
