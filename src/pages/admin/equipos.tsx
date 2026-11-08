@@ -12,7 +12,7 @@ import TarjetaEquipo from '@/components/equipos/TarjetaEquipo';
 import SeleccionSupervisorModal from '@/components/equipos/SeleccionSupervisorModal';
 import PlanificacionSupervisorModal from '@/components/equipos/PlanificacionSupervisorModal';
 import { logger } from '@/lib/logger';
-import type { PageWithLayout } from '@/types';
+import type { EquipoSupervisor, PageWithLayout } from '@/types';
 
 const GestionEquiposPage: PageWithLayout = () => {
   const router = useRouter();
@@ -80,6 +80,17 @@ const GestionEquiposPage: PageWithLayout = () => {
     });
   };
 
+  const tarjetaDe = (equipo: EquipoSupervisor) => (
+    <TarjetaEquipo
+      key={equipo.id_persona}
+      equipo={equipo}
+      mostrarSucursal={listado.alcance_global}
+      onGestionarVendedor={(id) => gestionarVendedorDe(equipo, id)}
+      onReemplazar={openReemplazo}
+      onVerPlanificacion={() => void abrirPlanificacion(equipo)}
+    />
+  );
+
   return (
     <div className="min-h-full bg-gray-50">
       <header className="px-6 pt-6">
@@ -110,16 +121,7 @@ const GestionEquiposPage: PageWithLayout = () => {
                   Equipos esperando reemplazo ({inactivos.length})
                 </h2>
                 <div className="grid gap-4 md:grid-cols-2">
-                  {inactivos.map((e) => (
-                    <TarjetaEquipo
-                      key={e.id_persona}
-                      equipo={e}
-                      mostrarSucursal={listado.alcance_global}
-                      onGestionarVendedor={(id) => gestionarVendedorDe(e, id)}
-                      onReemplazar={openReemplazo}
-                      onVerPlanificacion={(e) => void abrirPlanificacion(e)}
-                    />
-                  ))}
+                  {inactivos.map(tarjetaDe)}
                 </div>
               </section>
             )}
@@ -183,16 +185,7 @@ const GestionEquiposPage: PageWithLayout = () => {
                 </p>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
-                  {activos.map((e) => (
-                    <TarjetaEquipo
-                      key={e.id_persona}
-                      equipo={e}
-                      mostrarSucursal={listado.alcance_global}
-                      onGestionarVendedor={(id) => gestionarVendedorDe(e, id)}
-                      onReemplazar={openReemplazo}
-                      onVerPlanificacion={(e) => void abrirPlanificacion(e)}
-                    />
-                  ))}
+                  {activos.map(tarjetaDe)}
                 </div>
               )}
             </section>

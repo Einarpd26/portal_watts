@@ -6,6 +6,30 @@ import type { DiaKey } from '@/utils/diasSemana';
 
 export type SlotResultado<T> = { ok: true; data: T } | { ok: false; error: ErrorSlot };
 
+type Db = ReturnType<typeof createAdminClient>;
+type FilaSlot = { id: number; nombre: string | null; orden: number; id_vendedor: number | null };
+
+/** Slots del supervisor en su orden. Devuelve la consulta sin esperarla, para usarla dentro de un Promise.all */
+const consultaSlots = (db: Db, idSupervisor: number) =>
+  db
+    .from('vendedor_slots')
+    .select('id, nombre, orden, id_vendedor')
+    .eq('id_supervisor', idSupervisor)
+    .order('orden', { ascending: true })
+    .order('id', { ascending: true });
+
+const idsVendedorDe = (slots: readonly FilaSlot[]) => slots.flatMap((s) => (s.id_vendedor === null ? [] : [s.id_vendedor]));
+
+/** «Apellidos, Nombres» de cada persona, o null si la consulta falla */
+async function nombresDePersonas(db: Db, ids: readonly number[]): Promise<Map<number, string> | null> {
+  const nombres = new Map<number, string>();
+  if (ids.length === 0) return nombres;
+  const { data, error } = await db.from('personas').select('id, nombres, apellidos').in('id', ids);
+  if (error) return null;
+  for (const p of data ?? []) nombres.set(p.id, `${p.apellidos}, ${p.nombres}`);
+  return nombres;
+}
+
 /**
  * Slots del supervisor con sus visitas, los vendedores de su equipo que todavía no ocupan ninguno
  * (CU-08) y las rutas de sus zonas. Las visitas de rutas que ya no son de sus zonas se ocultan: la
@@ -14,12 +38,7 @@ export type SlotResultado<T> = { ok: true; data: T } | { ok: false; error: Error
 export async function listarSlots(idSupervisor: number): Promise<SlotResultado<Omit<SlotsListado, 'es_supervisor'>>> {
   const db = createAdminClient();
   const [slotsRes, equipoRes, zonasRes] = await Promise.all([
-    db
-      .from('vendedor_slots')
-      .select('id, nombre, orden, id_vendedor')
-      .eq('id_supervisor', idSupervisor)
-      .order('orden', { ascending: true })
-      .order('id', { ascending: true }),
+    consultaSlots(db, idSupervisor),
     db.from('supervisor_vendedores').select('id_vendedor').eq('id_supervisor', idSupervisor),
     db.from('supervisor_zonas').select('id_zona').eq('id_supervisor', idSupervisor),
   ]);
@@ -27,14 +46,8 @@ export async function listarSlots(idSupervisor: number): Promise<SlotResultado<O
 
   const slots = slotsRes.data ?? [];
   const idsEquipo = (equipoRes.data ?? []).map((v) => v.id_vendedor);
-  const idsPersonas = [...new Set([...idsEquipo, ...slots.flatMap((s) => (s.id_vendedor === null ? [] : [s.id_vendedor]))])];
-
-  const nombres = new Map<number, string>();
-  if (idsPersonas.length > 0) {
-    const { data, error } = await db.from('personas').select('id, nombres, apellidos').in('id', idsPersonas);
-    if (error) return { ok: false, error: 'error' };
-    for (const p of data ?? []) nombres.set(p.id, `${p.apellidos}, ${p.nombres}`);
-  }
+  const nombres = await nombresDePersonas(db, [...new Set([...idsEquipo, ...idsVendedorDe(slots)])]);
+  if (!nombres) return { ok: false, error: 'error' };
 
   // Rutas de las zonas que supervisa hoy y sus visitas planificadas
   const idsZona = (zonasRes.data ?? []).map((z) => z.id_zona);
@@ -81,7 +94,7 @@ export async function listarSlots(idSupervisor: number): Promise<SlotResultado<O
     }
   }
 
-  const ocupados = new Set(slots.flatMap((s) => (s.id_vendedor === null ? [] : [s.id_vendedor])));
+  const ocupados = new Set(idsVendedorDe(slots));
   return {
     ok: true,
     data: {
@@ -95,8 +108,6 @@ export async function listarSlots(idSupervisor: number): Promise<SlotResultado<O
     },
   };
 }
-
-type FilaSlot = { id: number; nombre: string | null; orden: number; id_vendedor: number | null };
 
 function aSlotItem(s: FilaSlot, nombres: ReadonlyMap<number, string>): SlotItem {
   return {
@@ -115,22 +126,12 @@ function aSlotItem(s: FilaSlot, nombres: ReadonlyMap<number, string>): SlotItem 
  */
 export async function consultarPlanificacion(idSupervisor: number): Promise<SlotResultado<Pick<SlotsListado, 'slots' | 'visitas'>>> {
   const db = createAdminClient();
-  const slotsRes = await db
-    .from('vendedor_slots')
-    .select('id, nombre, orden, id_vendedor')
-    .eq('id_supervisor', idSupervisor)
-    .order('orden', { ascending: true })
-    .order('id', { ascending: true });
+  const slotsRes = await consultaSlots(db, idSupervisor);
   if (slotsRes.error) return { ok: false, error: 'error' };
   const slots = slotsRes.data ?? [];
 
-  const idsVendedor = [...new Set(slots.flatMap((s) => (s.id_vendedor === null ? [] : [s.id_vendedor])))];
-  const nombres = new Map<number, string>();
-  if (idsVendedor.length > 0) {
-    const { data, error } = await db.from('personas').select('id, nombres, apellidos').in('id', idsVendedor);
-    if (error) return { ok: false, error: 'error' };
-    for (const p of data ?? []) nombres.set(p.id, `${p.apellidos}, ${p.nombres}`);
-  }
+  const nombres = await nombresDePersonas(db, [...new Set(idsVendedorDe(slots))]);
+  if (!nombres) return { ok: false, error: 'error' };
 
   let visitas: VisitaPlanificada[] = [];
   if (slots.length > 0) {
