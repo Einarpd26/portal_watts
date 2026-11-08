@@ -4,11 +4,13 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGestionEquipos } from '@/hooks/useGestionEquipos';
+import { usePlanificacionSupervisor } from '@/hooks/usePlanificacionSupervisor';
 import Alert from '@/components/ui/Alert';
 import Button from '@/components/ui/Button';
 import AppLayout from '@/components/layout/AppLayout';
 import TarjetaEquipo from '@/components/equipos/TarjetaEquipo';
 import SeleccionSupervisorModal from '@/components/equipos/SeleccionSupervisorModal';
+import PlanificacionSupervisorModal from '@/components/equipos/PlanificacionSupervisorModal';
 import { logger } from '@/lib/logger';
 import type { PageWithLayout } from '@/types';
 
@@ -51,6 +53,15 @@ const GestionEquiposPage: PageWithLayout = () => {
     closeZona,
     submitZona,
   } = useGestionEquipos();
+
+  const {
+    objetivo: planificacionObjetivo,
+    planificacion,
+    isLoading: planificacionCargando,
+    error: planificacionError,
+    abrir: abrirPlanificacion,
+    cerrar: cerrarPlanificacion,
+  } = usePlanificacionSupervisor();
 
   if (authLoading || !user) return null;
   if (!user.permisos.includes('personal:gestionar')) return null;
@@ -106,6 +117,7 @@ const GestionEquiposPage: PageWithLayout = () => {
                       mostrarSucursal={listado.alcance_global}
                       onGestionarVendedor={(id) => gestionarVendedorDe(e, id)}
                       onReemplazar={openReemplazo}
+                      onVerPlanificacion={(e) => void abrirPlanificacion(e)}
                     />
                   ))}
                 </div>
@@ -178,6 +190,7 @@ const GestionEquiposPage: PageWithLayout = () => {
                       mostrarSucursal={listado.alcance_global}
                       onGestionarVendedor={(id) => gestionarVendedorDe(e, id)}
                       onReemplazar={openReemplazo}
+                      onVerPlanificacion={(e) => void abrirPlanificacion(e)}
                     />
                   ))}
                 </div>
@@ -252,6 +265,14 @@ const GestionEquiposPage: PageWithLayout = () => {
         isSubmitting={isSubmitting}
         onConfirm={() => void submitReemplazo()}
         onCancel={closeReemplazo}
+      />
+
+      <PlanificacionSupervisorModal
+        objetivo={planificacionObjetivo}
+        planificacion={planificacion}
+        isLoading={planificacionCargando}
+        error={planificacionError}
+        onClose={cerrarPlanificacion}
       />
     </div>
   );

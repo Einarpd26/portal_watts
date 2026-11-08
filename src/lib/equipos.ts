@@ -1,9 +1,10 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { primero } from '@/utils/postgrest';
 import { listarZonas } from '@/lib/zonas';
+import { consultarPlanificacion } from '@/lib/slots';
 import { alcanceDeListado, type AlcanceSolicitante } from '@/utils/sucursalScope';
 import { interpretarResultadoEquipo, type ErrorEquipo } from '@/utils/equipoValidation';
-import type { EquipoSupervisor, EquiposListado, VendedorSinEquipo } from '@/types';
+import type { EquipoSupervisor, EquiposListado, PlanificacionDeSupervisor, VendedorSinEquipo } from '@/types';
 
 export type EquipoResultado<T> = { ok: true; data: T } | { ok: false; error: ErrorEquipo };
 
@@ -163,6 +164,36 @@ export async function listarEquipos(solicitante: AlcanceSolicitante): Promise<Eq
       sin_supervisor: sinSupervisor,
       zonas_sin_supervisor: zonasSinSupervisor,
       alcance_global: alcance.tipo === 'global',
+    },
+  };
+}
+
+/**
+ * Planificación de un supervisor, en solo lectura, para el Fiscalizador (su sucursal) y Gerencia (global)
+ * (ADR-003 D10). El alcance sale de la misma lista de equipos de la pantalla Equipos: quien no ve a un
+ * supervisor ahí tampoco puede consultar su planificación.
+ */
+export async function planificacionDeSupervisor(
+  solicitante: AlcanceSolicitante,
+  idSupervisor: number
+): Promise<EquipoResultado<PlanificacionDeSupervisor>> {
+  const equipos = await listarEquipos(solicitante);
+  if (!equipos.ok) return equipos;
+  const equipo = equipos.data.equipos.find((e) => e.id_persona === idSupervisor);
+  if (!equipo) return { ok: false, error: 'no_encontrado' };
+
+  const planificacion = await consultarPlanificacion(idSupervisor);
+  if (!planificacion.ok) return { ok: false, error: 'error' };
+  return {
+    ok: true,
+    data: {
+      supervisor: {
+        id_persona: equipo.id_persona,
+        nombre: equipo.nombre,
+        sucursal_nombre: equipo.sucursal_nombre,
+        activo: equipo.activo,
+      },
+      ...planificacion.data,
     },
   };
 }

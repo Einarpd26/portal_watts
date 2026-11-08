@@ -64,10 +64,12 @@ const PlanificacionPage: PageWithLayout = () => {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-extrabold tracking-tight text-gray-900">Planificación</h1>
-            <p className="mt-0.5 text-sm text-gray-500">
-              Cada fila es un slot de tu equipo y cada columna, un día de visita. El slot y sus rutas se conservan
-              aunque cambie el vendedor.
-            </p>
+            {listado.es_supervisor && (
+              <p className="mt-0.5 text-sm text-gray-500">
+                Cada fila es un slot de tu equipo y cada columna, un día de visita. El slot y sus rutas se conservan
+                aunque cambie el vendedor.
+              </p>
+            )}
           </div>
           {listado.es_supervisor && (
             <div className="flex gap-2">
@@ -97,7 +99,8 @@ const PlanificacionPage: PageWithLayout = () => {
           <p className="text-sm text-gray-400">Cargando slots...</p>
         ) : !listado.es_supervisor ? (
           <p className="text-sm text-gray-500">
-            Los slots son de cada supervisor. Para administrar quién integra un equipo, usa Equipos.
+            Los slots son de cada supervisor. Para ver la planificación de un supervisor o administrar quién integra su
+            equipo, usa Equipos.
           </p>
         ) : listado.slots.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">

@@ -60,3 +60,9 @@ test("respuesta HTTP: fuera de alcance es 403 y un supervisor activo es 409", ()
   assert.equal(respuestaDeError("sucursal_distinta").status, 400);
   assert.equal(respuestaDeError("error").status, 500);
 });
+
+test("respuesta HTTP: un supervisor fuera del alcance de la consulta es 404 (ADR-003 D10)", () => {
+  const { status, mensaje } = respuestaDeError("no_encontrado");
+  assert.equal(status, 404);
+  assert.match(mensaje, /alcance/);
+});

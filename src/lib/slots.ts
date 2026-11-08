@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { primero } from '@/utils/postgrest';
 import { interpretarResultadoSlot, type ErrorSlot } from '@/utils/slotValidation';
-import type { Frecuencia, RutaPlanificable, SlotsListado, VisitaPlanificada } from '@/types';
+import type { Frecuencia, RutaPlanificable, SlotItem, SlotsListado, VisitaPlanificada } from '@/types';
 import type { DiaKey } from '@/utils/diasSemana';
 
 export type SlotResultado<T> = { ok: true; data: T } | { ok: false; error: ErrorSlot };
@@ -85,13 +85,7 @@ export async function listarSlots(idSupervisor: number): Promise<SlotResultado<O
   return {
     ok: true,
     data: {
-      slots: slots.map((s) => ({
-        id: s.id,
-        nombre: s.nombre,
-        orden: s.orden,
-        id_vendedor: s.id_vendedor,
-        vendedor_nombre: s.id_vendedor === null ? null : (nombres.get(s.id_vendedor) ?? null),
-      })),
+      slots: slots.map((s) => aSlotItem(s, nombres)),
       visitas,
       rutas,
       disponibles: idsEquipo
@@ -100,6 +94,64 @@ export async function listarSlots(idSupervisor: number): Promise<SlotResultado<O
         .sort((a, b) => a.nombre.localeCompare(b.nombre)),
     },
   };
+}
+
+type FilaSlot = { id: number; nombre: string | null; orden: number; id_vendedor: number | null };
+
+function aSlotItem(s: FilaSlot, nombres: ReadonlyMap<number, string>): SlotItem {
+  return {
+    id: s.id,
+    nombre: s.nombre,
+    orden: s.orden,
+    id_vendedor: s.id_vendedor,
+    vendedor_nombre: s.id_vendedor === null ? null : (nombres.get(s.id_vendedor) ?? null),
+  };
+}
+
+/**
+ * Slots de un supervisor con TODA su planificación guardada, para que el Fiscalizador y Gerencia la revisen
+ * en solo lectura (ADR-003 D10). A diferencia de listarSlots, no oculta las visitas de rutas que ya no son de
+ * sus zonas: un supervisor retirado no tiene zonas y su planificación se conserva hasta el reemplazo (D6).
+ */
+export async function consultarPlanificacion(idSupervisor: number): Promise<SlotResultado<Pick<SlotsListado, 'slots' | 'visitas'>>> {
+  const db = createAdminClient();
+  const slotsRes = await db
+    .from('vendedor_slots')
+    .select('id, nombre, orden, id_vendedor')
+    .eq('id_supervisor', idSupervisor)
+    .order('orden', { ascending: true })
+    .order('id', { ascending: true });
+  if (slotsRes.error) return { ok: false, error: 'error' };
+  const slots = slotsRes.data ?? [];
+
+  const idsVendedor = [...new Set(slots.flatMap((s) => (s.id_vendedor === null ? [] : [s.id_vendedor])))];
+  const nombres = new Map<number, string>();
+  if (idsVendedor.length > 0) {
+    const { data, error } = await db.from('personas').select('id, nombres, apellidos').in('id', idsVendedor);
+    if (error) return { ok: false, error: 'error' };
+    for (const p of data ?? []) nombres.set(p.id, `${p.apellidos}, ${p.nombres}`);
+  }
+
+  let visitas: VisitaPlanificada[] = [];
+  if (slots.length > 0) {
+    const visitasRes = await db
+      .from('planificacion_rutas')
+      .select('id, id_vendedor_slot, id_ruta, dia_semana, frecuencia, rutas!inner ( codigo_ruta, ruta )')
+      .in('id_vendedor_slot', slots.map((s) => s.id))
+      .order('id', { ascending: true });
+    if (visitasRes.error) return { ok: false, error: 'error' };
+    visitas = (visitasRes.data ?? []).map((v) => ({
+      id: v.id,
+      id_slot: v.id_vendedor_slot,
+      id_ruta: v.id_ruta,
+      codigo_ruta: primero(v.rutas)?.codigo_ruta ?? '',
+      ruta: primero(v.rutas)?.ruta ?? '',
+      dia: v.dia_semana as DiaKey,
+      frecuencia: v.frecuencia as Frecuencia,
+    }));
+  }
+
+  return { ok: true, data: { slots: slots.map((s) => aSlotItem(s, nombres)), visitas } };
 }
 
 /** Crea un slot vacío al final del orden del supervisor */

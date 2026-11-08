@@ -8,6 +8,7 @@ export type ErrorEquipo =
   | 'supervisor_activo'
   | 'mismo_supervisor'
   | 'sin_equipo'
+  | 'no_encontrado'
   | 'error';
 
 const ERRORES_DE_NEGOCIO: readonly ErrorEquipo[] = [
@@ -97,6 +98,8 @@ export function respuestaDeError(error: ErrorEquipo): { status: number; mensaje:
       return { status: 400, mensaje: 'El supervisor nuevo debe ser distinto del que se reemplaza.' };
     case 'sin_equipo':
       return { status: 409, mensaje: 'Ese supervisor no tiene equipo ni slots que traspasar.' };
+    case 'no_encontrado':
+      return { status: 404, mensaje: 'No se encontró ese supervisor entre los de tu alcance.' };
     default:
       return { status: 500, mensaje: 'No se pudo completar la operación.' };
   }

@@ -9,9 +9,17 @@ interface TarjetaEquipoProps {
   mostrarSucursal: boolean;
   onGestionarVendedor: (idVendedor: number) => void;
   onReemplazar: (equipo: EquipoSupervisor) => void;
+  /** Abre la planificación del supervisor en solo lectura */
+  onVerPlanificacion: (equipo: EquipoSupervisor) => void;
 }
 
-export default function TarjetaEquipo({ equipo, mostrarSucursal, onGestionarVendedor, onReemplazar }: TarjetaEquipoProps) {
+export default function TarjetaEquipo({
+  equipo,
+  mostrarSucursal,
+  onGestionarVendedor,
+  onReemplazar,
+  onVerPlanificacion,
+}: TarjetaEquipoProps) {
   return (
     <article
       className={cn(
@@ -28,18 +36,23 @@ export default function TarjetaEquipo({ equipo, mostrarSucursal, onGestionarVend
             {equipo.total_slots === 1 ? 'slot' : 'slots'}
           </p>
         </div>
-        {equipo.activo ? (
-          <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-700">Activo</span>
-        ) : (
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {equipo.activo ? (
+            <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-700">Activo</span>
+          ) : (
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
               Supervisor inactivo
             </span>
+          )}
+          <Button variant="secondary" size="sm" onClick={() => onVerPlanificacion(equipo)}>
+            Ver planificación
+          </Button>
+          {!equipo.activo && (
             <Button size="sm" onClick={() => onReemplazar(equipo)}>
               Reemplazar supervisor
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </header>
 
       {!equipo.activo && (

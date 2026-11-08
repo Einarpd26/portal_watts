@@ -284,6 +284,16 @@ export interface SlotsListado {
   es_supervisor: boolean;
 }
 
+/**
+ * Planificación de un supervisor para consultarla en solo lectura (Fiscalizador y Gerencia, ADR-003 D10).
+ * Incluye toda la planificación guardada, también la de rutas que ya no son de sus zonas.
+ */
+export interface PlanificacionDeSupervisor {
+  supervisor: { id_persona: number; nombre: string; sucursal_nombre: string; activo: boolean };
+  slots: SlotItem[];
+  visitas: VisitaPlanificada[];
+}
+
 // 11. Rutas comerciales (CU-05)
 export interface PoligonoRuta {
   type: 'Polygon';
