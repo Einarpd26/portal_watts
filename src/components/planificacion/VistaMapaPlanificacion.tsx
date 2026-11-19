@@ -6,14 +6,17 @@ import SelectorPincel from './SelectorPincel';
 import ListaRutasPlanificacion from './ListaRutasPlanificacion';
 import FichaRuta from './FichaRuta';
 import AvisoPincel from './AvisoPincel';
+import ConmutadorModoMapa from './ConmutadorModoMapa';
+import LeyendaMapa, { type ConteoDeRutas } from './LeyendaMapa';
 import { usePincelPlanificacion, type EdicionDelMapa } from '@/hooks/usePincelPlanificacion';
 import { cn } from '@/utils/cn';
-import { DIAS_ORDEN, type DiaKey } from '@/utils/diasSemana';
+import { DIAS_ORDEN, DIA_LABELS, type DiaKey } from '@/utils/diasSemana';
 import {
   accionDelPincel,
   descripcionDeVisita,
   etiquetaDeSlot,
   propiedadesDeRutas,
+  type ModoMapa,
 } from '@/utils/planificacionMapa';
 import type { Frecuencia, MapaPlanificacion as DatosMapa, SlotItem, VisitaPlanificada } from '@/types';
 
@@ -36,8 +39,10 @@ interface VistaMapaPlanificacionProps {
 }
 
 /**
- * Planificación sobre el mapa (ADR-004): columna con día, slots, frecuencia y lista de rutas, y el mapa con las
- * rutas pintadas por slot. Comparte slots y visitas con el calendario, así que lo que se pinta aquí aparece allí.
+ * Planificación sobre el mapa (ADR-004): columna con modo, día, slots, frecuencia, leyenda y lista de rutas, y el
+ * mapa. En modo Planificación se pinta con el pincel y el color dice el estado de cada ruta; en modo Cobertura el
+ * color dice qué slot la cubre y no se edita (D3). Quien no puede editar solo ve Cobertura (D5). Comparte slots y
+ * visitas con el calendario, así que lo que se pinta aquí aparece allí.
  */
 export default function VistaMapaPlanificacion({
   slots,
@@ -48,21 +53,31 @@ export default function VistaMapaPlanificacion({
   edicion,
   claseAltura = 'h-112 lg:h-160',
 }: VistaMapaPlanificacionProps) {
-  const [dia, setDia] = useState<DiaKey>(DIAS_ORDEN[0]);
+  const [modoElegido, setModoElegido] = useState<ModoMapa>('planificacion');
+  // Cada modo recuerda su día: Planificación necesita uno, Cobertura se abre con toda la semana
+  const [diaPlanificacion, setDiaPlanificacion] = useState<DiaKey>(DIAS_ORDEN[0]);
+  const [diaCobertura, setDiaCobertura] = useState<DiaKey | null>(null);
   const [frecuencia, setFrecuencia] = useState<Frecuencia>('semanal');
   const [slotElegido, setSlotElegido] = useState<number | null>(null);
   const [seleccionId, setSeleccionId] = useState<number | null>(null);
 
   const soloLectura = edicion === null;
-  // Si el slot elegido se eliminó en el calendario, el pincel se apaga solo
-  const idSlotActivo = !soloLectura && slots.some((s) => s.id === slotElegido) ? slotElegido : null;
+  const modo: ModoMapa = soloLectura ? 'cobertura' : modoElegido;
+  const dia = modo === 'cobertura' ? diaCobertura : diaPlanificacion;
+  // El pincel solo existe en Planificación; si el slot elegido se eliminó en el calendario, se apaga solo
+  const idSlotActivo = modo === 'planificacion' && slots.some((s) => s.id === slotElegido) ? slotElegido : null;
+  // Con el pincel activo el día es siempre uno concreto: «Todos» solo existe en Cobertura
+  const diaDelPincel = idSlotActivo !== null ? diaPlanificacion : null;
 
   const nombresDeSlot = useMemo(() => new globalThis.Map(slots.map((s, i) => [s.id, etiquetaDeSlot(s, i)])), [slots]);
   const nombreDeSlot = useCallback((idSlot: number) => nombresDeSlot.get(idSlot) ?? 'Slot eliminado', [nombresDeSlot]);
   const { aviso, pintar, deshacer } = usePincelPlanificacion(visitas, nombreDeSlot, edicion);
 
   const rutas = useMemo(() => mapa?.rutas ?? [], [mapa]);
-  const propiedades = useMemo(() => propiedadesDeRutas(rutas, visitas, slots, dia), [rutas, visitas, slots, dia]);
+  const propiedades = useMemo(
+    () => propiedadesDeRutas(rutas, visitas, slots, { modo, dia, idSlotPincel: idSlotActivo }),
+    [rutas, visitas, slots, modo, dia, idSlotActivo]
+  );
   const propiedadesPorId = useMemo(() => new globalThis.Map(propiedades.map((p) => [p.id, p])), [propiedades]);
 
   // «Lun · Slot 1 · semanal» por ruta, en el orden de la semana, para el tooltip y la lista
@@ -75,24 +90,38 @@ export default function VistaMapaPlanificacion({
     return porRuta;
   }, [visitas, nombreDeSlot]);
 
+  // Rutas distintas que cada slot cubre en la selección de día (una ruta puede repetirse en varios días)
   const rutasPorSlot = useMemo(() => {
-    const conteo = new globalThis.Map<number, number>();
-    for (const v of visitas) if (v.dia === dia) conteo.set(v.id_slot, (conteo.get(v.id_slot) ?? 0) + 1);
-    return conteo;
+    const porSlot = new globalThis.Map<number, Set<number>>();
+    for (const v of visitas) {
+      if (dia !== null && v.dia !== dia) continue;
+      porSlot.set(v.id_slot, (porSlot.get(v.id_slot) ?? new Set<number>()).add(v.id_ruta));
+    }
+    return new globalThis.Map([...porSlot].map(([idSlot, ids]) => [idSlot, ids.size]));
   }, [visitas, dia]);
+
+  const conteo = useMemo<ConteoDeRutas>(
+    () => ({
+      delDia: propiedades.filter((p) => p.estado === 'del_dia').length,
+      otroDia: propiedades.filter((p) => p.estado === 'otro_dia').length,
+      sinPlanificar: propiedades.filter((p) => p.estado === 'sin_planificar').length,
+      duplicadas: propiedades.filter((p) => p.duplicada).length,
+    }),
+    [propiedades]
+  );
 
   // Con el pincel activo, qué haría un clic en cada ruta (se muestra en la lista)
   const accionPorRuta = useMemo(() => {
-    if (idSlotActivo === null) return null;
+    if (idSlotActivo === null || diaDelPincel === null) return null;
     return new globalThis.Map(
-      rutas.map((r) => [r.id, accionDelPincel(visitas, { idSlot: idSlotActivo, dia, idRuta: r.id, frecuencia }).tipo])
+      rutas.map((r) => [r.id, accionDelPincel(visitas, { idSlot: idSlotActivo, dia: diaDelPincel, idRuta: r.id, frecuencia }).tipo])
     );
-  }, [idSlotActivo, rutas, visitas, dia, frecuencia]);
+  }, [idSlotActivo, diaDelPincel, rutas, visitas, frecuencia]);
 
   const alElegirRuta = (idRuta: number | null) => {
-    if (idRuta !== null && edicion && idSlotActivo !== null) {
+    if (idRuta !== null && edicion && idSlotActivo !== null && diaDelPincel !== null) {
       setSeleccionId(null);
-      void pintar(idRuta, { idSlot: idSlotActivo, dia, frecuencia });
+      void pintar(idRuta, { idSlot: idSlotActivo, dia: diaDelPincel, frecuencia });
       return;
     }
     setSeleccionId(idRuta);
@@ -107,17 +136,19 @@ export default function VistaMapaPlanificacion({
   return (
     <div className="flex flex-col gap-4 lg:flex-row">
       <div className="space-y-4 lg:w-80 lg:shrink-0">
+        {!soloLectura && <ConmutadorModoMapa modo={modo} onCambiar={setModoElegido} />}
         <SelectorPincel
           slots={slots}
           rutasPorSlot={rutasPorSlot}
+          modo={modo}
           idSlotActivo={idSlotActivo}
           onSlot={setSlotElegido}
           dia={dia}
-          onDia={setDia}
+          onDia={modo === 'cobertura' ? setDiaCobertura : (d) => d && setDiaPlanificacion(d)}
           frecuencia={frecuencia}
           onFrecuencia={setFrecuencia}
-          soloLectura={soloLectura}
         />
+        <LeyendaMapa modo={modo} conteo={conteo} diaActivo={dia && `el ${DIA_LABELS[dia].toLowerCase()}`} />
         {elegida && (
           <FichaRuta
             ruta={elegida}
@@ -125,11 +156,13 @@ export default function VistaMapaPlanificacion({
             visitas={visitas.filter((v) => v.id_ruta === elegida.id)}
             duplicada={propiedadesPorId.get(elegida.id)?.duplicada ?? false}
             edicion={
-              edicion && {
-                deshabilitado: edicion.deshabilitado,
-                onCambiarFrecuencia: (id, f) => void edicion.cambiarFrecuencia(id, f),
-                onQuitar: (v) => void edicion.quitar(v),
-              }
+              edicion && modo === 'planificacion'
+                ? {
+                    deshabilitado: edicion.deshabilitado,
+                    onCambiarFrecuencia: (id, f) => void edicion.cambiarFrecuencia(id, f),
+                    onQuitar: (v) => void edicion.quitar(v),
+                  }
+                : null
             }
             onCerrar={() => setSeleccionId(null)}
           />

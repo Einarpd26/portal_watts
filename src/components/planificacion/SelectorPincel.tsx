@@ -3,22 +3,22 @@
 import { cn } from '@/utils/cn';
 import { DIAS_ORDEN, type DiaKey } from '@/utils/diasSemana';
 import { FRECUENCIAS, FRECUENCIA_LABELS } from '@/utils/frecuencias';
-import { abreviaturaDeDia, colorDeSlot, etiquetaDeSlot } from '@/utils/planificacionMapa';
+import { abreviaturaDeDia, colorDeSlot, etiquetaDeSlot, type ModoMapa } from '@/utils/planificacionMapa';
 import type { Frecuencia, SlotItem } from '@/types';
 
 interface SelectorPincelProps {
   slots: SlotItem[];
-  /** Rutas que cada slot cubre el día activo */
+  /** Rutas que cada slot cubre en la selección de día activa */
   rutasPorSlot: ReadonlyMap<number, number>;
+  modo: ModoMapa;
   /** Slot elegido como pincel; null: sin pincel, los clics solo muestran la ficha de la ruta */
   idSlotActivo: number | null;
   onSlot: (idSlot: number | null) => void;
-  dia: DiaKey;
-  onDia: (dia: DiaKey) => void;
+  /** null: toda la semana, solo en Cobertura */
+  dia: DiaKey | null;
+  onDia: (dia: DiaKey | null) => void;
   frecuencia: Frecuencia;
   onFrecuencia: (frecuencia: Frecuencia) => void;
-  /** Consulta: se puede cambiar de día, pero no hay pincel ni frecuencia */
-  soloLectura: boolean;
 }
 
 const TITULO = 'mb-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-400';
@@ -34,10 +34,10 @@ function PuntoDeSlot({ posicion }: { posicion: number }) {
   );
 }
 
-function DatosDeSlot({ slot, posicion, rutas }: { slot: SlotItem; posicion: number; rutas: number }) {
+function DatosDeSlot({ slot, posicion, rutas, conColor }: { slot: SlotItem; posicion: number; rutas: number; conColor: boolean }) {
   return (
     <>
-      <PuntoDeSlot posicion={posicion} />
+      {conColor && <PuntoDeSlot posicion={posicion} />}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-xs font-semibold text-gray-900">{etiquetaDeSlot(slot, posicion)}</span>
         <span className="block truncate text-[11px] text-gray-500">{slot.vendedor_nombre ?? 'Sin vendedor'}</span>
@@ -49,36 +49,42 @@ function DatosDeSlot({ slot, posicion, rutas }: { slot: SlotItem; posicion: numb
   );
 }
 
-/** Slot, día y frecuencia activos: lo que se «pinta» al hacer clic sobre una ruta (ADR-004 D2) */
+/**
+ * Planificación: slot, día y frecuencia activos, lo que se «pinta» al hacer clic sobre una ruta (ADR-004 D2).
+ * Cobertura: día (o toda la semana) y la lista de slots con su color, que hace de leyenda (ADR-004 D3).
+ */
 export default function SelectorPincel({
   slots,
   rutasPorSlot,
+  modo,
   idSlotActivo,
   onSlot,
   dia,
   onDia,
   frecuencia,
   onFrecuencia,
-  soloLectura,
 }: SelectorPincelProps) {
+  const cobertura = modo === 'cobertura';
+  const botonDia = (activo: boolean) =>
+    cn(
+      'rounded-lg border py-1.5 text-xs font-semibold transition-colors',
+      activo ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+    );
+
   return (
     <div className="space-y-4">
       <section aria-labelledby="pincel-dia">
         <h3 id="pincel-dia" className={TITULO}>
           Día
         </h3>
-        <div className="grid grid-cols-6 gap-1">
+        <div className={cn('grid gap-1', cobertura ? 'grid-cols-7' : 'grid-cols-6')}>
+          {cobertura && (
+            <button type="button" aria-pressed={dia === null} onClick={() => onDia(null)} className={botonDia(dia === null)}>
+              Todos
+            </button>
+          )}
           {DIAS_ORDEN.map((d) => (
-            <button
-              key={d}
-              type="button"
-              aria-pressed={dia === d}
-              onClick={() => onDia(d)}
-              className={cn(
-                'rounded-lg border py-1.5 text-xs font-semibold transition-colors',
-                dia === d ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-              )}
-            >
+            <button key={d} type="button" aria-pressed={dia === d} onClick={() => onDia(d)} className={botonDia(dia === d)}>
               {abreviaturaDeDia(d)}
             </button>
           ))}
@@ -92,9 +98,9 @@ export default function SelectorPincel({
         <ul className="space-y-1">
           {slots.map((slot, i) => (
             <li key={slot.id}>
-              {soloLectura ? (
+              {cobertura ? (
                 <div className="flex items-center gap-2 rounded-lg border border-transparent px-2 py-1.5">
-                  <DatosDeSlot slot={slot} posicion={i} rutas={rutasPorSlot.get(slot.id) ?? 0} />
+                  <DatosDeSlot slot={slot} posicion={i} rutas={rutasPorSlot.get(slot.id) ?? 0} conColor />
                 </div>
               ) : (
                 <button
@@ -106,13 +112,13 @@ export default function SelectorPincel({
                     idSlotActivo === slot.id ? 'border-gray-900 bg-gray-50 ring-1 ring-gray-900' : 'border-gray-200 bg-white hover:bg-gray-50'
                   )}
                 >
-                  <DatosDeSlot slot={slot} posicion={i} rutas={rutasPorSlot.get(slot.id) ?? 0} />
+                  <DatosDeSlot slot={slot} posicion={i} rutas={rutasPorSlot.get(slot.id) ?? 0} conColor={false} />
                 </button>
               )}
             </li>
           ))}
         </ul>
-        {!soloLectura && (
+        {!cobertura && (
           <p className="mt-1.5 text-[11px] text-gray-500">
             {idSlotActivo === null
               ? 'Elige un slot para pintar. Sin slot elegido, un clic en una ruta muestra su ficha.'
@@ -121,7 +127,7 @@ export default function SelectorPincel({
         )}
       </section>
 
-      {!soloLectura && (
+      {!cobertura && (
         <section aria-labelledby="pincel-frecuencia">
           <h3 id="pincel-frecuencia" className={TITULO}>
             Frecuencia

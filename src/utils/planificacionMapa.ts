@@ -1,12 +1,12 @@
-// Lógica pura de la planificación sobre el mapa (ADR-004): color de cada slot, estado de cada ruta
-// para un día y qué hace un clic con el pincel. Sin dependencias de Node ni del navegador.
+// Lógica pura de la planificación sobre el mapa (ADR-004): color de cada slot, cómo se pinta cada ruta en
+// los modos Planificación y Cobertura y qué hace un clic con el pincel. Sin dependencias de Node ni del navegador.
 import { DIAS_ORDEN, DIA_LABELS, type DiaKey } from './diasSemana.ts';
 import { FRECUENCIA_LABELS } from './frecuencias.ts';
 import { rutasDuplicadasEnSemana, type VisitaParaDuplicados } from './planificacionDuplicados.ts';
 import type { Frecuencia, SlotItem, VisitaPlanificada } from '@/types';
 
-// Un color por slot, estable según su posición. Se evita el naranja, reservado a la ruta duplicada, y el
-// gris, reservado a la ruta sin planificar. Los ocho se distinguen entre sí sobre el mapa base.
+// Un color por slot, estable según su posición (modo Cobertura). Se evita el naranja, reservado a la ruta
+// duplicada, y el gris, reservado a la ruta sin planificar. Los ocho se distinguen entre sí sobre el mapa base.
 export const PALETA_SLOTS = [
   '#2563eb', // blue-600
   '#16a34a', // green-600
@@ -20,6 +20,9 @@ export const PALETA_SLOTS = [
 
 export const COLOR_SIN_PLANIFICAR = '#9ca3af'; // gray-400
 export const COLOR_DUPLICADA = '#ea580c'; // orange-600
+// Modo Planificación: el color dice el estado de la ruta, no el slot que la cubre
+export const COLOR_PLANIFICADA = '#047857'; // emerald-700
+export const COLOR_OTRO_DIA = '#f59e0b'; // amber-500
 
 /** Color del slot en la posición indicada (desde 0); la paleta se repite si hay más slots que colores */
 export const colorDeSlot = (posicion: number): string => PALETA_SLOTS[posicion % PALETA_SLOTS.length];
@@ -34,6 +37,9 @@ const SUFIJO_FRECUENCIA: Record<Frecuencia, string> = { semanal: '', impar: 'imp
 
 export type EstadoRutaEnMapa = 'del_dia' | 'otro_dia' | 'sin_planificar';
 
+/** Planificación: ¿qué falta planificar? (color por estado, con pincel). Cobertura: ¿quién hace qué ruta? (color por slot) */
+export type ModoMapa = 'planificacion' | 'cobertura';
+
 /** Lo que el mapa necesita saber de cada ruta para pintarla; viaja como propiedades del polígono */
 export interface PropiedadesRutaEnMapa {
   id: number;
@@ -42,18 +48,32 @@ export interface PropiedadesRutaEnMapa {
   /** RN-04: planificada más de una vez en la semana, con la misma regla que la grilla */
   duplicada: boolean;
   etiqueta: string;
+  /** Solo en Planificación: la cubre el slot elegido como pincel el día activo, y un clic la quitaría */
+  delPincel: boolean;
+}
+
+export interface OpcionesDelMapa {
+  modo: ModoMapa;
+  /** Día activo; null: toda la semana (solo tiene sentido en Cobertura) */
+  dia: DiaKey | null;
+  /** Slot elegido como pincel, si lo hay */
+  idSlotPincel?: number | null;
 }
 
 /**
- * Estado de cada ruta para el día elegido. Con el día activo, la ruta toma el color del slot que la cubre
- * ese día; si solo se visita otro día conserva el color pero se atenúa y la etiqueta nombra el día; si no
- * está planificada queda gris. El color nunca es el único canal: la etiqueta repite la información.
+ * Cómo se pinta cada ruta (ADR-004 D3).
+ * - Planificación: color por estado. Planificada el día activo (verde), planificada solo otro día (ámbar, tenue,
+ *   con los días en la etiqueta) o sin planificar (gris).
+ * - Cobertura: color del slot que cubre la ruta en el día activo, o en cualquier día si es toda la semana. Lo que
+ *   no se visita en esa selección queda gris.
+ * En ambos modos el trazo naranja marca la duplicada y la etiqueta repite la información: el color nunca es el
+ * único canal.
  */
 export function propiedadesDeRutas(
   rutas: ReadonlyArray<{ id: number; codigo_ruta: string }>,
   visitas: readonly VisitaPlanificada[],
   slots: readonly Pick<SlotItem, 'id'>[],
-  dia: DiaKey
+  { modo, dia, idSlotPincel = null }: OpcionesDelMapa
 ): PropiedadesRutaEnMapa[] {
   const posicionDeSlot = new Map(slots.map((s, i) => [s.id, i]));
   const duplicadas = rutasDuplicadasEnSemana(visitas);
@@ -62,23 +82,31 @@ export function propiedadesDeRutas(
   for (const v of visitas) porRuta.set(v.id_ruta, [...(porRuta.get(v.id_ruta) ?? []), v]);
 
   const orden = (v: VisitaPlanificada) => DIAS_ORDEN.indexOf(v.dia) * 1000 + (posicionDeSlot.get(v.id_slot) ?? 0);
+  const diasDe = (vs: readonly VisitaPlanificada[]) => [...new Set(vs.map((v) => abreviaturaDeDia(v.dia)))].join('/');
 
   return rutas.map((ruta) => {
     const suyas = [...(porRuta.get(ruta.id) ?? [])].sort((a, b) => orden(a) - orden(b));
-    const delDia = suyas.filter((v) => v.dia === dia);
-    const cubre = delDia[0] ?? suyas[0];
+    const delDia = dia === null ? suyas : suyas.filter((v) => v.dia === dia);
+    const cubre = delDia[0];
     const duplicada = duplicadas.has(ruta.id);
+    const delPincel = modo === 'planificacion' && idSlotPincel !== null && delDia.some((v) => v.id_slot === idSlotPincel);
+    const base = { id: ruta.id, duplicada, delPincel };
+    const sinPlanificar = { ...base, color: COLOR_SIN_PLANIFICAR, estado: 'sin_planificar' as const, etiqueta: ruta.codigo_ruta };
+    const sufijo = cubre ? SUFIJO_FRECUENCIA[cubre.frecuencia] : '';
+    const conFrecuencia = sufijo ? `${ruta.codigo_ruta} ${sufijo}` : ruta.codigo_ruta;
 
-    if (!cubre) {
-      return { id: ruta.id, color: COLOR_SIN_PLANIFICAR, estado: 'sin_planificar', duplicada, etiqueta: ruta.codigo_ruta };
+    if (modo === 'cobertura') {
+      if (!cubre) return sinPlanificar;
+      const color = colorDeSlot(posicionDeSlot.get(cubre.id_slot) ?? 0);
+      const etiqueta = dia === null ? `${ruta.codigo_ruta} · ${diasDe(suyas)}` : conFrecuencia;
+      return { ...base, color, estado: 'del_dia', etiqueta };
     }
-    const color = colorDeSlot(posicionDeSlot.get(cubre.id_slot) ?? 0);
-    if (delDia.length > 0) {
-      const sufijo = SUFIJO_FRECUENCIA[cubre.frecuencia];
-      return { id: ruta.id, color, estado: 'del_dia', duplicada, etiqueta: sufijo ? `${ruta.codigo_ruta} ${sufijo}` : ruta.codigo_ruta };
+
+    if (cubre) return { ...base, color: COLOR_PLANIFICADA, estado: 'del_dia', etiqueta: conFrecuencia };
+    if (suyas.length > 0) {
+      return { ...base, color: COLOR_OTRO_DIA, estado: 'otro_dia', etiqueta: `${ruta.codigo_ruta} · ${diasDe(suyas)}` };
     }
-    const dias = [...new Set(suyas.map((v) => abreviaturaDeDia(v.dia)))].join('/');
-    return { id: ruta.id, color, estado: 'otro_dia', duplicada, etiqueta: `${ruta.codigo_ruta} · ${dias}` };
+    return sinPlanificar;
   });
 }
 

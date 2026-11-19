@@ -10,6 +10,8 @@ import type { ContornoZona, RutaItem } from '@/types';
 
 // Trazo de los límites de cada zona del supervisor: gris oscuro y punteado, sin competir con los colores de los slots
 const COLOR_CONTORNO = '#374151'; // gray-700
+// Trazo de las rutas que el slot elegido cubre el día activo: lo que un clic con el pincel quitaría
+const COLOR_PINCEL = '#111827'; // gray-900
 const MARGEN_ENCUADRE = 0.15;
 const ZOOM_MAXIMO_ENCUADRE = 14;
 
@@ -130,8 +132,8 @@ export function MapaPlanificacion({ rutas, contornos, propiedades, descripciones
           id="rutas-borde"
           type="line"
           paint={{
-            'line-color': ['case', ['get', 'duplicada'], COLOR_DUPLICADA, ['get', 'color']],
-            'line-width': ['case', ['get', 'duplicada'], 4, ['get', 'seleccionada'], 3, 1.5],
+            'line-color': ['case', ['get', 'duplicada'], COLOR_DUPLICADA, ['get', 'delPincel'], COLOR_PINCEL, ['get', 'color']],
+            'line-width': ['case', ['get', 'duplicada'], 4, ['get', 'delPincel'], 3.5, ['get', 'seleccionada'], 3, 1.5],
           }}
         />
         <Layer

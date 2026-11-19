@@ -81,7 +81,7 @@ const PlanificacionPage: PageWithLayout = () => {
             {listado.es_supervisor && (
               <p className="mt-0.5 text-sm text-gray-500">
                 {vista === 'mapa'
-                  ? 'Elige un día y un slot, y pinta sobre el mapa las rutas que ese slot visita.'
+                  ? 'Planifica pintando rutas sobre el mapa, o revisa qué slot cubre cada una en el modo Cobertura.'
                   : 'Cada fila es un slot de tu equipo y cada columna, un día de visita. El slot y sus rutas se conservan aunque cambie el vendedor.'}
               </p>
             )}

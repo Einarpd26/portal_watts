@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   COLOR_DUPLICADA,
+  COLOR_OTRO_DIA,
+  COLOR_PLANIFICADA,
   COLOR_SIN_PLANIFICAR,
   PALETA_SLOTS,
   accionDelPincel,
@@ -25,6 +27,9 @@ const visita = (id: number, id_slot: number, id_ruta: number, dia: DiaKey, frecu
 });
 
 const SLOTS = [{ id: 10 }, { id: 20 }];
+const PLAN_LU = { modo: "planificacion", dia: "LU" } as const;
+const COB_LU = { modo: "cobertura", dia: "LU" } as const;
+const COB_TODOS = { modo: "cobertura", dia: null } as const;
 const RUTAS = [
   { id: 1, codigo_ruta: "R-1" },
   { id: 2, codigo_ruta: "R-2" },
@@ -41,6 +46,7 @@ test("paleta: no usa los colores reservados al gris y a la duplicada", () => {
   const colores = PALETA_SLOTS as readonly string[];
   assert.equal(colores.includes(COLOR_SIN_PLANIFICAR), false);
   assert.equal(colores.includes(COLOR_DUPLICADA), false);
+  assert.equal(colores.includes(COLOR_OTRO_DIA), false);
   assert.equal(new Set(colores).size, colores.length);
 });
 
@@ -49,8 +55,34 @@ test("etiqueta del slot: usa su nombre y, si no tiene, su posición", () => {
   assert.equal(etiquetaDeSlot({ nombre: null }, 2), "Slot 3");
 });
 
-test("estado: la ruta toma el color del slot que la cubre el día activo", () => {
-  const [r1, r2, r3] = propiedadesDeRutas(RUTAS, [visita(1, 20, 1, "LU"), visita(2, 10, 2, "LU")], SLOTS, "LU");
+test("planificación: el color dice el estado, sin importar el slot", () => {
+  const [r1, r2, r3, r4] = propiedadesDeRutas(
+    [...RUTAS, { id: 4, codigo_ruta: "R-4" }],
+    [visita(1, 20, 1, "LU"), visita(2, 10, 2, "LU"), visita(3, 10, 3, "MA")],
+    SLOTS,
+    PLAN_LU
+  );
+  assert.deepEqual([r1.estado, r1.color], ["del_dia", COLOR_PLANIFICADA]);
+  assert.deepEqual([r2.estado, r2.color], ["del_dia", COLOR_PLANIFICADA]);
+  assert.deepEqual([r3.estado, r3.color], ["otro_dia", COLOR_OTRO_DIA]);
+  assert.deepEqual([r4.estado, r4.color], ["sin_planificar", COLOR_SIN_PLANIFICAR]);
+});
+
+test("planificación: una ruta de otro día se marca tenue y nombra los días", () => {
+  const [r1] = propiedadesDeRutas(RUTAS, [visita(1, 10, 1, "MA"), visita(2, 10, 1, "JU", "eventual")], SLOTS, PLAN_LU);
+  assert.equal(r1.estado, "otro_dia");
+  assert.equal(r1.etiqueta, "R-1 · Mar/Jue");
+});
+
+test("planificación: con el pincel activo se resaltan las rutas de ese slot en el día activo", () => {
+  const visitas = [visita(1, 10, 1, "LU"), visita(2, 20, 2, "LU"), visita(3, 10, 3, "MA")];
+  const props = propiedadesDeRutas(RUTAS, visitas, SLOTS, { ...PLAN_LU, idSlotPincel: 10 });
+  assert.deepEqual(props.map((p) => p.delPincel), [true, false, false]);
+  assert.deepEqual(propiedadesDeRutas(RUTAS, visitas, SLOTS, PLAN_LU).map((p) => p.delPincel), [false, false, false]);
+});
+
+test("cobertura: la ruta toma el color del slot que la cubre el día activo", () => {
+  const [r1, r2, r3] = propiedadesDeRutas(RUTAS, [visita(1, 20, 1, "LU"), visita(2, 10, 2, "LU")], SLOTS, COB_LU);
   assert.equal(r1.estado, "del_dia");
   assert.equal(r1.color, PALETA_SLOTS[1]);
   assert.equal(r2.color, PALETA_SLOTS[0]);
@@ -58,42 +90,53 @@ test("estado: la ruta toma el color del slot que la cubre el día activo", () =>
   assert.equal(r3.color, COLOR_SIN_PLANIFICAR);
 });
 
-test("estado: una ruta de otro día conserva el color, se marca tenue y nombra los días", () => {
-  const [r1] = propiedadesDeRutas(RUTAS, [visita(1, 10, 1, "MA"), visita(2, 10, 1, "JU", "eventual")], SLOTS, "LU");
-  assert.equal(r1.estado, "otro_dia");
-  assert.equal(r1.color, PALETA_SLOTS[0]);
-  assert.equal(r1.etiqueta, "R-1 · Mar/Jue");
+test("cobertura: con un día elegido, lo que solo se visita otro día queda gris", () => {
+  const [r1] = propiedadesDeRutas(RUTAS, [visita(1, 10, 1, "MA")], SLOTS, COB_LU);
+  assert.equal(r1.estado, "sin_planificar");
+  assert.equal(r1.color, COLOR_SIN_PLANIFICAR);
+});
+
+test("cobertura: «todos» pinta toda la semana y la etiqueta lista los días", () => {
+  const [r1, r2] = propiedadesDeRutas(RUTAS, [visita(1, 20, 1, "JU"), visita(2, 20, 1, "LU", "impar")], SLOTS, COB_TODOS);
+  assert.equal(r1.estado, "del_dia");
+  assert.equal(r1.color, PALETA_SLOTS[1]);
+  assert.equal(r1.etiqueta, "R-1 · Lun/Jue");
+  assert.equal(r2.estado, "sin_planificar");
+});
+
+test("cobertura: nunca resalta el pincel", () => {
+  const props = propiedadesDeRutas(RUTAS, [visita(1, 10, 1, "LU")], SLOTS, { ...COB_LU, idSlotPincel: 10 });
+  assert.equal(props[0].delPincel, false);
 });
 
 test("etiqueta: la frecuencia distinta de semanal se abrevia en el código de la ruta", () => {
-  const props = propiedadesDeRutas(
-    RUTAS,
-    [visita(1, 10, 1, "LU", "impar"), visita(2, 10, 2, "LU", "par"), visita(3, 10, 3, "LU", "eventual")],
-    SLOTS,
-    "LU"
-  );
-  assert.deepEqual(props.map((p) => p.etiqueta), ["R-1 imp", "R-2 par", "R-3 ev"]);
+  const visitas = [visita(1, 10, 1, "LU", "impar"), visita(2, 10, 2, "LU", "par"), visita(3, 10, 3, "LU", "eventual")];
+  for (const opciones of [PLAN_LU, COB_LU]) {
+    assert.deepEqual(propiedadesDeRutas(RUTAS, visitas, SLOTS, opciones).map((p) => p.etiqueta), ["R-1 imp", "R-2 par", "R-3 ev"]);
+  }
 });
 
-test("estado: una ruta semanal no lleva sufijo", () => {
-  assert.equal(propiedadesDeRutas(RUTAS, [visita(1, 10, 1, "LU")], SLOTS, "LU")[0].etiqueta, "R-1");
+test("etiqueta: una ruta semanal no lleva sufijo", () => {
+  assert.equal(propiedadesDeRutas(RUTAS, [visita(1, 10, 1, "LU")], SLOTS, PLAN_LU)[0].etiqueta, "R-1");
 });
 
-test("duplicada: usa la misma regla que la grilla (RN-04) y las eventuales no cuentan", () => {
-  const duplicada = propiedadesDeRutas(RUTAS, [visita(1, 10, 1, "LU"), visita(2, 20, 1, "MA")], SLOTS, "LU");
-  assert.equal(duplicada[0].duplicada, true);
-  const conEventual = propiedadesDeRutas(RUTAS, [visita(1, 10, 1, "LU"), visita(2, 20, 1, "MA", "eventual")], SLOTS, "LU");
-  assert.equal(conEventual[0].duplicada, false);
+test("duplicada: usa la misma regla que la grilla (RN-04) en los dos modos y las eventuales no cuentan", () => {
+  const dup = [visita(1, 10, 1, "LU"), visita(2, 20, 1, "MA")];
+  const conEventual = [visita(1, 10, 1, "LU"), visita(2, 20, 1, "MA", "eventual")];
+  for (const opciones of [PLAN_LU, COB_LU, COB_TODOS]) {
+    assert.equal(propiedadesDeRutas(RUTAS, dup, SLOTS, opciones)[0].duplicada, true);
+    assert.equal(propiedadesDeRutas(RUTAS, conEventual, SLOTS, opciones)[0].duplicada, false);
+  }
 });
 
-test("estado: si dos slots cubren la ruta el mismo día, manda el primero en el orden", () => {
-  const [r1] = propiedadesDeRutas(RUTAS, [visita(1, 20, 1, "LU"), visita(2, 10, 1, "LU")], SLOTS, "LU");
+test("cobertura: si dos slots cubren la ruta el mismo día, manda el primero en el orden", () => {
+  const [r1] = propiedadesDeRutas(RUTAS, [visita(1, 20, 1, "LU"), visita(2, 10, 1, "LU")], SLOTS, COB_LU);
   assert.equal(r1.color, PALETA_SLOTS[0]);
   assert.equal(r1.duplicada, true);
 });
 
-test("estado: una visita de un slot que ya no existe no rompe el cálculo", () => {
-  const [r1] = propiedadesDeRutas(RUTAS, [visita(1, 99, 1, "LU")], SLOTS, "LU");
+test("cobertura: una visita de un slot que ya no existe no rompe el cálculo", () => {
+  const [r1] = propiedadesDeRutas(RUTAS, [visita(1, 99, 1, "LU")], SLOTS, COB_LU);
   assert.equal(r1.estado, "del_dia");
   assert.equal(r1.color, PALETA_SLOTS[0]);
 });
