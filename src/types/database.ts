@@ -169,6 +169,78 @@ export type Database = {
         }
         Relationships: []
       }
+      clientes: {
+        Row: {
+          codigo_cliente: string
+          created_at: string
+          direccion: string
+          habilitado: string
+          id: number
+          id_ruta: number
+          latitud: number | null
+          longitud: number | null
+          nit: string | null
+          nombre_comercial: string | null
+          nombre_completo: string
+          razon_social: string | null
+          referencia: string | null
+          rubro: string
+          telefono: string | null
+          updated_at: string
+        }
+        Insert: {
+          codigo_cliente: string
+          created_at?: string
+          direccion: string
+          habilitado: string
+          id?: never
+          id_ruta: number
+          latitud?: number | null
+          longitud?: number | null
+          nit?: string | null
+          nombre_comercial?: string | null
+          nombre_completo: string
+          razon_social?: string | null
+          referencia?: string | null
+          rubro: string
+          telefono?: string | null
+          updated_at?: string
+        }
+        Update: {
+          codigo_cliente?: string
+          created_at?: string
+          direccion?: string
+          habilitado?: string
+          id?: never
+          id_ruta?: number
+          latitud?: number | null
+          longitud?: number | null
+          nit?: string | null
+          nombre_comercial?: string | null
+          nombre_completo?: string
+          razon_social?: string | null
+          referencia?: string | null
+          rubro?: string
+          telefono?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientes_id_ruta_fkey"
+            columns: ["id_ruta"]
+            isOneToOne: false
+            referencedRelation: "cobertura_rutas"
+            referencedColumns: ["id_ruta"]
+          },
+          {
+            foreignKeyName: "clientes_id_ruta_fkey"
+            columns: ["id_ruta"]
+            isOneToOne: false
+            referencedRelation: "rutas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       intentos_login: {
         Row: {
           bloqueado_hasta: string | null
@@ -286,6 +358,13 @@ export type Database = {
             foreignKeyName: "planificacion_rutas_id_ruta_fkey"
             columns: ["id_ruta"]
             isOneToOne: false
+            referencedRelation: "cobertura_rutas"
+            referencedColumns: ["id_ruta"]
+          },
+          {
+            foreignKeyName: "planificacion_rutas_id_ruta_fkey"
+            columns: ["id_ruta"]
+            isOneToOne: false
             referencedRelation: "rutas"
             referencedColumns: ["id"]
           },
@@ -294,6 +373,56 @@ export type Database = {
             columns: ["id_vendedor_slot"]
             isOneToOne: false
             referencedRelation: "vendedor_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      productos: {
+        Row: {
+          codigo_interno: string
+          created_at: string
+          estado_producto: string
+          factor_conversion: number
+          grupo: string
+          id: number
+          id_sucursal: number
+          nombre: string
+          subgrupo: string
+          um: string
+          updated_at: string
+        }
+        Insert: {
+          codigo_interno: string
+          created_at?: string
+          estado_producto: string
+          factor_conversion: number
+          grupo: string
+          id?: never
+          id_sucursal: number
+          nombre: string
+          subgrupo: string
+          um: string
+          updated_at?: string
+        }
+        Update: {
+          codigo_interno?: string
+          created_at?: string
+          estado_producto?: string
+          factor_conversion?: number
+          grupo?: string
+          id?: never
+          id_sucursal?: number
+          nombre?: string
+          subgrupo?: string
+          um?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "productos_id_sucursal_fkey"
+            columns: ["id_sucursal"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
             referencedColumns: ["id"]
           },
         ]
@@ -556,6 +685,112 @@ export type Database = {
           },
         ]
       }
+      ventas: {
+        Row: {
+          cant_producto: number
+          created_at: string
+          descuento: number | null
+          estado: string
+          fecha_pedido: string
+          fecha_venta: string
+          id: number
+          id_cliente: number
+          id_distribuidor: number
+          id_preventista: number
+          id_producto: number
+          id_sucursal: number
+          importe_bruto: number | null
+          importe_total_producto: number | null
+          ntr_pedido: number
+          ntr_venta: number
+          precio_u: number
+          updated_at: string
+        }
+        Insert: {
+          cant_producto: number
+          created_at?: string
+          descuento?: number | null
+          estado: string
+          fecha_pedido: string
+          fecha_venta: string
+          id?: never
+          id_cliente: number
+          id_distribuidor: number
+          id_preventista: number
+          id_producto: number
+          id_sucursal: number
+          importe_bruto?: number | null
+          importe_total_producto?: number | null
+          ntr_pedido: number
+          ntr_venta: number
+          precio_u: number
+          updated_at?: string
+        }
+        Update: {
+          cant_producto?: number
+          created_at?: string
+          descuento?: number | null
+          estado?: string
+          fecha_pedido?: string
+          fecha_venta?: string
+          id?: never
+          id_cliente?: number
+          id_distribuidor?: number
+          id_preventista?: number
+          id_producto?: number
+          id_sucursal?: number
+          importe_bruto?: number | null
+          importe_total_producto?: number | null
+          ntr_pedido?: number
+          ntr_venta?: number
+          precio_u?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ventas_id_cliente_fkey"
+            columns: ["id_cliente"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventas_id_cliente_fkey"
+            columns: ["id_cliente"]
+            isOneToOne: false
+            referencedRelation: "clientes_abc"
+            referencedColumns: ["id_cliente"]
+          },
+          {
+            foreignKeyName: "ventas_id_distribuidor_fkey"
+            columns: ["id_distribuidor"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventas_id_preventista_fkey"
+            columns: ["id_preventista"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventas_id_producto_fkey"
+            columns: ["id_producto"]
+            isOneToOne: false
+            referencedRelation: "productos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventas_id_sucursal_fkey"
+            columns: ["id_sucursal"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       zonas: {
         Row: {
           canal_venta: string | null
@@ -599,9 +834,29 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      clientes_abc: {
+        Row: {
+          clasificacion: string | null
+          frecuencia_6m: number | null
+          id_cliente: number | null
+          ultima_compra: string | null
+        }
+        Relationships: []
+      }
+      cobertura_rutas: {
+        Row: {
+          calculado_en: string | null
+          clientes_atendidos: number | null
+          clientes_habilitados: number | null
+          id_ruta: number | null
+          mes: string | null
+          porcentaje: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      cobertura_rutas_recalcular: { Args: never; Returns: undefined }
       equipo_asignar_vendedor: {
         Args: {
           p_id_sucursal_alcance?: number
