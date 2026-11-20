@@ -300,6 +300,38 @@ export interface MapaPlanificacion {
   contornos: ContornoZona[];
 }
 
+// 10d. Clientes en el mapa (CU-12, ADR-005)
+/** A, B y C por Pareto de ventas dentro de su ruta; I: sin compras en los últimos 6 meses */
+export type ClaseAbc = 'A' | 'B' | 'C' | 'I';
+
+export interface ClienteMapa {
+  id: number;
+  codigo_cliente: string;
+  nombre_completo: string;
+  nombre_comercial: string | null;
+  direccion: string;
+  referencia: string | null;
+  rubro: string;
+  telefono: string | null;
+  latitud: number | null;
+  longitud: number | null;
+  id_ruta: number;
+  /** null: cliente no habilitado, no se clasifica */
+  clasificacion: ClaseAbc | null;
+  /** Vendido en los últimos 6 meses */
+  total_ventas: number;
+  /** Porcentaje acumulado de las ventas de su ruta, de 0 a 1 */
+  porcentaje_acumulado: number;
+  ultima_compra: string | null;
+}
+
+/** Rutas del alcance con sus clientes clasificados (el contorno de zona solo para quien ve zonas completas) */
+export interface MapaClientes {
+  rutas: RutaItem[];
+  contornos: ContornoZona[];
+  clientes: ClienteMapa[];
+}
+
 // 11. Rutas comerciales (CU-05)
 export interface PoligonoRuta {
   type: 'Polygon';

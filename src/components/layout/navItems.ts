@@ -30,7 +30,7 @@ export const DASHBOARD_TAB: NavItem = {
 // Grupo "Operación": trabajo diario en terreno.
 export const OPERATION_GROUP_LABEL = "Operación";
 export const OPERATION_GROUP: NavItem[] = [
-  { label: "Mapa", href: "/mapa", requiredPermissions: ["mapa:consultar"], available: false },
+  { label: "Mapa", href: "/mapa", requiredPermissions: ["mapa:consultar"], available: true },
   { label: "Planificación", href: "/planificacion", requiredPermissions: ["planificacion:asignar"], available: true },
 ];
 
