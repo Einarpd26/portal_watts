@@ -95,21 +95,26 @@ const PlanificacionPage: PageWithLayout = () => {
   return (
     <div className={cn('flex flex-col bg-gray-50', enMapa ? 'min-h-0 flex-1' : 'min-h-full flex-none')}>
       <div className="w-full space-y-4 px-4 pt-4 lg:px-6 lg:pt-6">
-        <div className="flex min-h-11 flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-xl font-extrabold tracking-tight text-gray-900">Planificación de rutas</h1>
+        {/* En el celular el conmutador comparte fila con el título y los botones del calendario bajan a su propia fila:
+            así el conmutador queda en el mismo lugar en las dos vistas. Desde lg todo va en una sola fila */}
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <div className="order-1 flex min-h-11 min-w-0 flex-1 items-center gap-3 lg:flex-none">
+            <h1 className="truncate text-xl font-extrabold tracking-tight text-gray-900">Planificación de rutas</h1>
             {listado.es_supervisor && vista === 'calendario' && <LeyendaPlanificacion />}
           </div>
-          {listado.es_supervisor && (
-            <div className="flex flex-wrap items-center gap-2">
-              {vista === 'calendario' && editMode && (
+          {listado.es_supervisor && vista === 'calendario' && (
+            <div className="order-3 flex min-h-11 w-full items-center justify-end gap-2 lg:order-2 lg:ml-auto lg:w-auto">
+              {editMode && (
                 <Button variant="secondary" onClick={() => void crearSlot()} disabled={isSubmitting || isLoading}>
                   Agregar slot
                 </Button>
               )}
-              {vista === 'calendario' && <BotonModoEdicion editMode={editMode} onToggle={alternarEdicion} disabled={isLoading} />}
-              {/* Al final de la fila: así el conmutador no se corre cuando aparecen los botones del calendario */}
-              {listado.slots.length > 0 && <ConmutadorVista vista={vista} onCambiar={setVistaElegida} />}
+              <BotonModoEdicion editMode={editMode} onToggle={alternarEdicion} disabled={isLoading} />
+            </div>
+          )}
+          {listado.es_supervisor && listado.slots.length > 0 && (
+            <div className="order-2 flex min-h-11 shrink-0 items-center lg:order-3">
+              <ConmutadorVista vista={vista} onCambiar={setVistaElegida} />
             </div>
           )}
         </div>
