@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { AbcBadge } from './AbcBadge';
 import { cn } from '@/utils/cn';
-import { DESCRIPCION_CLASE } from '@/utils/clientesMapa';
-import { formatearFecha, formatearMonto, formatearPorcentaje } from '@/utils/formatoClientes';
+import { formatearFecha, formatearMonto } from '@/utils/formatoClientes';
 import { useComprasCliente } from '@/hooks/useComprasCliente';
 import type { ClienteMapa, RutaItem } from '@/types';
 
@@ -118,11 +117,7 @@ export default function FichaCliente({ cliente, ruta, onCerrar }: FichaClientePr
           </button>
         </div>
 
-        <p className="mb-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-700">
-          {clase
-            ? `${DESCRIPCION_CLASE[clase]}. Con él, la ruta acumula el ${formatearPorcentaje(cliente.porcentaje_acumulado)} de sus ventas.`
-            : 'Cliente no habilitado: no se clasifica ni cuenta para la cobertura.'}
-        </p>
+        {!clase && <p className="mb-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-700">Cliente no habilitado: no se clasifica ni cuenta para la cobertura.</p>}
 
         <dl className="space-y-1.5">
           <Dato etiqueta="Rubro">{cliente.rubro}</Dato>
