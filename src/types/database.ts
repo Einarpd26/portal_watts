@@ -837,11 +837,29 @@ export type Database = {
       clientes_abc: {
         Row: {
           clasificacion: string | null
-          frecuencia_6m: number | null
+          dias_con_compra: number | null
           id_cliente: number | null
+          id_ruta: number | null
+          porcentaje_acumulado: number | null
+          total_ventas: number | null
           ultima_compra: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clientes_id_ruta_fkey"
+            columns: ["id_ruta"]
+            isOneToOne: false
+            referencedRelation: "cobertura_rutas"
+            referencedColumns: ["id_ruta"]
+          },
+          {
+            foreignKeyName: "clientes_id_ruta_fkey"
+            columns: ["id_ruta"]
+            isOneToOne: false
+            referencedRelation: "rutas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cobertura_rutas: {
         Row: {

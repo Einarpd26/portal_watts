@@ -11,10 +11,11 @@
 -- la cobertura del mes siempre tienen datos recientes.
 --
 -- Perfil de cada cliente (según su número dentro de la ruta, de 0 a 39):
---   0-5   (15 %)  A  compra cada 4 días
---   6-17  (30 %)  B  compra cada 12 días
---   18-31 (35 %)  C  compra cada 40 días
---   32-39 (20 %)  I  inactivo: dejó de comprar hace más de 7 meses
+--   0-5   (15 %)  compra cada 4 días, cajas x6
+--   6-17  (30 %)  compra cada 12 días, cajas x2
+--   18-31 (35 %)  compra cada 40 días
+--   32-39 (20 %)  inactivo: dejó de comprar hace más de 7 meses
+-- La clase A/B/C la calcula la vista clientes_abc (Pareto por ruta), no este seed.
 -- ==============================================================================
 
 -- Idempotente: vuelve a generar todo el conjunto sintético
@@ -145,7 +146,9 @@ JOIN LATERAL (
     OFFSET ((c.ntr_venta + g.i * 3) % 11) LIMIT 1
 ) p ON true
 CROSS JOIN LATERAL (
-    SELECT (1 + (c.ntr_venta + g.i) % 8)::numeric AS cantidad,
+    -- Los clientes que compran más seguido también compran más cajas por venta: así las ventas se concentran
+    -- como en un Pareto (pocos clientes explican la mayor parte de lo vendido en la ruta)
+    SELECT ((1 + (c.ntr_venta + g.i) % 8) * CASE WHEN c.n <= 5 THEN 6 WHEN c.n <= 17 THEN 2 ELSE 1 END)::numeric AS cantidad,
            (45 + ((c.ntr_venta + g.i * 5) % 30))::numeric AS precio
 ) q
 ON CONFLICT (ntr_venta, id_producto, id_sucursal) DO NOTHING;
