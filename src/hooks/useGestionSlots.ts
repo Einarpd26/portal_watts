@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useToast } from '@/contexts/ToastContext';
 import { logger } from '@/lib/logger';
 import { mensajeDeErrorApi } from '@/utils/apiError';
 import type { DiaKey } from '@/utils/diasSemana';
 import type { Frecuencia, SlotsListado, VisitaPlanificada } from '@/types';
-
-type Toast = { type: 'success' | 'error'; message: string };
 
 const LISTADO_VACIO: SlotsListado = { slots: [], visitas: [], rutas: [], disponibles: [], es_supervisor: true };
 
@@ -12,9 +11,7 @@ export function useGestionSlots() {
   const [listado, setListado] = useState<SlotsListado>(LISTADO_VACIO);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [toast, setToast] = useState<Toast | null>(null);
-
-  const clearToast = useCallback(() => setToast(null), []);
+  const { showToast } = useToast();
 
   // Visitas que se están guardando: evita mover dos veces la misma mientras el servidor responde
   const moviendoRef = useRef(new Set<number>());
@@ -27,15 +24,15 @@ export function useGestionSlots() {
     try {
       const res = await fetch('/api/planificacion/slots');
       if (!res.ok) {
-        setToast({ type: 'error', message: await mensajeDeErrorApi(res, 'No se pudieron cargar los slots.') });
+        showToast(await mensajeDeErrorApi(res, 'No se pudieron cargar los slots.'), 'error');
         return;
       }
       setListado((await res.json()) as SlotsListado);
     } catch (err: unknown) {
       logger.error('Error cargando slots:', err);
-      setToast({ type: 'error', message: 'No se pudieron cargar los slots.' });
+      showToast('No se pudieron cargar los slots.', 'error');
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     // Carga inicial: el estado se actualiza al resolver el fetch
@@ -53,13 +50,13 @@ export function useGestionSlots() {
     try {
       const res = await solicitud();
       if (!res.ok) {
-        setToast({ type: 'error', message: await mensajeDeErrorApi(res, fallo) });
+        showToast(await mensajeDeErrorApi(res, fallo), 'error');
       } else if (exito) {
-        setToast({ type: 'success', message: exito });
+        showToast(exito, 'success');
       }
     } catch (err: unknown) {
       logger.error(fallo, err);
-      setToast({ type: 'error', message: fallo });
+      showToast(fallo, 'error');
     } finally {
       setIsSubmitting(false);
       await cargar();
@@ -142,7 +139,7 @@ export function useGestionSlots() {
       }));
     const revertir = (mensaje: string) => {
       colocar(original.id_slot, original.dia);
-      setToast({ type: 'error', message: mensaje });
+      showToast(mensaje, 'error');
     };
 
     moviendoRef.current.add(idVisita);
@@ -177,12 +174,12 @@ export function useGestionSlots() {
         body: JSON.stringify({ ids }),
       });
       if (!res.ok) {
-        setToast({ type: 'error', message: await mensajeDeErrorApi(res, 'No se pudo reordenar los slots.') });
+        showToast(await mensajeDeErrorApi(res, 'No se pudo reordenar los slots.'), 'error');
         await cargar();
       }
     } catch (err: unknown) {
       logger.error('Error reordenando los slots:', err);
-      setToast({ type: 'error', message: 'No se pudo reordenar los slots.' });
+      showToast('No se pudo reordenar los slots.', 'error');
       await cargar();
     }
   };
@@ -219,7 +216,7 @@ export function useGestionSlots() {
       });
       if (!res.ok) {
         setListado(sinTemporal);
-        setToast({ type: 'error', message: await mensajeDeErrorApi(res, 'No se pudo planificar la ruta.') });
+        showToast(await mensajeDeErrorApi(res, 'No se pudo planificar la ruta.'), 'error');
         return null;
       }
       const { id } = (await res.json()) as { id: number };
@@ -229,7 +226,7 @@ export function useGestionSlots() {
     } catch (err: unknown) {
       logger.error('Error planificando la ruta desde el mapa:', err);
       setListado(sinTemporal);
-      setToast({ type: 'error', message: 'No se pudo planificar la ruta.' });
+      showToast('No se pudo planificar la ruta.', 'error');
       return null;
     } finally {
       await terminarCambioDelPincel();
@@ -244,14 +241,14 @@ export function useGestionSlots() {
       const res = await fetch(`/api/planificacion/visitas/${visita.id}`, { method: 'DELETE' });
       if (!res.ok) {
         restaurar();
-        setToast({ type: 'error', message: await mensajeDeErrorApi(res, 'No se pudo quitar la ruta.') });
+        showToast(await mensajeDeErrorApi(res, 'No se pudo quitar la ruta.'), 'error');
         return false;
       }
       return true;
     } catch (err: unknown) {
       logger.error('Error quitando la ruta desde el mapa:', err);
       restaurar();
-      setToast({ type: 'error', message: 'No se pudo quitar la ruta.' });
+      showToast('No se pudo quitar la ruta.', 'error');
       return false;
     } finally {
       await terminarCambioDelPincel();
@@ -281,8 +278,6 @@ export function useGestionSlots() {
     listado,
     isLoading,
     isSubmitting,
-    toast,
-    clearToast,
     crearSlot,
     asignarVendedor,
     renombrarSlot,

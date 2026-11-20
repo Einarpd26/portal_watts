@@ -37,7 +37,7 @@ const SUFIJO_FRECUENCIA: Record<Frecuencia, string> = { semanal: '', impar: 'imp
 
 export type EstadoRutaEnMapa = 'del_dia' | 'otro_dia' | 'sin_planificar';
 
-/** Planificación: ¿qué falta planificar? (color por estado, con pincel). Cobertura: ¿quién hace qué ruta? (color por slot) */
+/** Planificación: ¿qué falta planificar? (color por estado). Cobertura: ¿quién hace qué ruta? (color por slot) */
 export type ModoMapa = 'planificacion' | 'cobertura';
 
 /** Lo que el mapa necesita saber de cada ruta para pintarla; viaja como propiedades del polígono */
@@ -48,16 +48,12 @@ export interface PropiedadesRutaEnMapa {
   /** RN-04: planificada más de una vez en la semana, con la misma regla que la grilla */
   duplicada: boolean;
   etiqueta: string;
-  /** Solo en Planificación: la cubre el slot elegido como pincel el día activo, y un clic la quitaría */
-  delPincel: boolean;
 }
 
 export interface OpcionesDelMapa {
   modo: ModoMapa;
   /** Día activo; null: toda la semana (solo tiene sentido en Cobertura) */
   dia: DiaKey | null;
-  /** Slot elegido como pincel, si lo hay */
-  idSlotPincel?: number | null;
 }
 
 /**
@@ -73,7 +69,7 @@ export function propiedadesDeRutas(
   rutas: ReadonlyArray<{ id: number; codigo_ruta: string }>,
   visitas: readonly VisitaPlanificada[],
   slots: readonly Pick<SlotItem, 'id'>[],
-  { modo, dia, idSlotPincel = null }: OpcionesDelMapa
+  { modo, dia }: OpcionesDelMapa
 ): PropiedadesRutaEnMapa[] {
   const posicionDeSlot = new Map(slots.map((s, i) => [s.id, i]));
   const duplicadas = rutasDuplicadasEnSemana(visitas);
@@ -89,8 +85,7 @@ export function propiedadesDeRutas(
     const delDia = dia === null ? suyas : suyas.filter((v) => v.dia === dia);
     const cubre = delDia[0];
     const duplicada = duplicadas.has(ruta.id);
-    const delPincel = modo === 'planificacion' && idSlotPincel !== null && delDia.some((v) => v.id_slot === idSlotPincel);
-    const base = { id: ruta.id, duplicada, delPincel };
+    const base = { id: ruta.id, duplicada };
     const sinPlanificar = { ...base, color: COLOR_SIN_PLANIFICAR, estado: 'sin_planificar' as const, etiqueta: ruta.codigo_ruta };
     const sufijo = cubre ? SUFIJO_FRECUENCIA[cubre.frecuencia] : '';
     const conFrecuencia = sufijo ? `${ruta.codigo_ruta} ${sufijo}` : ruta.codigo_ruta;
@@ -115,20 +110,12 @@ export function descripcionDeVisita(visita: Pick<VisitaPlanificada, 'dia' | 'fre
   return `${abreviaturaDeDia(visita.dia)} · ${nombreSlot} · ${FRECUENCIA_LABELS[visita.frecuencia].toLowerCase()}`;
 }
 
-export type AccionPincel = { tipo: 'agregar' } | { tipo: 'quitar'; idVisita: number };
-
-/**
- * Qué hace un clic con el pincel sobre una ruta: si ya está en ese slot y ese día se quita; si no, se
- * planifica con la frecuencia activa. Con varias visitas en la misma celda (p. ej. par + impar) se quita la
- * de la frecuencia activa y, si no hay, la primera.
- */
-export function accionDelPincel(
+/** ¿Ya existe una visita de esa ruta en ese slot, día y frecuencia? Planificar lo mismo otra vez no tiene sentido (CU-09 A1) */
+export function existeVisita(
   visitas: readonly VisitaPlanificada[],
-  pincel: { idSlot: number; dia: DiaKey; idRuta: number; frecuencia: Frecuencia }
-): AccionPincel {
-  const enLaCelda = visitas.filter((v) => v.id_slot === pincel.idSlot && v.dia === pincel.dia && v.id_ruta === pincel.idRuta);
-  const visita = enLaCelda.find((v) => v.frecuencia === pincel.frecuencia) ?? enLaCelda[0];
-  return visita ? { tipo: 'quitar', idVisita: visita.id } : { tipo: 'agregar' };
+  visita: { idSlot: number; dia: DiaKey; idRuta: number; frecuencia: Frecuencia }
+): boolean {
+  return visitas.some((v) => v.id_slot === visita.idSlot && v.dia === visita.dia && v.id_ruta === visita.idRuta && v.frecuencia === visita.frecuencia);
 }
 
 /** ¿La ruta quedaría duplicada en la semana al sumar esta visita? Es el aviso del pincel (ADR-003 D8) */

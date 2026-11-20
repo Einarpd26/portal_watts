@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { DIA_LABELS, type DiaKey } from '@/utils/diasSemana';
-import { accionDelPincel, quedaDuplicada } from '@/utils/planificacionMapa';
+import { quedaDuplicada } from '@/utils/planificacionMapa';
 import type { Frecuencia, VisitaPlanificada } from '@/types';
 
 /** Cuánto permanece el aviso con «Deshacer» (ADR-004 D2): lo bastante para reaccionar, sin tapar el mapa */
@@ -12,29 +12,29 @@ export interface EdicionDelMapa {
   quitar: (visita: VisitaPlanificada) => Promise<boolean>;
 }
 
-export interface AvisoPincel {
+export interface AvisoAsignacion {
   mensaje: string;
   /** Lo que conviene saber de lo que se acaba de hacer (p. ej. que la ruta quedó duplicada) */
   advertencia: string | null;
   deshacer: () => Promise<unknown>;
 }
 
-export interface Pincel {
+export interface Asignacion {
   idSlot: number;
   dia: DiaKey;
   frecuencia: Frecuencia;
 }
 
 /**
- * Pincel de la planificación sobre el mapa (ADR-004 D2): un clic en una ruta la planifica en el slot, día y
- * frecuencia activos o la quita si ya estaba. Cada acción deja un aviso con «Deshacer» de la última.
+ * Asignación de una ruta a un slot desde su ficha en el mapa (ADR-004 D2): planifica la ruta en el slot, día y
+ * frecuencia elegidos y deja un aviso con «Deshacer», que dura unos segundos.
  */
-export function usePincelPlanificacion(
+export function useAsignacionEnMapa(
   visitas: readonly VisitaPlanificada[],
   nombreDeSlot: (idSlot: number) => string,
   edicion: EdicionDelMapa | null
 ) {
-  const [aviso, setAviso] = useState<AvisoPincel | null>(null);
+  const [aviso, setAviso] = useState<AvisoAsignacion | null>(null);
 
   useEffect(() => {
     if (!aviso) return;
@@ -42,29 +42,13 @@ export function usePincelPlanificacion(
     return () => clearTimeout(temporizador);
   }, [aviso]);
 
-  const pintar = async (idRuta: number, pincel: Pincel) => {
+  const asignar = async (idRuta: number, asignacion: Asignacion) => {
     if (!edicion) return;
-    const lugar = (idSlot: number, dia: DiaKey) => `${nombreDeSlot(idSlot)} · ${DIA_LABELS[dia]}`;
-    const accion = accionDelPincel(visitas, { ...pincel, idRuta });
-
-    if (accion.tipo === 'quitar') {
-      const visita = visitas.find((v) => v.id === accion.idVisita);
-      // Una visita con id negativo todavía se está guardando: no hay nada que quitar hasta que termine
-      if (!visita || visita.id < 0) return;
-      if (!(await edicion.quitar(visita))) return;
-      setAviso({
-        mensaje: `${visita.codigo_ruta} quitada de ${lugar(visita.id_slot, visita.dia)}.`,
-        advertencia: null,
-        deshacer: () => edicion.planificar(visita.id_slot, visita.id_ruta, visita.dia, visita.frecuencia),
-      });
-      return;
-    }
-
-    const duplicada = quedaDuplicada(visitas, { id_ruta: idRuta, frecuencia: pincel.frecuencia });
-    const creada = await edicion.planificar(pincel.idSlot, idRuta, pincel.dia, pincel.frecuencia);
+    const duplicada = quedaDuplicada(visitas, { id_ruta: idRuta, frecuencia: asignacion.frecuencia });
+    const creada = await edicion.planificar(asignacion.idSlot, idRuta, asignacion.dia, asignacion.frecuencia);
     if (!creada) return;
     setAviso({
-      mensaje: `${creada.codigo_ruta} planificada en ${lugar(creada.id_slot, creada.dia)}.`,
+      mensaje: `${creada.codigo_ruta} planificada en ${nombreDeSlot(creada.id_slot)} · ${DIA_LABELS[creada.dia]}.`,
       advertencia: duplicada
         ? 'Queda duplicada: ya está planificada en la semana. Puedes dejarla así o marcarla como eventual desde su ficha.'
         : null,
@@ -80,5 +64,5 @@ export function usePincelPlanificacion(
 
   const descartarAviso = useCallback(() => setAviso(null), []);
 
-  return { aviso, pintar, deshacer, descartarAviso };
+  return { aviso, asignar, deshacer, descartarAviso };
 }

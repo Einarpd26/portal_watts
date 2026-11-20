@@ -5,7 +5,6 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGestionSlots } from '@/hooks/useGestionSlots';
 import { useMapaPlanificacion } from '@/hooks/useMapaPlanificacion';
-import Alert from '@/components/ui/Alert';
 import Button from '@/components/ui/Button';
 import AppLayout from '@/components/layout/AppLayout';
 import PlanificacionGrid from '@/components/planificacion/PlanificacionGrid';
@@ -14,9 +13,9 @@ import VistaMapaPlanificacion from '@/components/planificacion/VistaMapaPlanific
 import BotonModoEdicion from '@/components/planificacion/BotonModoEdicion';
 import AvisoModoEdicion from '@/components/planificacion/AvisoModoEdicion';
 import LeyendaPlanificacion from '@/components/planificacion/LeyendaPlanificacion';
-import BarraContexto from '@/components/planificacion/BarraContexto';
 import ResumenSemana from '@/components/planificacion/ResumenSemana';
 import VisitaModal, { type VisitaModalEstado } from '@/components/planificacion/VisitaModal';
+import { useToastPosition } from '@/contexts/ToastContext';
 import { useAtajoTecla } from '@/hooks/useAtajoTecla';
 import { resumirPlanificacion, semanaIso } from '@/utils/planificacionResumen';
 import { cn } from '@/utils/cn';
@@ -35,6 +34,9 @@ const PlanificacionPage: PageWithLayout = () => {
     }
   }, [authLoading, user, router]);
 
+  // Los avisos salen por arriba: abajo quedan la hoja de la ficha y el «Deshacer» del mapa
+  useToastPosition('top');
+
   const [editMode, setEditMode] = useState(false);
   // La vista inicial es el Mapa, que es la que ayuda a decidir (ADR-004 D1); el Calendario queda a un clic
   const [vistaElegida, setVistaElegida] = useState<VistaPlanificacion>('mapa');
@@ -43,8 +45,6 @@ const PlanificacionPage: PageWithLayout = () => {
     listado,
     isLoading,
     isSubmitting,
-    toast,
-    clearToast,
     crearSlot,
     asignarVendedor,
     renombrarSlot,
@@ -68,7 +68,6 @@ const PlanificacionPage: PageWithLayout = () => {
   const resumen = useMemo(() => resumirPlanificacion(listado.slots, listado.visitas), [listado.slots, listado.visitas]);
   // La semana se fija al abrir la pantalla: así el render no depende del reloj
   const [semanaActual] = useState(() => semanaIso(new Date()));
-  const nombreDeUsuario = user ? `${user.nombres} ${user.apellidos}`.trim() : '';
 
   // La tecla E alterna el modo edición, solo donde ese modo existe (el calendario de un supervisor)
   const puedeEditar = !isLoading && listado.es_supervisor && vista === 'calendario';
@@ -119,22 +118,8 @@ const PlanificacionPage: PageWithLayout = () => {
           )}
         </div>
 
-        {listado.es_supervisor && !isLoading && (
-          // En el celular el mapa ocupa todo el alto y la pantalla no se desplaza: ahí la barra de contexto no cabe
-          <div className={cn(enMapa && 'hidden lg:block')}>
-            <BarraContexto nombre={nombreDeUsuario} sinSlot={listado.disponibles.length} />
-          </div>
-        )}
         {listado.es_supervisor && vista === 'calendario' && editMode && <AvisoModoEdicion />}
       </div>
-
-      {toast && (
-        <div className="w-full px-4 pt-4 lg:px-6">
-          <Alert state={toast.type === 'success' ? 'success' : 'error'} onClose={clearToast}>
-            {toast.message}
-          </Alert>
-        </div>
-      )}
 
       <div className={cn('w-full px-4 lg:px-6', enMapa ? 'flex min-h-0 flex-1 flex-col pb-4 pt-4' : 'space-y-4 py-6 lg:py-8')}>
         {isLoading ? (

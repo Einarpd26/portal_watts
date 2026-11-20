@@ -2,20 +2,16 @@
 
 import { useState } from 'react';
 import { cn } from '@/utils/cn';
-import { filasDe, type ConteoDeRutas } from './LeyendaMapa';
-import type { ModoMapa } from '@/utils/planificacionMapa';
+import type { Fila } from './LeyendaMapa';
 
 interface LeyendaPlegableProps {
-  modo: ModoMapa;
-  conteo: ConteoDeRutas;
-  /** Texto del día activo para la leyenda («el lunes»); null: toda la semana */
-  diaActivo: string | null;
+  titulo: string;
+  filas: Fila[];
 }
 
 /** Leyenda del mapa como una píldora plegable arriba a la derecha: no le quita espacio a la columna lateral */
-export default function LeyendaPlegable({ modo, conteo, diaActivo }: LeyendaPlegableProps) {
+export default function LeyendaPlegable({ titulo, filas }: LeyendaPlegableProps) {
   const [abierta, setAbierta] = useState(false);
-  const filas = filasDe(modo, conteo, diaActivo);
 
   return (
     <div className="absolute right-3 top-3 z-10">
@@ -31,7 +27,7 @@ export default function LeyendaPlegable({ modo, conteo, diaActivo }: LeyendaPleg
             <span key={f.etiqueta} className="-ml-0.5 h-2 w-2 rounded-full ring-1 ring-white first:ml-0" style={{ backgroundColor: f.color }} aria-hidden="true" />
           ))}
         </span>
-        {modo === 'planificacion' ? 'Planificación' : 'Cobertura'}
+        {titulo}
         <svg className={cn('h-3 w-3 text-gray-400 transition-transform', abierta && 'rotate-180')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M6 9l6 6 6-6" />
         </svg>

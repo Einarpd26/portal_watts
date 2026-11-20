@@ -3,6 +3,8 @@
 import { BotonCerrarFicha } from '@/components/mapa/BotonCerrarFicha';
 import { HojaInferior } from '@/components/mapa/HojaInferior';
 import { PanelLateral } from '@/components/mapa/PanelLateral';
+import AsignarEnFicha from './AsignarEnFicha';
+import type { DiaKey } from '@/utils/diasSemana';
 import { FRECUENCIAS, FRECUENCIA_LABELS } from '@/utils/frecuencias';
 import { colorDeSlot, descripcionDeVisita, etiquetaDeSlot } from '@/utils/planificacionMapa';
 import type { Frecuencia, RutaItem, SlotItem, VisitaPlanificada } from '@/types';
@@ -19,6 +21,13 @@ interface FichaRutaProps {
     onCambiarFrecuencia: (idVisita: number, frecuencia: Frecuencia) => void;
     onQuitar: (visita: VisitaPlanificada) => void;
   } | null;
+  /** Asignar la ruta a un slot desde la ficha; ausente en Cobertura y en la consulta de solo lectura */
+  asignar: {
+    dia: DiaKey;
+    deshabilitado: boolean;
+    existe: (idSlot: number, frecuencia: Frecuencia) => boolean;
+    onAsignar: (idSlot: number, frecuencia: Frecuencia) => Promise<void>;
+  } | null;
   onCerrar: () => void;
   /** panel: columna junto al mapa (escritorio) · hoja: hoja inferior que se estira (celular) */
   variante: 'panel' | 'hoja';
@@ -29,7 +38,7 @@ interface FichaRutaProps {
  * en el celular, una hoja inferior con gestos. Quien la use debe darle `key` con el id de la ruta, para que cada
  * ruta empiece con la hoja encogida.
  */
-export default function FichaRuta({ ruta, slots, visitas, duplicada, edicion, onCerrar, variante }: FichaRutaProps) {
+export default function FichaRuta({ ruta, slots, visitas, duplicada, edicion, asignar, onCerrar, variante }: FichaRutaProps) {
   const posicionDe = (idSlot: number) => slots.findIndex((s) => s.id === idSlot);
   const nombreDe = (idSlot: number) => {
     const i = posicionDe(idSlot);
@@ -56,7 +65,7 @@ export default function FichaRuta({ ruta, slots, visitas, duplicada, edicion, on
       )}
 
       {visitas.length === 0 ? (
-        <p className="mt-3 text-xs text-gray-500">Sin planificar. Elige un slot y un día para planificarla.</p>
+        <p className="mt-3 text-xs text-gray-500">Sin planificar.</p>
       ) : (
         <ul className="mt-3 space-y-2">
           {visitas.map((v) => (
@@ -97,6 +106,8 @@ export default function FichaRuta({ ruta, slots, visitas, duplicada, edicion, on
           ))}
         </ul>
       )}
+
+      {asignar && <AsignarEnFicha slots={slots} dia={asignar.dia} deshabilitado={asignar.deshabilitado} existe={asignar.existe} onAsignar={asignar.onAsignar} />}
     </>
   );
 

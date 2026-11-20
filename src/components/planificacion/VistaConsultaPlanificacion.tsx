@@ -132,7 +132,6 @@ export default function VistaConsultaPlanificacion({ consulta }: VistaConsultaPl
             rutas={rutas}
             propiedades={propiedadesPorId}
             descripciones={descripciones}
-            accionPorRuta={null}
             seleccionId={seleccionId}
             onElegir={setSeleccionId}
           />

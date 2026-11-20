@@ -5,6 +5,7 @@ import { cn } from '@/utils/cn';
 import { CLASES_ABC } from '@/utils/clientesMapa';
 import { formatearMonto } from '@/utils/formatoClientes';
 import type { ClienteMapa } from '@/types';
+import CampoBusqueda from '@/components/ui/CampoBusqueda';
 
 /** Cuántos clientes se listan a la vez: el mapa muestra todos, la lista es para encontrar uno */
 const LIMITE = 50;
@@ -35,26 +36,7 @@ export default function ListaClientes({ clientes, seleccionId, onElegir, onVerEn
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0 space-y-2 border-b border-gray-100 px-3 py-2">
-        <div className="relative">
-          <svg className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-          </svg>
-          <input
-            type="text"
-            value={texto}
-            onChange={(e) => onTexto(e.target.value)}
-            placeholder="Buscar cliente..."
-            aria-label="Buscar cliente por código, nombre o dirección"
-            className="w-full rounded-md border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-8 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-primary-600 focus:bg-white"
-          />
-          {texto && (
-            <button type="button" onClick={() => onTexto('')} aria-label="Borrar la búsqueda" className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600">
-              <svg className="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
-        </div>
+        <CampoBusqueda valor={texto} onCambiar={onTexto} placeholder="Buscar cliente..." etiqueta="Buscar cliente por código, nombre o dirección" />
         {filtros}
       </div>
       <ul className="min-h-0 flex-1 divide-y divide-gray-100 overflow-y-auto" aria-label="Clientes">

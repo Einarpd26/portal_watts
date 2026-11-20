@@ -1,6 +1,7 @@
 import "@/styles/globals.css";
 import { useEffect } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ToastProvider } from "@/contexts/ToastContext";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import type { AppPropsWithLayout } from "@/types";
 import { logger } from "@/lib/logger";
@@ -32,9 +33,11 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
 
   return (
     <AuthProvider>
-      <div className={`${plusJakartaSans.variable} font-sans`}>
-        {getLayout(<Component {...pageProps} />)}
-      </div>
+      <ToastProvider>
+        <div className={`${plusJakartaSans.variable} font-sans`}>
+          {getLayout(<Component {...pageProps} />)}
+        </div>
+      </ToastProvider>
     </AuthProvider>
   );
 }

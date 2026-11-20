@@ -6,10 +6,10 @@ import {
   COLOR_PLANIFICADA,
   COLOR_SIN_PLANIFICAR,
   PALETA_SLOTS,
-  accionDelPincel,
   colorDeSlot,
   descripcionDeVisita,
   etiquetaDeSlot,
+  existeVisita,
   propiedadesDeRutas,
   quedaDuplicada,
 } from "../src/utils/planificacionMapa.ts";
@@ -74,13 +74,6 @@ test("planificación: una ruta de otro día se marca tenue y nombra los días", 
   assert.equal(r1.etiqueta, "R-1 · Mar/Jue");
 });
 
-test("planificación: con el pincel activo se resaltan las rutas de ese slot en el día activo", () => {
-  const visitas = [visita(1, 10, 1, "LU"), visita(2, 20, 2, "LU"), visita(3, 10, 3, "MA")];
-  const props = propiedadesDeRutas(RUTAS, visitas, SLOTS, { ...PLAN_LU, idSlotPincel: 10 });
-  assert.deepEqual(props.map((p) => p.delPincel), [true, false, false]);
-  assert.deepEqual(propiedadesDeRutas(RUTAS, visitas, SLOTS, PLAN_LU).map((p) => p.delPincel), [false, false, false]);
-});
-
 test("cobertura: la ruta toma el color del slot que la cubre el día activo", () => {
   const [r1, r2, r3] = propiedadesDeRutas(RUTAS, [visita(1, 20, 1, "LU"), visita(2, 10, 2, "LU")], SLOTS, COB_LU);
   assert.equal(r1.estado, "del_dia");
@@ -102,11 +95,6 @@ test("cobertura: «todos» pinta toda la semana y la etiqueta lista los días", 
   assert.equal(r1.color, PALETA_SLOTS[1]);
   assert.equal(r1.etiqueta, "R-1 · Lun/Jue");
   assert.equal(r2.estado, "sin_planificar");
-});
-
-test("cobertura: nunca resalta el pincel", () => {
-  const props = propiedadesDeRutas(RUTAS, [visita(1, 10, 1, "LU")], SLOTS, { ...COB_LU, idSlotPincel: 10 });
-  assert.equal(props[0].delPincel, false);
 });
 
 test("etiqueta: la frecuencia distinta de semanal se abrevia en el código de la ruta", () => {
@@ -146,23 +134,12 @@ test("descripción de la visita: día, slot y frecuencia", () => {
   assert.equal(descripcionDeVisita({ dia: "MI", frecuencia: "impar" }, "Norte"), "Mié · Norte · sem. impar");
 });
 
-test("pincel: sobre una ruta que no está en ese slot y día, planifica", () => {
-  const visitas = [visita(1, 10, 1, "LU"), visita(2, 20, 2, "LU"), visita(3, 10, 2, "MA")];
-  assert.deepEqual(accionDelPincel(visitas, { idSlot: 10, dia: "LU", idRuta: 2, frecuencia: "semanal" }), { tipo: "agregar" });
-});
-
-test("pincel: sobre una ruta que ya está en ese slot y día, la quita", () => {
-  const visitas = [visita(7, 10, 1, "LU"), visita(8, 20, 1, "LU")];
-  assert.deepEqual(accionDelPincel(visitas, { idSlot: 10, dia: "LU", idRuta: 1, frecuencia: "semanal" }), {
-    tipo: "quitar",
-    idVisita: 7,
-  });
-});
-
-test("pincel: con par e impar en la misma celda quita la de la frecuencia activa, o la primera si no hay", () => {
-  const visitas = [visita(1, 10, 1, "LU", "impar"), visita(2, 10, 1, "LU", "par")];
-  assert.deepEqual(accionDelPincel(visitas, { idSlot: 10, dia: "LU", idRuta: 1, frecuencia: "par" }), { tipo: "quitar", idVisita: 2 });
-  assert.deepEqual(accionDelPincel(visitas, { idSlot: 10, dia: "LU", idRuta: 1, frecuencia: "semanal" }), { tipo: "quitar", idVisita: 1 });
+test("existe visita: solo si coinciden slot, día, ruta y frecuencia", () => {
+  const visitas = [visita(1, 10, 1, "LU", "impar"), visita(2, 20, 2, "LU")];
+  assert.equal(existeVisita(visitas, { idSlot: 10, dia: "LU", idRuta: 1, frecuencia: "impar" }), true);
+  assert.equal(existeVisita(visitas, { idSlot: 10, dia: "LU", idRuta: 1, frecuencia: "par" }), false);
+  assert.equal(existeVisita(visitas, { idSlot: 10, dia: "MA", idRuta: 1, frecuencia: "impar" }), false);
+  assert.equal(existeVisita(visitas, { idSlot: 20, dia: "LU", idRuta: 1, frecuencia: "impar" }), false);
 });
 
 test("aviso: planificar una ruta ya planificada la deja duplicada, salvo que sea eventual", () => {

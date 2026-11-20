@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from 'react';
-import Input from '@/components/ui/Input';
+import CampoBusqueda from '@/components/ui/CampoBusqueda';
 import { cn } from '@/utils/cn';
 import type { PropiedadesRutaEnMapa } from '@/utils/planificacionMapa';
 import type { RutaItem } from '@/types';
@@ -10,12 +10,12 @@ interface ListaRutasPlanificacionProps {
   rutas: RutaItem[];
   propiedades: ReadonlyMap<number, PropiedadesRutaEnMapa>;
   descripciones: ReadonlyMap<number, string[]>;
-  /** Qué haría un clic en cada ruta con el pincel activo; null si no hay pincel */
-  accionPorRuta: ReadonlyMap<number, 'agregar' | 'quitar'> | null;
   seleccionId: number | null;
   onElegir: (idRuta: number) => void;
   /** Altura máxima de la lista; en una columna que ya se desplaza se deja sin límite */
   claseAltura?: string;
+  /** La lista llena el alto de su contenedor y el buscador queda fijo arriba, sin desplazarse con ella */
+  llenaLaColumna?: boolean;
 }
 
 /**
@@ -26,10 +26,10 @@ export default function ListaRutasPlanificacion({
   rutas,
   propiedades,
   descripciones,
-  accionPorRuta,
   seleccionId,
   onElegir,
   claseAltura = 'max-h-64',
+  llenaLaColumna = false,
 }: ListaRutasPlanificacionProps) {
   const [filtro, setFiltro] = useState('');
   const visibles = useMemo(() => {
@@ -38,14 +38,13 @@ export default function ListaRutasPlanificacion({
   }, [rutas, filtro]);
 
   return (
-    <div className="space-y-2">
-      <Input label="Buscar ruta" compact value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Código o nombre" />
-      <ul className={cn('divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 bg-white', claseAltura)} aria-label="Rutas">
+    <div className={cn(llenaLaColumna ? 'flex min-h-0 flex-1 flex-col gap-2' : 'space-y-2')}>
+      <CampoBusqueda valor={filtro} onCambiar={setFiltro} placeholder="Código o nombre" etiqueta="Buscar ruta por código o nombre" />
+      <ul className={cn('divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 bg-white', llenaLaColumna ? 'min-h-0 flex-1' : claseAltura)} aria-label="Rutas">
         {visibles.length === 0 && <li className="px-3 py-2 text-xs text-gray-400">Sin resultados.</li>}
         {visibles.map((r) => {
           const p = propiedades.get(r.id);
           const lineas = descripciones.get(r.id) ?? [];
-          const accion = accionPorRuta?.get(r.id);
           return (
             <li key={r.id}>
               <button
@@ -68,11 +67,6 @@ export default function ListaRutasPlanificacion({
                 {p?.duplicada && (
                   <span className="shrink-0 rounded px-1 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-300" title="Planificada más de una vez en la semana">
                     Duplicada
-                  </span>
-                )}
-                {accion && (
-                  <span className="shrink-0 rounded bg-gray-900 px-1.5 text-[10px] font-semibold text-white">
-                    {accion === 'agregar' ? 'Agregar' : 'Quitar'}
                   </span>
                 )}
               </button>
