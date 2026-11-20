@@ -1,17 +1,12 @@
 "use client";
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { AbcBadge } from './AbcBadge';
 import { cn } from '@/utils/cn';
 import { formatearFecha, formatearMonto } from '@/utils/formatoClientes';
 import { useComprasCliente } from '@/hooks/useComprasCliente';
 import type { ClienteMapa, RutaItem } from '@/types';
 
-interface FichaClienteProps {
-  cliente: ClienteMapa;
-  ruta: RutaItem | undefined;
-  onCerrar: () => void;
-}
 
 function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
   return (
@@ -69,83 +64,123 @@ function Compras({ idCliente }: { idCliente: number }) {
   );
 }
 
+interface FichaClienteProps {
+  cliente: ClienteMapa;
+  ruta: RutaItem | undefined;
+  onCerrar: () => void;
+  /** panel: columna junto al mapa (escritorio) · hoja: hoja inferior que se estira (celular) */
+  variante: 'panel' | 'hoja';
+}
+
+/** Un deslizamiento de más de esta cantidad de píxeles estira o encoge la hoja */
+const UMBRAL_DESLIZAMIENTO = 30;
+
 /**
- * Ficha del cliente elegido: su clase del Pareto, lo que vendió y su historial reciente. En pantallas angostas
- * es una hoja inferior que se estira al tocar su manija y no tapa el mapa entero; en las anchas, un panel junto
- * al mapa (ADR-004 D7).
+ * Ficha del cliente elegido: su clase del Pareto, lo que vendió y su historial reciente (ADR-004 D7). En el
+ * escritorio es un panel junto al mapa. En el celular es una hoja inferior dentro del flujo, que mide un tercio
+ * de la pantalla y llega al 80 % al deslizar hacia arriba; hacia abajo se encoge y, si ya está encogida, se cierra.
+ * Quien la use debe darle `key` con el id del cliente, para que cada cliente empiece encogida.
  */
-export default function FichaCliente({ cliente, ruta, onCerrar }: FichaClienteProps) {
+export default function FichaCliente({ cliente, ruta, onCerrar, variante }: FichaClienteProps) {
   const clase = cliente.clasificacion;
   const [expandida, setExpandida] = useState(false);
+  const inicioY = useRef<number | null>(null);
+
+  const alTocar = (e: React.TouchEvent) => {
+    inicioY.current = e.touches[0]?.clientY ?? null;
+  };
+  const alSoltar = (e: React.TouchEvent) => {
+    const fin = e.changedTouches[0]?.clientY;
+    if (inicioY.current === null || fin === undefined) return;
+    const desplazamiento = inicioY.current - fin;
+    inicioY.current = null;
+    if (desplazamiento > UMBRAL_DESLIZAMIENTO) setExpandida(true);
+    else if (desplazamiento < -UMBRAL_DESLIZAMIENTO) {
+      if (expandida) setExpandida(false);
+      else onCerrar();
+    }
+  };
+
+  const contenido = (
+    <>
+    <div className="mb-3 flex items-start justify-between gap-2">
+      <div className="flex min-w-0 items-center gap-2">
+        <AbcBadge clase={clase} />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-gray-900">{cliente.nombre_comercial ?? cliente.nombre_completo}</p>
+          <p className="text-xs text-gray-400">
+            {cliente.codigo_cliente}
+            {ruta ? ` · ${ruta.codigo_ruta}` : ''}
+          </p>
+        </div>
+      </div>
+      <button type="button" onClick={onCerrar} aria-label="Cerrar la ficha" className="shrink-0 rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </div>
+
+    {!clase && <p className="mb-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-700">Cliente no habilitado: no se clasifica ni cuenta para la cobertura.</p>}
+
+    <dl className="space-y-1.5">
+      <Dato etiqueta="Rubro">{cliente.rubro}</Dato>
+      <Dato etiqueta="Ventas (6 meses)">
+        <span className="font-medium">{formatearMonto(cliente.total_ventas)}</span>
+      </Dato>
+    </dl>
+
+    <Compras key={cliente.id} idCliente={cliente.id} />
+
+    <dl className="mt-3 space-y-1.5 border-t border-gray-100 pt-2.5">
+      {cliente.ultima_compra && <Dato etiqueta="Última compra">{formatearFecha(cliente.ultima_compra)}</Dato>}
+      {cliente.telefono && (
+        <Dato etiqueta="Teléfono">
+          <a href={`tel:${cliente.telefono}`} className="text-blue-600 underline">
+            {cliente.telefono}
+          </a>
+        </Dato>
+      )}
+      <Dato etiqueta="Dirección">{cliente.direccion}</Dato>
+      {cliente.referencia && <Dato etiqueta="Referencia">{cliente.referencia}</Dato>}
+      {ruta && (
+        <Dato etiqueta="Ruta">
+          {ruta.codigo_ruta} — {ruta.ruta}
+        </Dato>
+      )}
+    </dl>
+    </>
+  );
+
+  if (variante === 'panel') {
+    return (
+      <aside aria-label={`Ficha del cliente ${cliente.codigo_cliente}`} className="flex w-80 shrink-0 flex-col overflow-hidden border-r border-gray-200 bg-white">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">{contenido}</div>
+      </aside>
+    );
+  }
 
   return (
     <aside
       aria-label={`Ficha del cliente ${cliente.codigo_cliente}`}
       className={cn(
-        'fixed inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden rounded-t-3xl border-t border-gray-200 bg-white shadow-2xl transition-[max-height] duration-300 ease-out',
-        expandida ? 'max-h-4/5' : 'max-h-1/3',
-        'xl:static xl:z-auto xl:max-h-none xl:h-full xl:w-80 xl:shrink-0 xl:rounded-none xl:border-r xl:border-t-0 xl:shadow-none'
+        'flex shrink-0 flex-col overflow-hidden rounded-t-3xl border-t border-gray-200 bg-white shadow-[0_-4px_32px_rgba(0,0,0,.1)] transition-[height] duration-300 ease-out',
+        expandida ? 'h-[80dvh]' : 'h-[33dvh]'
       )}
     >
       <button
         type="button"
         onClick={() => setExpandida((v) => !v)}
+        onTouchStart={alTocar}
+        onTouchEnd={alSoltar}
         aria-label={expandida ? 'Reducir la ficha' : 'Ampliar la ficha'}
         aria-expanded={expandida}
-        className="flex shrink-0 justify-center pb-1 pt-3 xl:hidden"
+        className="flex shrink-0 justify-center pb-2 pt-3"
       >
         <span className="h-1 w-10 rounded-full bg-gray-300" />
       </button>
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-1 xl:pt-4">
-        <div className="mb-3 flex items-start justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <AbcBadge clase={clase} />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold text-gray-900">{cliente.nombre_comercial ?? cliente.nombre_completo}</p>
-              <p className="text-xs text-gray-400">
-                {cliente.codigo_cliente}
-                {ruta ? ` · ${ruta.codigo_ruta}` : ''}
-              </p>
-            </div>
-          </div>
-          <button type="button" onClick={onCerrar} aria-label="Cerrar la ficha" className="shrink-0 rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
-
-        {!clase && <p className="mb-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-700">Cliente no habilitado: no se clasifica ni cuenta para la cobertura.</p>}
-
-        <dl className="space-y-1.5">
-          <Dato etiqueta="Rubro">{cliente.rubro}</Dato>
-          <Dato etiqueta="Ventas (6 meses)">
-            <span className="font-medium">{formatearMonto(cliente.total_ventas)}</span>
-          </Dato>
-        </dl>
-
-        <Compras key={cliente.id} idCliente={cliente.id} />
-
-        <dl className="mt-3 space-y-1.5 border-t border-gray-100 pt-2.5">
-          {cliente.ultima_compra && <Dato etiqueta="Última compra">{formatearFecha(cliente.ultima_compra)}</Dato>}
-          {cliente.telefono && (
-            <Dato etiqueta="Teléfono">
-              <a href={`tel:${cliente.telefono}`} className="text-blue-600 underline">
-                {cliente.telefono}
-              </a>
-            </Dato>
-          )}
-          <Dato etiqueta="Dirección">{cliente.direccion}</Dato>
-          {cliente.referencia && <Dato etiqueta="Referencia">{cliente.referencia}</Dato>}
-          {ruta && (
-            <Dato etiqueta="Ruta">
-              {ruta.codigo_ruta} — {ruta.ruta}
-            </Dato>
-          )}
-        </dl>
-      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8">{contenido}</div>
     </aside>
   );
 }

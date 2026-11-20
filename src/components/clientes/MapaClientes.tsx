@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FullscreenControl, Layer, Map, NavigationControl, Popup, Source } from '@vis.gl/react-maplibre';
+import { Layer, Map, NavigationControl, Popup, Source } from '@vis.gl/react-maplibre';
 import type { MapEvent, MapLayerMouseEvent, MapRef } from '@vis.gl/react-maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { ESTILO_BASE, VISTA_INICIAL, cajaDe, encuadrarEnCaja } from '@/components/mapa/baseMapa';
@@ -146,13 +146,15 @@ export function MapaClientes({ rutas, contornos, clientes, idRutaEnfoque, selecc
       onLoad={(e) => {
         registrarPines(e.target);
         setPinesListos(true);
-        encuadrar(0);
+        // Si ya hay un cliente elegido (p. ej. desde la lista del celular) el mapa abre sobre él
+        const alElegido = elegidoRef.current;
+        if (alElegido && tieneUbicacion(alElegido)) e.target.jumpTo({ center: [alElegido.longitud as number, alElegido.latitud as number], zoom: ZOOM_AL_ELEGIR });
+        else encuadrar(0);
       }}
       onResize={alRedimensionar}
       cursor={bajoElCursor ? 'pointer' : 'auto'}
     >
-      <NavigationControl position="bottom-right" showCompass={false} />
-      <FullscreenControl position="top-right" />
+      <NavigationControl position="top-left" />
 
       <Source id="rutas" type="geojson" data={datosRutas}>
         <Layer
