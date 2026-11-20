@@ -60,7 +60,7 @@ export default function FichaRuta({ ruta, slots, visitas, duplicada, edicion, as
 
       {duplicada && (
         <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          Duplicada: está planificada más de una vez en la semana. Marca una de las visitas como eventual o quita la que sobra.
+          Duplicada: está planificada más de una vez en la semana.{edicion && ' Marca una de las visitas como eventual o quita la que sobra.'}
         </p>
       )}
 

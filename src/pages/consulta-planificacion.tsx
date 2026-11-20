@@ -3,8 +3,8 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast, useToastPosition } from '@/contexts/ToastContext';
 import { useConsultaPlanificacion } from '@/hooks/useConsultaPlanificacion';
-import Alert from '@/components/ui/Alert';
 import AppLayout from '@/components/layout/AppLayout';
 import VistaConsultaPlanificacion from '@/components/planificacion/VistaConsultaPlanificacion';
 import { PERMISO_MAPA } from '@/utils/clientesScope';
@@ -14,6 +14,9 @@ import type { PageWithLayout } from '@/types';
 const ConsultaPlanificacionPage: PageWithLayout = () => {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const { showToast } = useToast();
+  // Los avisos salen por arriba: abajo quedan la hoja de la ficha y los controles del mapa
+  useToastPosition('top');
   const autorizado = !!user && user.permisos.includes(PERMISO_MAPA);
 
   useEffect(() => {
@@ -26,28 +29,20 @@ const ConsultaPlanificacionPage: PageWithLayout = () => {
 
   const { consulta, error, isLoading } = useConsultaPlanificacion(autorizado);
 
+  useEffect(() => {
+    if (error) showToast(error, 'error');
+  }, [error, showToast]);
+
   if (authLoading || !user || !autorizado) return null;
 
+  // Como la planificación del supervisor y el mapa: la pantalla llena la ventana y no se desplaza
   return (
-    <div className="min-h-full bg-gray-50">
-      <header className="px-6 pt-6">
-        <div className="mx-auto max-w-6xl">
-          <h1 className="text-xl font-extrabold tracking-tight text-gray-900">Consultar planificación</h1>
-          <p className="mt-0.5 text-sm text-gray-500">
-            Qué rutas visita cada vendedor y qué rutas quedaron sin planificar. Las rutas con trazo naranja están
-            planificadas más de una vez en la semana.
-          </p>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-6xl space-y-4 px-6 py-8">
-        {error && <Alert state="error">{error}</Alert>}
-        {isLoading ? <p className="text-sm text-gray-400">Cargando la planificación...</p> : consulta && <VistaConsultaPlanificacion consulta={consulta} />}
-      </div>
+    <div className="flex min-h-0 flex-1 flex-col gap-3 bg-gray-50 p-3 lg:p-4">
+      {isLoading ? <p className="text-sm text-gray-400">Cargando la planificación...</p> : consulta && <VistaConsultaPlanificacion consulta={consulta} />}
     </div>
   );
 };
 
-ConsultaPlanificacionPage.getLayout = (page) => <AppLayout flush>{page}</AppLayout>;
+ConsultaPlanificacionPage.getLayout = (page) => <AppLayout flush fullHeight>{page}</AppLayout>;
 
 export default ConsultaPlanificacionPage;

@@ -42,7 +42,7 @@ export function HojaInferior({ etiqueta, onCerrar, children }: HojaInferiorProps
     <aside
       aria-label={etiqueta}
       className={cn(
-        'flex shrink-0 flex-col overflow-hidden rounded-t-3xl border-t border-gray-200 bg-white shadow-[0_-4px_32px_rgba(0,0,0,.1)] transition-[height] duration-300 ease-out',
+        'relative z-20 flex shrink-0 flex-col overflow-hidden rounded-t-3xl border-t border-gray-200 bg-white shadow-[0_-4px_32px_rgba(0,0,0,.1)] transition-[height] duration-300 ease-out',
         expandida ? 'h-[80dvh]' : 'h-[33dvh]'
       )}
     >

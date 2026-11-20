@@ -167,7 +167,7 @@ export default function VistaMapaPlanificacion({
     );
 
   const mapaConControles = (
-    <div className="relative min-h-0 min-w-0 flex-1 bg-gray-100">
+    <div className="relative isolate min-h-0 min-w-0 flex-1 overflow-hidden bg-gray-100">
       {mapa ? (
         <MapaPlanificacion
           rutas={rutas}

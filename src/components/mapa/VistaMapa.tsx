@@ -75,7 +75,7 @@ export default function VistaMapa({ mapa, cobertura, idRutaInicial = null, modoI
 
   const piezas = modo === 'cobertura' ? coberturaModo.piezas : clientes.piezas;
   const mapaConControles = (
-    <div className="relative min-h-0 min-w-0 flex-1">
+    <div className="relative isolate min-h-0 min-w-0 flex-1 overflow-hidden">
       {piezas.mapa}
       <BotonPantallaCompleta activa={pantallaCompleta} onClick={alternarPantallaCompleta} />
     </div>
