@@ -1,15 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Layer, Map, NavigationControl, Popup, Source } from '@vis.gl/react-maplibre';
+import { FullscreenControl, Layer, Map, NavigationControl, Popup, Source } from '@vis.gl/react-maplibre';
 import type { MapEvent, MapLayerMouseEvent, MapRef } from '@vis.gl/react-maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { ESTILO_BASE, VISTA_INICIAL, cajaDe, encuadrarEnCaja } from '@/components/mapa/baseMapa';
-import { COLOR_CLASE, COLOR_SIN_CLASE, tieneUbicacion } from '@/utils/clientesMapa';
+import { registrarPines } from '@/components/mapa/pinesClientes';
+import { tieneUbicacion } from '@/utils/clientesMapa';
 import type { ClienteMapa, ContornoZona, RutaItem } from '@/types';
 
 const COLOR_CONTORNO = '#374151'; // gray-700
 const COLOR_RUTA = '#6b7280'; // gray-500
+const COLOR_RUTA_ENFOCADA = '#2563eb'; // blue-600: la ruta elegida en los filtros
 const MARGEN_ENCUADRE = 0.15;
 const ZOOM_MAXIMO_ENCUADRE = 15;
 const ZOOM_AL_ELEGIR = 16;
@@ -31,15 +33,16 @@ interface BajoElCursor {
   latitud: number;
 }
 
-const COLOR_POR_CLASE = ['match', ['get', 'clase'], ...Object.entries(COLOR_CLASE).flat(), COLOR_SIN_CLASE] as unknown as string;
-
 /**
- * Mapa de clientes (CU-12, ADR-005): cada cliente es un punto del color de su clase del Pareto, sobre el
- * polígono de su ruta y el contorno de la zona. Una sola fuente de datos y colores por expresiones de estilo.
+ * Mapa de clientes (CU-12, ADR-005): cada cliente es un marcador en gota del color de su clase del Pareto, sobre
+ * el polígono de su ruta y el contorno de la zona. Una sola fuente de datos; los marcadores son imágenes del
+ * mapa elegidas por expresión de estilo, así que escala a miles de clientes.
  */
 export function MapaClientes({ rutas, contornos, clientes, idRutaEnfoque, seleccionId, onElegir }: MapaClientesProps) {
   const mapaRef = useRef<MapRef>(null);
   const [bajoElCursor, setBajoElCursor] = useState<BajoElCursor | null>(null);
+  // La capa de clientes se monta recién cuando las imágenes de los marcadores ya están en el mapa
+  const [pinesListos, setPinesListos] = useState(false);
 
   const datosRutas = useMemo<GeoJSON.FeatureCollection>(
     () => ({
@@ -98,10 +101,22 @@ export function MapaClientes({ rutas, contornos, clientes, idRutaEnfoque, selecc
   }, [elegido]);
 
   // Si el mapa se monta oculto (ancho 0) el encuadre queda corrido: al hacerse visible se vuelve a encuadrar
+  // (en el celular el mapa está oculto mientras se ve la lista: si ya hay un cliente elegido, se vuelve a él)
+  const elegidoRef = useRef(elegido);
+  useEffect(() => {
+    elegidoRef.current = elegido;
+  }, [elegido]);
   const anchoAnterior = useRef(0);
   const alRedimensionar = (e: MapEvent) => {
     const ancho = e.target.getContainer().clientWidth;
-    if (anchoAnterior.current === 0 && ancho > 0) encuadrar(0);
+    if (anchoAnterior.current === 0 && ancho > 0) {
+      const alElegido = elegidoRef.current;
+      if (alElegido && tieneUbicacion(alElegido)) {
+        e.target.jumpTo({ center: [alElegido.longitud as number, alElegido.latitud as number], zoom: Math.max(e.target.getZoom(), ZOOM_AL_ELEGIR) });
+      } else {
+        encuadrar(0);
+      }
+    }
     anchoAnterior.current = ancho;
   };
 
@@ -128,22 +143,27 @@ export function MapaClientes({ rutas, contornos, clientes, idRutaEnfoque, selecc
       onClick={(e) => onElegir(idDe(e))}
       onMouseMove={alMoverElCursor}
       onMouseLeave={() => setBajoElCursor(null)}
-      onLoad={() => encuadrar(0)}
+      onLoad={(e) => {
+        registrarPines(e.target);
+        setPinesListos(true);
+        encuadrar(0);
+      }}
       onResize={alRedimensionar}
       cursor={bajoElCursor ? 'pointer' : 'auto'}
     >
       <NavigationControl position="bottom-right" showCompass={false} />
+      <FullscreenControl position="top-right" />
 
       <Source id="rutas" type="geojson" data={datosRutas}>
         <Layer
           id="rutas-relleno"
           type="fill"
-          paint={{ 'fill-color': COLOR_RUTA, 'fill-opacity': ['case', ['get', 'enfocada'], 0.18, 0.06] }}
+          paint={{ 'fill-color': ['case', ['get', 'enfocada'], COLOR_RUTA_ENFOCADA, COLOR_RUTA], 'fill-opacity': ['case', ['get', 'enfocada'], 0.12, 0.06] }}
         />
         <Layer
           id="rutas-borde"
           type="line"
-          paint={{ 'line-color': COLOR_RUTA, 'line-width': ['case', ['get', 'enfocada'], 2.5, 1] }}
+          paint={{ 'line-color': ['case', ['get', 'enfocada'], COLOR_RUTA_ENFOCADA, COLOR_RUTA], 'line-width': ['case', ['get', 'enfocada'], 2.5, 1] }}
         />
         <Layer
           id="rutas-etiqueta"
@@ -161,25 +181,30 @@ export function MapaClientes({ rutas, contornos, clientes, idRutaEnfoque, selecc
         />
       </Source>
 
-      <Source id="clientes" type="geojson" data={datosClientes}>
-        <Layer
-          id="clientes-puntos"
-          type="circle"
-          paint={{
-            'circle-color': COLOR_POR_CLASE,
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, ['case', ['get', 'seleccionado'], 6, 3], 17, ['case', ['get', 'seleccionado'], 12, 8]],
-            'circle-stroke-color': ['case', ['get', 'seleccionado'], '#111827', '#ffffff'],
-            'circle-stroke-width': ['case', ['get', 'seleccionado'], 3, 1.5],
-          }}
-        />
-      </Source>
+      {pinesListos && (
+        <Source id="clientes" type="geojson" data={datosClientes}>
+          <Layer
+            id="clientes-puntos"
+            type="symbol"
+            layout={{
+              'icon-image': ['concat', 'pin-', ['get', 'clase'], ['case', ['get', 'seleccionado'], '-sel', '']],
+              'icon-anchor': 'bottom',
+              'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.7, 17, 1],
+              'icon-allow-overlap': true,
+              'icon-ignore-placement': true,
+              // El elegido se dibuja encima de sus vecinos
+              'symbol-sort-key': ['case', ['get', 'seleccionado'], 1, 0],
+            }}
+          />
+        </Source>
+      )}
 
       {bajoElCursor && clienteBajoElCursor && (
         <Popup
           longitude={bajoElCursor.longitud}
           latitude={bajoElCursor.latitud}
           anchor="bottom"
-          offset={12}
+          offset={38}
           closeButton={false}
           closeOnClick={false}
           maxWidth="none"

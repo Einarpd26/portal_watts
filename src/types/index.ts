@@ -325,6 +325,20 @@ export interface ClienteMapa {
   ultima_compra: string | null;
 }
 
+/** Una compra de un cliente: todas las líneas de una misma venta (ntr_venta) */
+export interface CompraCliente {
+  ntr_venta: number;
+  fecha_venta: string;
+  total: number;
+  productos: number;
+}
+
+/** Ticket promedio y últimas compras de un cliente, para su ficha (null si no tiene ventas vigentes) */
+export interface ComprasCliente {
+  ticket_promedio: number | null;
+  compras: CompraCliente[];
+}
+
 /** Rutas del alcance con sus clientes clasificados (el contorno de zona solo para quien ve zonas completas) */
 export interface MapaClientes {
   rutas: RutaItem[];

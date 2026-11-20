@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from 'react';
+import { AbcBadge } from './AbcBadge';
 import { cn } from '@/utils/cn';
-import { COLOR_SIN_CLASE, DESCRIPCION_CLASE, colorDeCliente } from '@/utils/clientesMapa';
+import { DESCRIPCION_CLASE } from '@/utils/clientesMapa';
 import { formatearFecha, formatearMonto, formatearPorcentaje } from '@/utils/formatoClientes';
+import { useComprasCliente } from '@/hooks/useComprasCliente';
 import type { ClienteMapa, RutaItem } from '@/types';
 
 interface FichaClienteProps {
@@ -11,74 +14,143 @@ interface FichaClienteProps {
   onCerrar: () => void;
 }
 
-function Dato({ etiqueta, valor }: { etiqueta: string; valor: string | null }) {
-  if (!valor) return null;
+function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
   return (
-    <div>
-      <dt className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{etiqueta}</dt>
-      <dd className="text-xs text-gray-800">{valor}</dd>
+    <div className="flex gap-2 text-sm">
+      <dt className="w-24 shrink-0 text-gray-500">{etiqueta}</dt>
+      <dd className="min-w-0 text-gray-800">{children}</dd>
     </div>
   );
 }
 
+function FilaEsqueleto() {
+  return (
+    <div className="flex animate-pulse items-center justify-between py-2" aria-hidden="true">
+      <div className="h-3.5 w-20 rounded bg-gray-100" />
+      <div className="h-3.5 w-16 rounded bg-gray-100" />
+      <div className="h-3.5 w-10 rounded bg-gray-100" />
+    </div>
+  );
+}
+
+/** Ticket promedio y últimas compras: se piden al elegir el cliente, sin demorar el resto de la ficha */
+function Compras({ idCliente }: { idCliente: number }) {
+  const { compras, error, isLoading } = useComprasCliente(idCliente);
+  return (
+    <>
+      <dl className="mt-1.5">
+        <Dato etiqueta="Ticket promedio">
+          {compras?.ticket_promedio != null ? <span className="font-medium">{formatearMonto(compras.ticket_promedio)}</span> : <span className="text-gray-400">{isLoading ? '…' : '—'}</span>}
+        </Dato>
+      </dl>
+      <div className="mt-3 border-t border-gray-100 pt-2.5">
+        <h4 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500">Últimas compras</h4>
+        {isLoading && (
+          <div className="divide-y divide-gray-50">
+            {[0, 1, 2].map((i) => (
+              <FilaEsqueleto key={i} />
+            ))}
+          </div>
+        )}
+        {error && <p className="py-2 text-xs text-red-600">{error}</p>}
+        {compras && compras.compras.length === 0 && <p className="py-2 text-xs text-gray-400">Sin compras en los últimos 6 meses.</p>}
+        {compras && compras.compras.length > 0 && (
+          <ul className="divide-y divide-gray-50">
+            {compras.compras.map((c) => (
+              <li key={c.ntr_venta} className="flex items-center justify-between py-2 text-xs">
+                <span className="text-gray-500">{formatearFecha(c.fecha_venta)}</span>
+                <span className="font-semibold text-gray-900">{formatearMonto(c.total)}</span>
+                <span className="text-gray-400">{c.productos} prod.</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </>
+  );
+}
+
 /**
- * Ficha del cliente elegido: su clase del Pareto y cuánto vendió. En pantallas angostas es una hoja inferior que
- * no tapa el mapa entero; en las anchas, una tarjeta de la columna lateral (ADR-004 D7).
+ * Ficha del cliente elegido: su clase del Pareto, lo que vendió y su historial reciente. En pantallas angostas
+ * es una hoja inferior que se estira al tocar su manija y no tapa el mapa entero; en las anchas, un panel junto
+ * al mapa (ADR-004 D7).
  */
 export default function FichaCliente({ cliente, ruta, onCerrar }: FichaClienteProps) {
   const clase = cliente.clasificacion;
+  const [expandida, setExpandida] = useState(false);
+
   return (
     <aside
       aria-label={`Ficha del cliente ${cliente.codigo_cliente}`}
       className={cn(
-        'fixed inset-x-0 bottom-0 z-40 max-h-1/2 overflow-y-auto rounded-t-2xl border border-gray-200 bg-white p-4 shadow-2xl',
-        'lg:static lg:z-auto lg:max-h-none lg:rounded-2xl lg:shadow-sm'
+        'fixed inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden rounded-t-3xl border-t border-gray-200 bg-white shadow-2xl transition-[max-height] duration-300 ease-out',
+        expandida ? 'max-h-4/5' : 'max-h-1/3',
+        'xl:static xl:z-auto xl:max-h-none xl:h-full xl:w-80 xl:shrink-0 xl:rounded-none xl:border-r xl:border-t-0 xl:shadow-none'
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-start gap-2">
-          {/* El color de la clase es un dato del mapa: se aplica como estilo */}
-          <span
-            className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-            style={{ backgroundColor: clase ? colorDeCliente(clase) : COLOR_SIN_CLASE }}
-            aria-label={clase ? `Clase ${clase}` : 'No habilitado'}
-          >
-            {clase ?? '–'}
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-gray-900">{cliente.nombre_comercial ?? cliente.nombre_completo}</p>
-            <p className="text-xs text-gray-500">
-              {cliente.codigo_cliente}
-              {ruta ? ` · ${ruta.codigo_ruta}` : ''}
-            </p>
+      <button
+        type="button"
+        onClick={() => setExpandida((v) => !v)}
+        aria-label={expandida ? 'Reducir la ficha' : 'Ampliar la ficha'}
+        aria-expanded={expandida}
+        className="flex shrink-0 justify-center pb-1 pt-3 xl:hidden"
+      >
+        <span className="h-1 w-10 rounded-full bg-gray-300" />
+      </button>
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-1 xl:pt-4">
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <AbcBadge clase={clase} />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-gray-900">{cliente.nombre_comercial ?? cliente.nombre_completo}</p>
+              <p className="text-xs text-gray-400">
+                {cliente.codigo_cliente}
+                {ruta ? ` · ${ruta.codigo_ruta}` : ''}
+              </p>
+            </div>
           </div>
+          <button type="button" onClick={onCerrar} aria-label="Cerrar la ficha" className="shrink-0 rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onCerrar}
-          aria-label="Cerrar la ficha"
-          className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100"
-        >
-          Cerrar
-        </button>
+
+        <p className="mb-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-700">
+          {clase
+            ? `${DESCRIPCION_CLASE[clase]}. Con él, la ruta acumula el ${formatearPorcentaje(cliente.porcentaje_acumulado)} de sus ventas.`
+            : 'Cliente no habilitado: no se clasifica ni cuenta para la cobertura.'}
+        </p>
+
+        <dl className="space-y-1.5">
+          <Dato etiqueta="Rubro">{cliente.rubro}</Dato>
+          <Dato etiqueta="Ventas (6 meses)">
+            <span className="font-medium">{formatearMonto(cliente.total_ventas)}</span>
+          </Dato>
+        </dl>
+
+        <Compras key={cliente.id} idCliente={cliente.id} />
+
+        <dl className="mt-3 space-y-1.5 border-t border-gray-100 pt-2.5">
+          {cliente.ultima_compra && <Dato etiqueta="Última compra">{formatearFecha(cliente.ultima_compra)}</Dato>}
+          {cliente.telefono && (
+            <Dato etiqueta="Teléfono">
+              <a href={`tel:${cliente.telefono}`} className="text-blue-600 underline">
+                {cliente.telefono}
+              </a>
+            </Dato>
+          )}
+          <Dato etiqueta="Dirección">{cliente.direccion}</Dato>
+          {cliente.referencia && <Dato etiqueta="Referencia">{cliente.referencia}</Dato>}
+          {ruta && (
+            <Dato etiqueta="Ruta">
+              {ruta.codigo_ruta} — {ruta.ruta}
+            </Dato>
+          )}
+        </dl>
       </div>
-
-      <p className="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-700">
-        {clase
-          ? `${DESCRIPCION_CLASE[clase]}. Vendió ${formatearMonto(cliente.total_ventas)} en 6 meses; con él, la ruta acumula el ${formatearPorcentaje(cliente.porcentaje_acumulado)} de sus ventas.`
-          : 'Cliente no habilitado: no se clasifica ni cuenta para la cobertura.'}
-      </p>
-
-      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2">
-        <Dato etiqueta="Última compra" valor={formatearFecha(cliente.ultima_compra)} />
-        <Dato etiqueta="Rubro" valor={cliente.rubro} />
-        <Dato etiqueta="Teléfono" valor={cliente.telefono} />
-        <Dato etiqueta="Ruta" valor={ruta ? `${ruta.codigo_ruta} — ${ruta.ruta}` : null} />
-      </dl>
-      <dl className="mt-2 space-y-2">
-        <Dato etiqueta="Dirección" valor={cliente.direccion} />
-        <Dato etiqueta="Referencia" valor={cliente.referencia} />
-      </dl>
     </aside>
   );
 }

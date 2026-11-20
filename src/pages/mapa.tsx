@@ -32,25 +32,13 @@ const MapaPage: PageWithLayout = () => {
   if (authLoading || !user || !autorizado) return null;
 
   return (
-    <div className="min-h-full bg-gray-50">
-      <header className="px-6 pt-6">
-        <div className="mx-auto max-w-6xl">
-          <h1 className="text-xl font-extrabold tracking-tight text-gray-900">Mapa de clientes</h1>
-          <p className="mt-0.5 text-sm text-gray-500">
-            Cada cliente se clasifica dentro de su ruta según lo que vendió en los últimos 6 meses (A, B y C), y se marca
-            como inactivo si no compró en ese período.
-          </p>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-6xl space-y-4 px-6 py-8">
-        {error && <Alert state="error">{error}</Alert>}
-        {isLoading ? <p className="text-sm text-gray-400">Cargando el mapa de clientes...</p> : mapa && <VistaMapaClientes mapa={mapa} idRutaInicial={idRutaInicial} />}
-      </div>
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden bg-gray-50 p-3 lg:p-4">
+      {error && <Alert state="error">{error}</Alert>}
+      {isLoading ? <p className="text-sm text-gray-400">Cargando el mapa de clientes...</p> : mapa && <VistaMapaClientes mapa={mapa} idRutaInicial={idRutaInicial} />}
     </div>
   );
 };
 
-MapaPage.getLayout = (page) => <AppLayout flush>{page}</AppLayout>;
+MapaPage.getLayout = (page) => <AppLayout flush fullHeight>{page}</AppLayout>;
 
 export default MapaPage;
