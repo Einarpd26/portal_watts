@@ -1,6 +1,5 @@
 "use client";
 
-import Link from 'next/link';
 import { BotonCerrarFicha } from '@/components/mapa/BotonCerrarFicha';
 import { Dato } from '@/components/mapa/Dato';
 import { HojaInferior } from '@/components/mapa/HojaInferior';
@@ -13,6 +12,8 @@ interface FichaRutaProps {
   /** Mes calculado («2026-11-01») y momento del último recálculo; null si todavía no se calculó */
   mes: string | null;
   calculadoEn: string | null;
+  /** Cambia al modo Clientes del mapa con esta ruta elegida (CU-13 A2) */
+  onVerClientes: (idRuta: number) => void;
   onCerrar: () => void;
   /** panel: columna junto al mapa (escritorio) · hoja: hoja inferior que se estira (celular) */
   variante: 'panel' | 'hoja';
@@ -20,10 +21,10 @@ interface FichaRutaProps {
 
 /**
  * Ficha de la ruta elegida en la cobertura: su porcentaje con el tramo, cuántos clientes faltan por atender y un
- * acceso a sus clientes (CU-13 A2). En el escritorio es un panel junto al mapa; en el celular, una hoja inferior
+ * acceso a sus clientes, que cambia el mapa al modo Clientes (CU-13 A2). En el escritorio es un panel junto al mapa; en el celular, una hoja inferior
  * con gestos. Quien la use debe darle `key` con el id de la ruta.
  */
-export default function FichaRuta({ ruta, mes, calculadoEn, onCerrar, variante }: FichaRutaProps) {
+export default function FichaRuta({ ruta, mes, calculadoEn, onVerClientes, onCerrar, variante }: FichaRutaProps) {
   const tramo = tramoDe(ruta.porcentaje);
   const etiqueta = `Ficha de la ruta ${ruta.codigo_ruta}`;
   const faltan = ruta.clientes_habilitados - ruta.clientes_atendidos;
@@ -62,9 +63,13 @@ export default function FichaRuta({ ruta, mes, calculadoEn, onCerrar, variante }
       </dl>
       <p className="mt-3 text-[11px] text-gray-500">Las ventas de hoy se incorporan en el próximo recálculo nocturno.</p>
 
-      <Link href={`/mapa?ruta=${ruta.id}`} className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700">
+      <button
+        type="button"
+        onClick={() => onVerClientes(ruta.id)}
+        className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
+      >
         Ver clientes de la ruta
-      </Link>
+      </button>
     </>
   );
 

@@ -5,11 +5,15 @@ import type { CoberturaListado } from '@/types';
 
 type Carga = { cobertura: CoberturaListado | null; error: string | null };
 
-/** Cobertura de las rutas del alcance del usuario (CU-13). Se pide una vez: el dato se recalcula cada noche */
-export function useCobertura() {
+/**
+ * Cobertura de las rutas del alcance del usuario (CU-13). Se pide una vez: el dato se recalcula cada noche. Solo se
+ * pide cuando `habilitado` es true: el Vendedor no consulta la cobertura y recibiría un 403.
+ */
+export function useCobertura(habilitado: boolean) {
   const [carga, setCarga] = useState<Carga | null>(null);
 
   useEffect(() => {
+    if (!habilitado) return;
     let vigente = true;
     const terminar = (resultado: Carga) => {
       if (vigente) setCarga(resultado);
@@ -30,7 +34,7 @@ export function useCobertura() {
     return () => {
       vigente = false;
     };
-  }, []);
+  }, [habilitado]);
 
-  return { cobertura: carga?.cobertura ?? null, error: carga?.error ?? null, isLoading: carga === null };
+  return { cobertura: carga?.cobertura ?? null, error: carga?.error ?? null, isLoading: habilitado && carga === null };
 }

@@ -1,6 +1,11 @@
 // Alcance de la consulta de clientes y de la cobertura (CU-12 y CU-13, ADR-005 D4). Gerencia ve toda la empresa, el
 // Fiscalizador su sucursal, el Supervisor las zonas que supervisa y el Vendedor solo las rutas donde es titular.
 export const PERMISO_MAPA = 'mapa:consultar';
+/**
+ * Quien ve la cobertura (CU-13): el Vendedor consulta el mapa de clientes pero no la cobertura, y lo distingue que no
+ * gestiona rutas. El permiso solo decide qué se le ofrece en pantalla: el servidor aplica `alcanceDeCobertura`.
+ */
+export const PERMISO_COBERTURA = 'rutas:gestionar';
 const ROL_SUPERVISOR = 'SUPERVISOR';
 const ROL_VENDEDOR = 'VENDEDOR';
 
