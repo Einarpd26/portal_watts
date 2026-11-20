@@ -14,6 +14,8 @@ interface ListaRutasPlanificacionProps {
   accionPorRuta: ReadonlyMap<number, 'agregar' | 'quitar'> | null;
   seleccionId: number | null;
   onElegir: (idRuta: number) => void;
+  /** Altura máxima de la lista; en una columna que ya se desplaza se deja sin límite */
+  claseAltura?: string;
 }
 
 /**
@@ -27,6 +29,7 @@ export default function ListaRutasPlanificacion({
   accionPorRuta,
   seleccionId,
   onElegir,
+  claseAltura = 'max-h-64',
 }: ListaRutasPlanificacionProps) {
   const [filtro, setFiltro] = useState('');
   const visibles = useMemo(() => {
@@ -37,7 +40,7 @@ export default function ListaRutasPlanificacion({
   return (
     <div className="space-y-2">
       <Input label="Buscar ruta" compact value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Código o nombre" />
-      <ul className="max-h-64 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 bg-white" aria-label="Rutas">
+      <ul className={cn('divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 bg-white', claseAltura)} aria-label="Rutas">
         {visibles.length === 0 && <li className="px-3 py-2 text-xs text-gray-400">Sin resultados.</li>}
         {visibles.map((r) => {
           const p = propiedades.get(r.id);

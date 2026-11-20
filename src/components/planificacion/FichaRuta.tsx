@@ -1,6 +1,8 @@
 "use client";
 
-import { cn } from '@/utils/cn';
+import { BotonCerrarFicha } from '@/components/mapa/BotonCerrarFicha';
+import { HojaInferior } from '@/components/mapa/HojaInferior';
+import { PanelLateral } from '@/components/mapa/PanelLateral';
 import { FRECUENCIAS, FRECUENCIA_LABELS } from '@/utils/frecuencias';
 import { colorDeSlot, descripcionDeVisita, etiquetaDeSlot } from '@/utils/planificacionMapa';
 import type { Frecuencia, RutaItem, SlotItem, VisitaPlanificada } from '@/types';
@@ -18,27 +20,25 @@ interface FichaRutaProps {
     onQuitar: (visita: VisitaPlanificada) => void;
   } | null;
   onCerrar: () => void;
+  /** panel: columna junto al mapa (escritorio) · hoja: hoja inferior que se estira (celular) */
+  variante: 'panel' | 'hoja';
 }
 
 /**
- * Datos de la ruta elegida y todas sus visitas de la semana (CU-09 A2). En pantallas angostas es una hoja
- * inferior que no tapa el mapa entero; en las anchas, una tarjeta de la columna lateral.
+ * Datos de la ruta elegida y todas sus visitas de la semana (CU-09 A2). En el escritorio es un panel junto al mapa;
+ * en el celular, una hoja inferior con gestos. Quien la use debe darle `key` con el id de la ruta, para que cada
+ * ruta empiece con la hoja encogida.
  */
-export default function FichaRuta({ ruta, slots, visitas, duplicada, edicion, onCerrar }: FichaRutaProps) {
+export default function FichaRuta({ ruta, slots, visitas, duplicada, edicion, onCerrar, variante }: FichaRutaProps) {
   const posicionDe = (idSlot: number) => slots.findIndex((s) => s.id === idSlot);
   const nombreDe = (idSlot: number) => {
     const i = posicionDe(idSlot);
     return i === -1 ? 'Slot eliminado' : etiquetaDeSlot(slots[i], i);
   };
 
-  return (
-    <aside
-      aria-label={`Ficha de la ruta ${ruta.codigo_ruta}`}
-      className={cn(
-        'fixed inset-x-0 bottom-0 z-40 max-h-1/2 overflow-y-auto rounded-t-2xl border border-gray-200 bg-white p-4 shadow-2xl',
-        'lg:static lg:z-auto lg:max-h-none lg:rounded-2xl lg:shadow-sm'
-      )}
-    >
+  const etiqueta = `Ficha de la ruta ${ruta.codigo_ruta}`;
+  const contenido = (
+    <>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-bold text-gray-900">
@@ -46,14 +46,7 @@ export default function FichaRuta({ ruta, slots, visitas, duplicada, edicion, on
           </p>
           {ruta.descripcion_ruta && <p className="text-xs text-gray-500">{ruta.descripcion_ruta}</p>}
         </div>
-        <button
-          type="button"
-          onClick={onCerrar}
-          aria-label="Cerrar la ficha"
-          className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100"
-        >
-          Cerrar
-        </button>
+        <BotonCerrarFicha onClick={onCerrar} />
       </div>
 
       {duplicada && (
@@ -104,6 +97,14 @@ export default function FichaRuta({ ruta, slots, visitas, duplicada, edicion, on
           ))}
         </ul>
       )}
-    </aside>
+    </>
+  );
+
+  return variante === 'panel' ? (
+    <PanelLateral etiqueta={etiqueta}>{contenido}</PanelLateral>
+  ) : (
+    <HojaInferior etiqueta={etiqueta} onCerrar={onCerrar}>
+      {contenido}
+    </HojaInferior>
   );
 }

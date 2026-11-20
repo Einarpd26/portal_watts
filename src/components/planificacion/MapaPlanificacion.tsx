@@ -112,7 +112,7 @@ export function MapaPlanificacion({ rutas, contornos, propiedades, descripciones
       onResize={alRedimensionar}
       cursor={bajoElCursor ? 'pointer' : 'auto'}
     >
-      <NavigationControl position="bottom-right" showCompass={false} />
+      <NavigationControl position="top-left" showCompass={false} />
 
       <Source id="rutas" type="geojson" data={datosRutas}>
         <Layer

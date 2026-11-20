@@ -16,7 +16,7 @@ interface LeyendaMapaProps {
   diaActivo: string | null;
 }
 
-interface Fila {
+export interface Fila {
   etiqueta: string;
   color: string;
   cantidad: number;
@@ -24,7 +24,7 @@ interface Fila {
   trazo?: boolean;
 }
 
-function filasDe(modo: ModoMapa, c: ConteoDeRutas, diaActivo: string | null): Fila[] {
+export function filasDe(modo: ModoMapa, c: ConteoDeRutas, diaActivo: string | null): Fila[] {
   const duplicadas: Fila = { etiqueta: 'Duplicada (RN-04)', color: COLOR_DUPLICADA, cantidad: c.duplicadas, trazo: true };
   if (modo === 'planificacion') {
     return [

@@ -19,6 +19,7 @@ import ResumenSemana from '@/components/planificacion/ResumenSemana';
 import VisitaModal, { type VisitaModalEstado } from '@/components/planificacion/VisitaModal';
 import { useAtajoTecla } from '@/hooks/useAtajoTecla';
 import { resumirPlanificacion, semanaIso } from '@/utils/planificacionResumen';
+import { cn } from '@/utils/cn';
 import { logger } from '@/lib/logger';
 import type { PageWithLayout } from '@/types';
 
@@ -74,6 +75,9 @@ const PlanificacionPage: PageWithLayout = () => {
   const alternarEdicion = () => setEditMode((v) => !v);
   useAtajoTecla('e', alternarEdicion, puedeEditar);
 
+  // El mapa llena la ventana sin que la página se desplace; el calendario sí crece y se desplaza
+  const enMapa = vista === 'mapa';
+
   const nombreDeSlot = (idSlot: number) => {
     const i = listado.slots.findIndex((s) => s.id === idSlot);
     return listado.slots[i]?.nombre ?? `Slot ${i + 1}`;
@@ -89,39 +93,45 @@ const PlanificacionPage: PageWithLayout = () => {
   if (!user.permisos.includes('planificacion:asignar')) return null;
 
   return (
-    <div className="min-h-full bg-gray-50">
-      <div className="mx-auto max-w-6xl space-y-4 px-6 pt-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className={cn('flex flex-col bg-gray-50', enMapa ? 'min-h-0 flex-1' : 'min-h-full flex-none')}>
+      <div className="w-full space-y-4 px-4 pt-4 lg:px-6 lg:pt-6">
+        <div className="flex min-h-11 flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-xl font-extrabold tracking-tight text-gray-900">Planificación de rutas</h1>
             {listado.es_supervisor && vista === 'calendario' && <LeyendaPlanificacion />}
           </div>
           {listado.es_supervisor && (
             <div className="flex flex-wrap items-center gap-2">
-              {listado.slots.length > 0 && <ConmutadorVista vista={vista} onCambiar={setVistaElegida} />}
               {vista === 'calendario' && editMode && (
                 <Button variant="secondary" onClick={() => void crearSlot()} disabled={isSubmitting || isLoading}>
                   Agregar slot
                 </Button>
               )}
               {vista === 'calendario' && <BotonModoEdicion editMode={editMode} onToggle={alternarEdicion} disabled={isLoading} />}
+              {/* Al final de la fila: así el conmutador no se corre cuando aparecen los botones del calendario */}
+              {listado.slots.length > 0 && <ConmutadorVista vista={vista} onCambiar={setVistaElegida} />}
             </div>
           )}
         </div>
 
-        {listado.es_supervisor && !isLoading && <BarraContexto nombre={nombreDeUsuario} sinSlot={listado.disponibles.length} />}
+        {listado.es_supervisor && !isLoading && (
+          // En el celular el mapa ocupa todo el alto y la pantalla no se desplaza: ahí la barra de contexto no cabe
+          <div className={cn(enMapa && 'hidden lg:block')}>
+            <BarraContexto nombre={nombreDeUsuario} sinSlot={listado.disponibles.length} />
+          </div>
+        )}
         {listado.es_supervisor && vista === 'calendario' && editMode && <AvisoModoEdicion />}
       </div>
 
       {toast && (
-        <div className="mx-auto max-w-6xl px-6 pt-4">
+        <div className="w-full px-4 pt-4 lg:px-6">
           <Alert state={toast.type === 'success' ? 'success' : 'error'} onClose={clearToast}>
             {toast.message}
           </Alert>
         </div>
       )}
 
-      <div className="mx-auto max-w-6xl space-y-4 px-6 py-8">
+      <div className={cn('w-full px-4 lg:px-6', enMapa ? 'flex min-h-0 flex-1 flex-col pb-4 pt-4' : 'space-y-4 py-6 lg:py-8')}>
         {isLoading ? (
           <p className="text-sm text-gray-400">Cargando slots...</p>
         ) : !listado.es_supervisor ? (
@@ -139,7 +149,7 @@ const PlanificacionPage: PageWithLayout = () => {
         ) : (
           <>
             {/* El mapa se monta una vez y se conserva oculto en el Calendario: no pierde el encuadre ni vuelve a pedir los polígonos */}
-            <div hidden={vista !== 'mapa'}>
+            <div className={cn(enMapa ? 'flex min-h-0 flex-1 flex-col' : 'hidden')}>
               <VistaMapaPlanificacion
                 slots={listado.slots}
                 visitas={listado.visitas}
@@ -154,7 +164,7 @@ const PlanificacionPage: PageWithLayout = () => {
                 }}
               />
             </div>
-            <div hidden={vista !== 'calendario'} className="space-y-4">
+            <div className={cn('space-y-4', enMapa && 'hidden')}>
               <PlanificacionGrid
                 slots={listado.slots}
                 disponibles={listado.disponibles}
@@ -171,7 +181,7 @@ const PlanificacionPage: PageWithLayout = () => {
                 onSeleccionarVisita={(visita) => setVisitaModal({ tipo: 'editar', visita, nombreSlot: nombreDeSlot(visita.id_slot) })}
               />
             </div>
-            <ResumenSemana semana={semanaActual} resumen={resumen} />
+            {!enMapa && <ResumenSemana semana={semanaActual} resumen={resumen} />}
           </>
         )}
       </div>
@@ -190,6 +200,6 @@ const PlanificacionPage: PageWithLayout = () => {
   );
 };
 
-PlanificacionPage.getLayout = (page) => <AppLayout flush>{page}</AppLayout>;
+PlanificacionPage.getLayout = (page) => <AppLayout flush fullHeight>{page}</AppLayout>;
 
 export default PlanificacionPage;
