@@ -24,3 +24,13 @@ Lista de mejoras conocidas que no bloquean el avance del producto. Cada ítem di
 - **Qué falta:** `public/manifest.json` usa `icon-watts.png` de 192×192 como único ícono. Falta una versión de 512×512 para una pantalla de bienvenida de mejor calidad al instalar en el celular.
 - **Impacto:** no bloqueante; la instalación funciona sin ella (RNF-06).
 - **Referencia:** `docs/diseno/tokens-de-marca.md`.
+
+## DT-03. Dos librerías para generar Excel
+
+- **Fecha:** 20 de noviembre de 2026
+- **Estado:** aceptada (riesgo aceptado por el plazo de la entrega del Ciclo 4)
+- **Qué falta:** unificar en una sola librería. Hoy `write-excel-file` genera en el navegador el informe de importación de rutas (CU-16, `src/lib/descargarInformeExcel.ts`) y `exceljs` genera en el servidor los tres reportes del Ciclo 4 (`src/lib/reporteExcel.ts`, ADR-005 D6).
+- **Por qué importa:** son dos dependencias para lo mismo. `exceljs` pesa unos 23 MB (contra 2,9 MB de `write-excel-file`) y arrastra `uuid` con una vulnerabilidad moderada: `npm audit` informa 2 avisos moderados, que son los únicos que quedan.
+- **Por qué se acepta:** `uuid` se usa solo del lado servidor, al armar el archivo, y no recibe datos del usuario. El arreglo que propone `npm audit --force` baja `exceljs` a la 3.4.0, una regresión de versión mayor que no se justifica.
+- **Propuesta:** migrar `reporteExcel.ts` a `write-excel-file/node`, comprobar que soporta el formato de los reportes (colores por tramo, fila resaltada de «Duplicada», anchos y fila fija de encabezado), probar los tres reportes con la pasada de API (`evidencia-api-ciclo4.py`) y abrir un archivo real en Excel. Después quitar `exceljs`.
+- **Cuándo:** después de la entrega del Ciclo 4, antes del uso con usuarios reales.
