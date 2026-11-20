@@ -25,6 +25,9 @@ const MapaPage: PageWithLayout = () => {
   }, [authLoading, user, autorizado, router]);
 
   const { mapa, error, isLoading } = useMapaClientes();
+  // La cobertura enlaza aquí con ?ruta=ID para ver los clientes de una ruta
+  const ruta = Number(router.query.ruta);
+  const idRutaInicial = Number.isInteger(ruta) && ruta > 0 ? ruta : null;
 
   if (authLoading || !user || !autorizado) return null;
 
@@ -42,7 +45,7 @@ const MapaPage: PageWithLayout = () => {
 
       <div className="mx-auto max-w-6xl space-y-4 px-6 py-8">
         {error && <Alert state="error">{error}</Alert>}
-        {isLoading ? <p className="text-sm text-gray-400">Cargando el mapa de clientes...</p> : mapa && <VistaMapaClientes mapa={mapa} />}
+        {isLoading ? <p className="text-sm text-gray-400">Cargando el mapa de clientes...</p> : mapa && <VistaMapaClientes mapa={mapa} idRutaInicial={idRutaInicial} />}
       </div>
     </div>
   );

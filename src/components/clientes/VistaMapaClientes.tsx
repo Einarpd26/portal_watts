@@ -10,14 +10,19 @@ import type { MapaClientes as DatosMapa } from '@/types';
 
 interface VistaMapaClientesProps {
   mapa: DatosMapa;
+  /** Ruta con la que se abre el mapa (p. ej. desde la cobertura); ignorada si no está en el alcance */
+  idRutaInicial?: number | null;
 }
 
 /**
  * Mapa de clientes (CU-12, ADR-005): columna con filtros (que hacen de leyenda), ficha y lista, y el mapa con
  * un punto por cliente del color de su clase. Es de solo lectura.
  */
-export default function VistaMapaClientes({ mapa }: VistaMapaClientesProps) {
-  const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIALES);
+export default function VistaMapaClientes({ mapa, idRutaInicial = null }: VistaMapaClientesProps) {
+  const [filtros, setFiltros] = useState<Filtros>(() => ({
+    ...FILTROS_INICIALES,
+    idRuta: idRutaInicial !== null && mapa.rutas.some((r) => r.id === idRutaInicial) ? idRutaInicial : null,
+  }));
   const [seleccionId, setSeleccionId] = useState<number | null>(null);
 
   const rutas = useMemo(() => [...mapa.rutas].sort((a, b) => a.codigo_ruta.localeCompare(b.codigo_ruta)), [mapa.rutas]);

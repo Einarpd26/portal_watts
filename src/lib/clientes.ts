@@ -1,31 +1,19 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { contornosDeZonas, listarRutas } from '@/lib/rutas';
+import { todas } from '@/lib/paginar';
 import { primero } from '@/utils/postgrest';
 import type { AlcanceClientes } from '@/utils/clientesScope';
 import type { ClaseAbc, ClienteMapa, MapaClientes } from '@/types';
 
 export type ClientesResultado = { ok: true; data: MapaClientes } | { ok: false };
 
-/** Filas por consulta: PostgREST corta en 1000 (supabase/config.toml), así que se pide por páginas */
-const PAGINA = 1000;
-
-interface RutaDeAlcance {
+export interface RutaDeAlcance {
   id: number;
   id_zona: number;
 }
 
 const unicas = (rutas: RutaDeAlcance[]) => [...new Map(rutas.map((r) => [r.id, r])).values()];
 
-/** Todas las filas de una consulta, pidiéndolas por páginas */
-async function todas<T>(pagina: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: unknown }>): Promise<T[] | null> {
-  const filas: T[] = [];
-  for (let desde = 0; ; desde += PAGINA) {
-    const { data, error } = await pagina(desde, desde + PAGINA - 1);
-    if (error) return null;
-    filas.push(...(data ?? []));
-    if ((data ?? []).length < PAGINA) return filas;
-  }
-}
 
 async function rutasDeSucursales(idsSucursal: number[]): Promise<RutaDeAlcance[] | null> {
   const { data, error } = await createAdminClient()
@@ -66,7 +54,7 @@ async function rutasDeVendedor(idVendedor: number): Promise<RutaDeAlcance[] | nu
  * Rutas que el alcance permite ver. `enZonaCompleta` son las de quien ve zonas enteras (todo, sucursal o
  * supervisión): solo de ellas se dibuja el contorno de zona. Las rutas de un vendedor se ven solas.
  */
-async function rutasEnAlcance(
+export async function rutasEnAlcance(
   alcance: Exclude<AlcanceClientes, { tipo: 'denegado' }>,
   idPersona: number
 ): Promise<{ todas: RutaDeAlcance[]; enZonaCompleta: RutaDeAlcance[] } | null> {

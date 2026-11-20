@@ -1,4 +1,4 @@
-// Alcance de la consulta de clientes en el mapa (CU-12, ADR-005 D4). Gerencia ve toda la empresa, el
+// Alcance de la consulta de clientes y de la cobertura (CU-12 y CU-13, ADR-005 D4). Gerencia ve toda la empresa, el
 // Fiscalizador su sucursal, el Supervisor las zonas que supervisa y el Vendedor solo las rutas donde es titular.
 export const PERMISO_MAPA = 'mapa:consultar';
 const ROL_SUPERVISOR = 'SUPERVISOR';
@@ -30,4 +30,12 @@ export function alcanceDeClientes(solicitante: { roles: RolDeConsulta[] }): Alca
   const comoVendedor = conPermiso.some((r) => r.codigo === ROL_VENDEDOR);
   if (sucursales.length === 0 && !comoSupervisor && !comoVendedor) return { tipo: 'denegado' };
   return { tipo: 'acotado', sucursales, comoSupervisor, comoVendedor };
+}
+
+/**
+ * Alcance de la cobertura de rutas (CU-13): el mismo de los clientes, salvo que el Vendedor no la consulta.
+ * Un vendedor que además tenga otro rol conserva el alcance de ese otro rol.
+ */
+export function alcanceDeCobertura(solicitante: { roles: RolDeConsulta[] }): AlcanceClientes {
+  return alcanceDeClientes({ roles: solicitante.roles.filter((r) => r.codigo !== ROL_VENDEDOR) });
 }

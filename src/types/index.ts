@@ -332,6 +332,30 @@ export interface MapaClientes {
   clientes: ClienteMapa[];
 }
 
+// 10e. Cobertura de rutas (CU-13, ADR-005 D3)
+export interface RutaCobertura {
+  id: number;
+  codigo_ruta: string;
+  ruta: string;
+  id_zona: number;
+  codigo_zona: string;
+  id_supervisor: number | null;
+  supervisor_nombre: string | null;
+  clientes_habilitados: number;
+  clientes_atendidos: number;
+  /** De 0 a 100, con un decimal */
+  porcentaje: number;
+  geojson: PoligonoRuta;
+}
+
+export interface CoberturaListado {
+  rutas: RutaCobertura[];
+  contornos: ContornoZona[];
+  /** Mes calculado (primer día, «2026-11-01») y momento del último recálculo; null si todavía no se calculó */
+  mes: string | null;
+  calculado_en: string | null;
+}
+
 // 11. Rutas comerciales (CU-05)
 export interface PoligonoRuta {
   type: 'Polygon';
