@@ -29,24 +29,13 @@ const CoberturaPage: PageWithLayout = () => {
   if (authLoading || !user || !autorizado) return null;
 
   return (
-    <div className="min-h-full bg-gray-50">
-      <header className="px-6 pt-6">
-        <div className="mx-auto max-w-6xl">
-          <h1 className="text-xl font-extrabold tracking-tight text-gray-900">Cobertura de rutas</h1>
-          <p className="mt-0.5 text-sm text-gray-500">
-            Porcentaje de clientes habilitados de cada ruta que compraron al menos una vez en el mes en curso.
-          </p>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-6xl space-y-4 px-6 py-8">
-        {error && <Alert state="error">{error}</Alert>}
-        {isLoading ? <p className="text-sm text-gray-400">Cargando la cobertura...</p> : cobertura && <VistaCobertura cobertura={cobertura} />}
-      </div>
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden bg-gray-50 p-3 lg:p-4">
+      {error && <Alert state="error">{error}</Alert>}
+      {isLoading ? <p className="text-sm text-gray-400">Cargando la cobertura...</p> : cobertura && <VistaCobertura cobertura={cobertura} />}
     </div>
   );
 };
 
-CoberturaPage.getLayout = (page) => <AppLayout flush>{page}</AppLayout>;
+CoberturaPage.getLayout = (page) => <AppLayout flush fullHeight>{page}</AppLayout>;
 
 export default CoberturaPage;

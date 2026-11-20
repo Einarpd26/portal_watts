@@ -70,6 +70,18 @@ export function MapaCobertura({ rutas, contornos, seleccionId, onElegir }: MapaC
   );
   useEffect(() => encuadrar(600), [encuadrar]);
 
+  // Al elegir una ruta (p. ej. desde la lista) el mapa se encuadra sobre ella; al soltarla, vuelve a mostrar todas
+  const cajaElegida = useMemo(() => {
+    const elegida = rutas.find((r) => r.id === seleccionId);
+    return elegida ? cajaDe([elegida.geojson]) : null;
+  }, [rutas, seleccionId]);
+  const cajaElegidaRef = useRef(cajaElegida);
+  useEffect(() => {
+    cajaElegidaRef.current = cajaElegida;
+    const mapa = mapaRef.current;
+    if (mapa && cajaElegida) encuadrarEnCaja(mapa, cajaElegida, { margen: MARGEN_ENCUADRE, margenMinimo: 32, zoomMaximo: ZOOM_MAXIMO_ENCUADRE, duracion: 500 });
+  }, [cajaElegida]);
+
   const anchoAnterior = useRef(0);
   const alRedimensionar = (e: MapEvent) => {
     const ancho = e.target.getContainer().clientWidth;
@@ -100,11 +112,16 @@ export function MapaCobertura({ rutas, contornos, seleccionId, onElegir }: MapaC
       onClick={(e) => onElegir(idDe(e))}
       onMouseMove={alMoverElCursor}
       onMouseLeave={() => setBajoElCursor(null)}
-      onLoad={() => encuadrar(0)}
+      onLoad={() => {
+        // Si ya hay una ruta elegida (p. ej. desde la lista del celular) el mapa abre sobre ella
+        const mapa = mapaRef.current;
+        if (mapa && cajaElegidaRef.current) encuadrarEnCaja(mapa, cajaElegidaRef.current, { margen: MARGEN_ENCUADRE, margenMinimo: 32, zoomMaximo: ZOOM_MAXIMO_ENCUADRE, duracion: 0 });
+        else encuadrar(0);
+      }}
       onResize={alRedimensionar}
       cursor={bajoElCursor ? 'pointer' : 'auto'}
     >
-      <NavigationControl position="bottom-right" showCompass={false} />
+      <NavigationControl position="top-left" />
 
       <Source id="rutas" type="geojson" data={datosRutas}>
         <Layer id="cobertura-relleno" type="fill" paint={{ 'fill-color': ['get', 'color'], 'fill-opacity': ['case', ['get', 'seleccionada'], 0.7, 0.45] }} />

@@ -1,21 +1,13 @@
 "use client";
 
-import { useRef, useState } from 'react';
 import { AbcBadge } from './AbcBadge';
-import { cn } from '@/utils/cn';
+import { BotonCerrarFicha } from '@/components/mapa/BotonCerrarFicha';
+import { Dato } from '@/components/mapa/Dato';
+import { HojaInferior } from '@/components/mapa/HojaInferior';
+import { PanelLateral } from '@/components/mapa/PanelLateral';
 import { formatearFecha, formatearMonto } from '@/utils/formatoClientes';
 import { useComprasCliente } from '@/hooks/useComprasCliente';
 import type { ClienteMapa, RutaItem } from '@/types';
-
-
-function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
-  return (
-    <div className="flex gap-2 text-sm">
-      <dt className="w-24 shrink-0 text-gray-500">{etiqueta}</dt>
-      <dd className="min-w-0 text-gray-800">{children}</dd>
-    </div>
-  );
-}
 
 function FilaEsqueleto() {
   return (
@@ -72,34 +64,14 @@ interface FichaClienteProps {
   variante: 'panel' | 'hoja';
 }
 
-/** Un deslizamiento de más de esta cantidad de píxeles estira o encoge la hoja */
-const UMBRAL_DESLIZAMIENTO = 30;
-
 /**
  * Ficha del cliente elegido: su clase del Pareto, lo que vendió y su historial reciente (ADR-004 D7). En el
- * escritorio es un panel junto al mapa. En el celular es una hoja inferior dentro del flujo, que mide un tercio
- * de la pantalla y llega al 80 % al deslizar hacia arriba; hacia abajo se encoge y, si ya está encogida, se cierra.
- * Quien la use debe darle `key` con el id del cliente, para que cada cliente empiece encogida.
+ * escritorio es un panel junto al mapa; en el celular, una hoja inferior con gestos. Quien la use debe darle `key`
+ * con el id del cliente, para que cada cliente empiece con la hoja encogida.
  */
 export default function FichaCliente({ cliente, ruta, onCerrar, variante }: FichaClienteProps) {
   const clase = cliente.clasificacion;
-  const [expandida, setExpandida] = useState(false);
-  const inicioY = useRef<number | null>(null);
-
-  const alTocar = (e: React.TouchEvent) => {
-    inicioY.current = e.touches[0]?.clientY ?? null;
-  };
-  const alSoltar = (e: React.TouchEvent) => {
-    const fin = e.changedTouches[0]?.clientY;
-    if (inicioY.current === null || fin === undefined) return;
-    const desplazamiento = inicioY.current - fin;
-    inicioY.current = null;
-    if (desplazamiento > UMBRAL_DESLIZAMIENTO) setExpandida(true);
-    else if (desplazamiento < -UMBRAL_DESLIZAMIENTO) {
-      if (expandida) setExpandida(false);
-      else onCerrar();
-    }
-  };
+  const etiqueta = `Ficha del cliente ${cliente.codigo_cliente}`;
 
   const contenido = (
     <>
@@ -114,12 +86,7 @@ export default function FichaCliente({ cliente, ruta, onCerrar, variante }: Fich
           </p>
         </div>
       </div>
-      <button type="button" onClick={onCerrar} aria-label="Cerrar la ficha" className="shrink-0 rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-      </button>
+      <BotonCerrarFicha onClick={onCerrar} />
     </div>
 
     {!clase && <p className="mb-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-700">Cliente no habilitado: no se clasifica ni cuenta para la cobertura.</p>}
@@ -153,34 +120,11 @@ export default function FichaCliente({ cliente, ruta, onCerrar, variante }: Fich
     </>
   );
 
-  if (variante === 'panel') {
-    return (
-      <aside aria-label={`Ficha del cliente ${cliente.codigo_cliente}`} className="flex w-80 shrink-0 flex-col overflow-hidden border-r border-gray-200 bg-white">
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">{contenido}</div>
-      </aside>
-    );
-  }
-
-  return (
-    <aside
-      aria-label={`Ficha del cliente ${cliente.codigo_cliente}`}
-      className={cn(
-        'flex shrink-0 flex-col overflow-hidden rounded-t-3xl border-t border-gray-200 bg-white shadow-[0_-4px_32px_rgba(0,0,0,.1)] transition-[height] duration-300 ease-out',
-        expandida ? 'h-[80dvh]' : 'h-[33dvh]'
-      )}
-    >
-      <button
-        type="button"
-        onClick={() => setExpandida((v) => !v)}
-        onTouchStart={alTocar}
-        onTouchEnd={alSoltar}
-        aria-label={expandida ? 'Reducir la ficha' : 'Ampliar la ficha'}
-        aria-expanded={expandida}
-        className="flex shrink-0 justify-center pb-2 pt-3"
-      >
-        <span className="h-1 w-10 rounded-full bg-gray-300" />
-      </button>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8">{contenido}</div>
-    </aside>
+  return variante === 'panel' ? (
+    <PanelLateral etiqueta={etiqueta}>{contenido}</PanelLateral>
+  ) : (
+    <HojaInferior etiqueta={etiqueta} onCerrar={onCerrar}>
+      {contenido}
+    </HojaInferior>
   );
 }
