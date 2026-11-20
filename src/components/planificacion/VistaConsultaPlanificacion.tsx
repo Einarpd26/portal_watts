@@ -5,6 +5,8 @@ import { MapaPlanificacion } from './MapaPlanificacion';
 import ListaRutasPlanificacion from './ListaRutasPlanificacion';
 import LeyendaMapa, { type ConteoDeRutas } from './LeyendaMapa';
 import Select from '@/components/ui/Select';
+import BotonExportar from '@/components/ui/BotonExportar';
+import { parametrosDePlanificacion, urlDeReporte } from '@/utils/reportes';
 import { DIAS_ORDEN, DIA_LABELS, type DiaKey } from '@/utils/diasSemana';
 import { FILTROS_CONSULTA_INICIALES, filtrarConsulta, opcionesDeConsulta, type FiltrosConsulta } from '@/utils/consultaPlanificacion';
 import { descripcionDeVisita, propiedadesDeRutas } from '@/utils/planificacionMapa';
@@ -117,6 +119,10 @@ export default function VistaConsultaPlanificacion({ consulta }: VistaConsultaPl
             </option>
           ))}
         </Select>
+      </div>
+
+      <div className="flex justify-end">
+        <BotonExportar href={urlDeReporte('planificacion', parametrosDePlanificacion(filtros))} />
       </div>
 
       <div className="flex flex-col gap-4 lg:flex-row">

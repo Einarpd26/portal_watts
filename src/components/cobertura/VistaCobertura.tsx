@@ -4,6 +4,8 @@ import { useMemo, useState } from 'react';
 import { MapaCobertura } from './MapaCobertura';
 import TablaCobertura from './TablaCobertura';
 import Select from '@/components/ui/Select';
+import BotonExportar from '@/components/ui/BotonExportar';
+import { parametrosDeCobertura, urlDeReporte } from '@/utils/reportes';
 import {
   COLOR_TRAMO,
   ETIQUETA_TRAMO,
@@ -78,6 +80,9 @@ export default function VistaCobertura({ cobertura }: VistaCoberturaProps) {
           {momento ? ` · Último recálculo: ${momento}` : ''}
         </p>
         <p className="mt-0.5 text-gray-500">Las ventas de hoy se incorporan en el próximo recálculo nocturno.</p>
+      </div>
+      <div className="flex justify-end">
+        <BotonExportar href={urlDeReporte('cobertura', parametrosDeCobertura(filtros, orden))} />
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

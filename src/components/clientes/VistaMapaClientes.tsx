@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { MapaClientes } from './MapaClientes';
+import BotonExportar from '@/components/ui/BotonExportar';
+import { parametrosDeClientes, urlDeReporte } from '@/utils/reportes';
 import FiltrosClientes from './FiltrosClientes';
 import ListaClientes from './ListaClientes';
 import FichaCliente from './FichaCliente';
@@ -54,6 +56,7 @@ export default function VistaMapaClientes({ mapa, idRutaInicial = null }: VistaM
         />
         {elegido && <FichaCliente cliente={elegido} ruta={mapa.rutas.find((r) => r.id === elegido.id_ruta)} onCerrar={() => setSeleccionId(null)} />}
         <ListaClientes clientes={visibles} seleccionId={seleccionId} onElegir={setSeleccionId} />
+        <BotonExportar href={urlDeReporte('clientes', parametrosDeClientes(filtros))} etiqueta="Exportar clientes a Excel" />
       </div>
 
       {/* El mapa vive en su propio contexto de apilamiento: sus controles nunca tapan ventanas ni hojas (ADR-004 D7) */}

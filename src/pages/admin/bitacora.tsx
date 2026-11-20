@@ -37,7 +37,7 @@ interface BitacoraApiResponse {
   };
 }
 
-const MODULOS = ['TODOS', 'AUTENTICACION', 'ACCESOS', 'PERSONAL', 'TERRITORIO', 'PLANIFICACION', 'SISTEMA'];
+const MODULOS = ['TODOS', 'AUTENTICACION', 'ACCESOS', 'PERSONAL', 'TERRITORIO', 'PLANIFICACION', 'REPORTES', 'SISTEMA'];
 const ACCIONES = ['TODAS', ...ACCIONES_BITACORA];
 
 function getModuloBadgeClasses(modulo: string): string {

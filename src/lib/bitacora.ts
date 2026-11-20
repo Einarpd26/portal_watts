@@ -13,6 +13,7 @@ export type ModuloBitacora =
   | 'PERSONAL'
   | 'TERRITORIO'
   | 'PLANIFICACION'
+  | 'REPORTES'
   | 'SISTEMA';
 
 export type AccionBitacora =
