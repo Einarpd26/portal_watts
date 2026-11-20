@@ -2,6 +2,7 @@ import { createClient as createGenericClient } from '@supabase/supabase-js';
 import { createServerClient, serializeCookieHeader } from '@supabase/ssr';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { GetServerSidePropsContext } from 'next';
+import { NOMBRE_COOKIE_SESION } from './cookie';
 import type { Database } from '@/types/database';
 
 /**
@@ -51,6 +52,7 @@ export function createServerClientForReqRes(
   }
 
   return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+    cookieOptions: { name: NOMBRE_COOKIE_SESION },
     cookies: {
       getAll() {
         return Object.entries(req.cookies).map(([name, value]) => ({

@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { getPasswordChangeState } from '@/utils/passwordChange';
 import { logger } from '@/lib/logger';
+import { NOMBRE_COOKIE_SESION } from '@/lib/supabase/cookie';
 
 export async function proxy(request: NextRequest) {
   // 1. Creamos una respuesta inicial que permite continuar la petición
@@ -17,6 +18,7 @@ export async function proxy(request: NextRequest) {
 
   // 2. Inicializamos el cliente de Supabase (Versión Middleware)
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookieOptions: { name: NOMBRE_COOKIE_SESION },
     cookies: {
       getAll() {
         return request.cookies.getAll();

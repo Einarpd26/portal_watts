@@ -1,4 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr';
+import { NOMBRE_COOKIE_SESION } from './cookie';
 import type { Database } from '@/types/database';
 
 /**
@@ -20,6 +21,7 @@ export function createClient() {
 
   return createBrowserClient<Database>(supabaseUrl, supabaseAnonKey, {
     cookieOptions: {
+      name: NOMBRE_COOKIE_SESION,
       path: '/',
       sameSite: 'lax',
     },
