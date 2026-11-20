@@ -10,6 +10,9 @@ import type { ConsultaPlanificacion, Frecuencia, RutaConsulta, SlotConsulta, Vis
 export type ConsultaResultado = { ok: true; data: ConsultaPlanificacion } | { ok: false };
 
 type Persona = { nombres: string; apellidos: string } | null;
+
+/** Slot tal como lo devuelve la consulta, antes de ponerle los nombres */
+type SlotCrudo = { id: number; nombre: string | null; orden: number; id_supervisor: number; id_vendedor: number | null };
 const nombreCompleto = (p: Persona) => (p ? `${p.apellidos}, ${p.nombres}` : null);
 
 /**
@@ -51,9 +54,9 @@ export async function consultaDePlanificacion(
   if (!poligonos.ok || !contornos.ok || zonasRes.error || supervisoresRes.error || !filas) return { ok: false };
 
   // Nombres de los vendedores y de los supervisores de los slots (que pueden no ser los actuales de la zona)
-  const slotsCrudos = new Map<number, { id: number; nombre: string | null; orden: number; id_supervisor: number; id_vendedor: number | null }>();
+  const slotsCrudos = new Map<number, SlotCrudo>();
   for (const f of filas as unknown as Array<{ vendedor_slots: unknown }>) {
-    const slot = primero(f.vendedor_slots as never) as { id: number; nombre: string | null; orden: number; id_supervisor: number; id_vendedor: number | null } | null;
+    const slot = primero(f.vendedor_slots as SlotCrudo | SlotCrudo[] | null);
     if (slot) slotsCrudos.set(slot.id, slot);
   }
   const idsPersona = [...new Set([...slotsCrudos.values()].flatMap((s) => [s.id_supervisor, ...(s.id_vendedor === null ? [] : [s.id_vendedor])]))];

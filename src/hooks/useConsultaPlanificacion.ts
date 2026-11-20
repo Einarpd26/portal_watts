@@ -5,11 +5,15 @@ import type { ConsultaPlanificacion } from '@/types';
 
 type Carga = { consulta: ConsultaPlanificacion | null; error: string | null };
 
-/** Planificación de todas las rutas del alcance del usuario, en solo lectura (CU-10). Se pide una vez */
-export function useConsultaPlanificacion() {
+/**
+ * Planificación de todas las rutas del alcance del usuario, en solo lectura (CU-10). Se pide una vez, y solo cuando
+ * `habilitado` es true: un usuario sin permiso, que está por ser redirigido, no debe disparar el pedido.
+ */
+export function useConsultaPlanificacion(habilitado: boolean) {
   const [carga, setCarga] = useState<Carga | null>(null);
 
   useEffect(() => {
+    if (!habilitado) return;
     let vigente = true;
     const terminar = (resultado: Carga) => {
       if (vigente) setCarga(resultado);
@@ -30,7 +34,7 @@ export function useConsultaPlanificacion() {
     return () => {
       vigente = false;
     };
-  }, []);
+  }, [habilitado]);
 
-  return { consulta: carga?.consulta ?? null, error: carga?.error ?? null, isLoading: carga === null };
+  return { consulta: carga?.consulta ?? null, error: carga?.error ?? null, isLoading: habilitado && carga === null };
 }

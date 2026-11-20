@@ -24,7 +24,7 @@ const ConsultaPlanificacionPage: PageWithLayout = () => {
     }
   }, [authLoading, user, autorizado, router]);
 
-  const { consulta, error, isLoading } = useConsultaPlanificacion();
+  const { consulta, error, isLoading } = useConsultaPlanificacion(autorizado);
 
   if (authLoading || !user || !autorizado) return null;
 
