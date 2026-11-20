@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGestionSlots } from '@/hooks/useGestionSlots';
@@ -11,7 +11,14 @@ import AppLayout from '@/components/layout/AppLayout';
 import PlanificacionGrid from '@/components/planificacion/PlanificacionGrid';
 import ConmutadorVista, { type VistaPlanificacion } from '@/components/planificacion/ConmutadorVista';
 import VistaMapaPlanificacion from '@/components/planificacion/VistaMapaPlanificacion';
+import BotonModoEdicion from '@/components/planificacion/BotonModoEdicion';
+import AvisoModoEdicion from '@/components/planificacion/AvisoModoEdicion';
+import LeyendaPlanificacion from '@/components/planificacion/LeyendaPlanificacion';
+import BarraContexto from '@/components/planificacion/BarraContexto';
+import ResumenSemana from '@/components/planificacion/ResumenSemana';
 import VisitaModal, { type VisitaModalEstado } from '@/components/planificacion/VisitaModal';
+import { useAtajoTecla } from '@/hooks/useAtajoTecla';
+import { resumirPlanificacion, semanaIso } from '@/utils/planificacionResumen';
 import { logger } from '@/lib/logger';
 import type { PageWithLayout } from '@/types';
 
@@ -57,6 +64,16 @@ const PlanificacionPage: PageWithLayout = () => {
   // Sin slots no hay nada que pintar: se queda en el Calendario, donde se agrega el primero
   const vista: VistaPlanificacion = listado.slots.length === 0 ? 'calendario' : vistaElegida;
 
+  const resumen = useMemo(() => resumirPlanificacion(listado.slots, listado.visitas), [listado.slots, listado.visitas]);
+  // La semana se fija al abrir la pantalla: así el render no depende del reloj
+  const [semanaActual] = useState(() => semanaIso(new Date()));
+  const nombreDeUsuario = user ? `${user.nombres} ${user.apellidos}`.trim() : '';
+
+  // La tecla E alterna el modo edición, solo donde ese modo existe (el calendario de un supervisor)
+  const puedeEditar = !isLoading && listado.es_supervisor && vista === 'calendario';
+  const alternarEdicion = () => setEditMode((v) => !v);
+  useAtajoTecla('e', alternarEdicion, puedeEditar);
+
   const nombreDeSlot = (idSlot: number) => {
     const i = listado.slots.findIndex((s) => s.id === idSlot);
     return listado.slots[i]?.nombre ?? `Slot ${i + 1}`;
@@ -73,36 +90,28 @@ const PlanificacionPage: PageWithLayout = () => {
 
   return (
     <div className="min-h-full bg-gray-50">
-      <header className="px-6 pt-6">
-        {/* Desde sm el título cede espacio (su subtítulo se parte en más líneas) y los botones nunca saltan de fila, aparezca o no «Agregar slot» */}
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 sm:flex-nowrap">
-          <div className="min-w-full sm:min-w-0 sm:flex-1">
-            <h1 className="text-xl font-extrabold tracking-tight text-gray-900">Planificación</h1>
-            {listado.es_supervisor && (
-              <p className="mt-0.5 text-sm text-gray-500">
-                {vista === 'mapa'
-                  ? 'Planifica pintando rutas sobre el mapa, o revisa qué slot cubre cada una en el modo Cobertura.'
-                  : 'Cada fila es un slot de tu equipo y cada columna, un día de visita. El slot y sus rutas se conservan aunque cambie el vendedor.'}
-              </p>
-            )}
+      <div className="mx-auto max-w-6xl space-y-4 px-6 pt-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-xl font-extrabold tracking-tight text-gray-900">Planificación de rutas</h1>
+            {listado.es_supervisor && vista === 'calendario' && <LeyendaPlanificacion />}
           </div>
           {listado.es_supervisor && (
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {listado.slots.length > 0 && <ConmutadorVista vista={vista} onCambiar={setVistaElegida} />}
               {vista === 'calendario' && editMode && (
                 <Button variant="secondary" onClick={() => void crearSlot()} disabled={isSubmitting || isLoading}>
                   Agregar slot
                 </Button>
               )}
-              {vista === 'calendario' && (
-                <Button onClick={() => setEditMode((v) => !v)} variant={editMode ? 'primary' : 'secondary'} disabled={isLoading}>
-                  {editMode ? 'Listo' : 'Editar'}
-                </Button>
-              )}
+              {vista === 'calendario' && <BotonModoEdicion editMode={editMode} onToggle={alternarEdicion} disabled={isLoading} />}
             </div>
           )}
         </div>
-      </header>
+
+        {listado.es_supervisor && !isLoading && <BarraContexto nombre={nombreDeUsuario} sinSlot={listado.disponibles.length} />}
+        {listado.es_supervisor && vista === 'calendario' && editMode && <AvisoModoEdicion />}
+      </div>
 
       {toast && (
         <div className="mx-auto max-w-6xl px-6 pt-4">
@@ -146,11 +155,6 @@ const PlanificacionPage: PageWithLayout = () => {
               />
             </div>
             <div hidden={vista !== 'calendario'} className="space-y-4">
-              <p className="text-xs text-gray-500">
-                {listado.disponibles.length === 0
-                  ? 'Todos los vendedores de tu equipo tienen slot.'
-                  : `${listado.disponibles.length} ${listado.disponibles.length === 1 ? 'vendedor de tu equipo no tiene' : 'vendedores de tu equipo no tienen'} slot.`}
-              </p>
               <PlanificacionGrid
                 slots={listado.slots}
                 disponibles={listado.disponibles}
@@ -167,6 +171,7 @@ const PlanificacionPage: PageWithLayout = () => {
                 onSeleccionarVisita={(visita) => setVisitaModal({ tipo: 'editar', visita, nombreSlot: nombreDeSlot(visita.id_slot) })}
               />
             </div>
+            <ResumenSemana semana={semanaActual} resumen={resumen} />
           </>
         )}
       </div>
