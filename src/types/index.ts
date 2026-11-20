@@ -356,6 +356,29 @@ export interface CoberturaListado {
   calculado_en: string | null;
 }
 
+// 10f. Consulta de la planificación de todo el alcance (CU-10)
+export interface RutaConsulta extends RutaItem {
+  codigo_zona: string;
+  id_sucursal: number;
+  sucursal_nombre: string;
+  /** Supervisor actual de la zona de la ruta */
+  id_supervisor: number | null;
+  supervisor_nombre: string | null;
+}
+
+export interface SlotConsulta extends SlotItem {
+  id_supervisor: number;
+  supervisor_nombre: string | null;
+}
+
+/** Planificación vigente de las rutas que el usuario puede consultar, con sus slots, vendedores y supervisores */
+export interface ConsultaPlanificacion {
+  rutas: RutaConsulta[];
+  contornos: ContornoZona[];
+  slots: SlotConsulta[];
+  visitas: VisitaPlanificada[];
+}
+
 // 11. Rutas comerciales (CU-05)
 export interface PoligonoRuta {
   type: 'Polygon';

@@ -34,6 +34,7 @@ export const OPERATION_GROUP: NavItem[] = [
   { label: "Planificación", href: "/planificacion", requiredPermissions: ["planificacion:asignar"], available: true },
   // El Vendedor consulta el mapa de clientes pero no la cobertura (CU-13): lo distingue que no gestiona rutas
   { label: "Cobertura", href: "/cobertura", requiredPermissions: ["mapa:consultar"], anyPermissions: ["rutas:gestionar"], available: true },
+  { label: "Consulta", href: "/consulta-planificacion", requiredPermissions: ["mapa:consultar"], anyPermissions: ["rutas:gestionar"], available: true },
 ];
 
 // Grupo "Gestión": administración corporativa de la sucursal.
