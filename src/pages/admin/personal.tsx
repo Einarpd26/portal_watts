@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGestionPersonal } from '@/hooks/useGestionPersonal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import Alert from '@/components/ui/Alert';
+import FiltrosPersonal from '@/components/personal/FiltrosPersonal';
+import ListaPersonal from '@/components/personal/ListaPersonal';
+import { FILTROS_PERSONAL_INICIALES, filtrarPersonal, hayFiltrosActivos } from '@/utils/filtrarPersonal';
 import Button from '@/components/ui/Button';
 import DarDeBajaModal from '@/components/personal/DarDeBajaModal';
 import AppLayout from '@/components/layout/AppLayout';
@@ -53,6 +56,10 @@ const GestionPersonalPage: PageWithLayout = () => {
 
   const isEditing = editingId !== null;
 
+  const [filtros, setFiltros] = useState(FILTROS_PERSONAL_INICIALES);
+  const visibles = useMemo(() => filtrarPersonal(personas, filtros), [personas, filtros]);
+  const personaEnEdicion = isEditing ? (personas.find((p) => p.id === editingId) ?? null) : null;
+
   // Esc cierra el modal de alta/edición, igual que Cancelar (salvo mientras se envía)
   useEscapeKey(closeModal, isModalOpen && !isSubmitting);
 
@@ -61,108 +68,36 @@ const GestionPersonalPage: PageWithLayout = () => {
 
   return (
     <div className="min-h-full bg-gray-50">
-      {/* Page header — brand gradient */}
-      <header className="px-6 pt-6">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary-50">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
-                <circle cx="9" cy="8" r="3" />
-                <path strokeLinecap="round" d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
-                <path strokeLinecap="round" d="M16 5.5a3 3 0 0 1 0 6M21 20c0-2.6-1.7-4.9-4-5.6" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">Gestión de Personal Comercial</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Registro y administración de colaboradores</p>
-            </div>
+      <div className="mx-auto max-w-4xl space-y-4 px-6 py-6">
+        <header className="flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-extrabold tracking-tight text-gray-900">Personal comercial</h1>
+            {!isLoading && (
+              <p className="mt-0.5 text-sm text-gray-400">
+                {visibles.length === 0
+                  ? 'Sin resultados'
+                  : hayFiltrosActivos(filtros)
+                    ? `${visibles.length} de ${personas.length} ${personas.length === 1 ? 'persona' : 'personas'}`
+                    : `${personas.length} ${personas.length === 1 ? 'persona' : 'personas'}`}
+              </p>
+            )}
           </div>
           <Button onClick={openModal}>Nueva persona</Button>
-        </div>
-      </header>
+        </header>
 
-      {/* Toast */}
-      {toast && (
-        <div className="mx-auto max-w-6xl px-6 pt-4">
+        {toast && (
           <Alert state={toast.type === 'success' ? 'success' : 'error'} onClose={clearToast}>
             {toast.message}
           </Alert>
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="mx-auto max-w-6xl px-6 py-8">
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        {isLoading ? (
-          <div className="flex h-48 items-center justify-center">
-            <p className="text-sm text-gray-400">Cargando colaboradores...</p>
-          </div>
-        ) : personas.length === 0 ? (
-          <div className="flex h-48 flex-col items-center justify-center gap-2">
-            <p className="text-sm font-medium text-gray-500">No hay colaboradores registrados</p>
-            <button
-              type="button"
-              onClick={openModal}
-              className="text-xs font-semibold text-red-600 hover:underline"
-            >
-              Registrar el primero
-            </button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-xs font-bold uppercase tracking-wider text-gray-400">
-                <th className="px-5 py-3 text-left">Colaborador</th>
-                <th className="px-5 py-3 text-left">CI</th>
-                <th className="px-5 py-3 text-left">Cargo</th>
-                <th className="px-5 py-3 text-left">Sucursal</th>
-                <th className="px-5 py-3 text-left">Teléfono</th>
-                <th className="px-5 py-3 text-left">Acceso digital</th>
-                <th className="px-5 py-3 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {personas.map((p) => (
-                <tr key={p.id} className="transition hover:bg-gray-50/60">
-                  <td className="whitespace-nowrap px-5 py-3.5 font-medium text-gray-900">
-                    {p.apellidos}, {p.nombres}
-                  </td>
-                  <td className="whitespace-nowrap px-5 py-3.5 font-mono text-gray-600">{p.ci}</td>
-                  <td className="whitespace-nowrap px-5 py-3.5 text-gray-600">{p.asignacion?.cargo_nombre ?? '—'}</td>
-                  <td className="whitespace-nowrap px-5 py-3.5 text-gray-600">{p.asignacion?.sucursal_nombre ?? '—'}</td>
-                  <td className="whitespace-nowrap px-5 py-3.5 text-gray-500">{p.telefono ?? '—'}</td>
-                  <td className="px-5 py-3.5">
-                    {p.auth_user_id ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-700">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                        Activo
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-400">
-                        Sin cuenta
-                      </span>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-5 py-3.5 text-right">
-                    <div className="inline-flex gap-2">
-                      <Button variant="secondary" size="sm" onClick={() => openEditModal(p)}>
-                        Editar
-                      </Button>
-                      {p.id !== user.id_persona && (
-                        <Button variant="danger" size="sm" onClick={() => openBaja(p)}>
-                          Dar de baja
-                        </Button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
         )}
-      </div>
+
+        <FiltrosPersonal filtros={filtros} onCambiar={(cambio) => setFiltros((f) => ({ ...f, ...cambio }))} sucursales={sucursales} cargos={cargos} />
+
+        {isLoading ? (
+          <p className="py-16 text-center text-sm text-gray-400">Cargando colaboradores…</p>
+        ) : (
+          <ListaPersonal personas={visibles} hayFiltros={hayFiltrosActivos(filtros)} onEditar={openEditModal} onCrear={openModal} />
+        )}
       </div>
 
       {/* Modal — nuevo colaborador */}
@@ -253,7 +188,21 @@ const GestionPersonalPage: PageWithLayout = () => {
             </div>
 
             {/* Modal footer */}
-            <div className="flex justify-end gap-3 border-t border-gray-100 px-6 py-4">
+            <div className="flex items-center justify-end gap-3 border-t border-gray-100 px-6 py-4">
+              {personaEnEdicion && personaEnEdicion.id !== user.id_persona && (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  className="mr-auto"
+                  disabled={isSubmitting}
+                  onClick={() => {
+                    closeModal();
+                    openBaja(personaEnEdicion);
+                  }}
+                >
+                  Dar de baja
+                </Button>
+              )}
               <button
                 type="button"
                 onClick={closeModal}
