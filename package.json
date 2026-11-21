@@ -28,6 +28,7 @@
     "next": "16.4.6",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "react-select": "^5.10.2",
     "terra-draw": "^1.37.0",
     "terra-draw-maplibre-gl-adapter": "^1.5.0",
     "write-excel-file": "^4.1.1"

@@ -96,22 +96,22 @@ export default function VistaConsultaPlanificacion({ consulta }: VistaConsultaPl
   }
 
   const elegida = rutas.find((r) => r.id === seleccionId) ?? null;
-  const rutasParaElegir = [...consulta.rutas].sort((a, b) => a.codigo_ruta.localeCompare(b.codigo_ruta)).map((r): [number, string] => [r.id, r.codigo_ruta]);
+  const rutasParaElegir = [...consulta.rutas].sort((a, b) => a.ruta.localeCompare(b.ruta)).map((r): [number, string] => [r.id, r.ruta]);
 
   const selectorSucursal =
     opciones.sucursales.length > 1 ? (
       <SelectorCompacto etiqueta="Sucursal" valor={filtros.idSucursal === null ? '' : String(filtros.idSucursal)} onCambiar={(v) => cambiar({ idSucursal: nulo(v) })} opciones={opcionesDe('Todas las sucursales', opciones.sucursales)} />
     ) : null;
-  const selectorZona = <SelectorCompacto etiqueta="Zona" valor={filtros.idZona === null ? '' : String(filtros.idZona)} onCambiar={(v) => cambiar({ idZona: nulo(v) })} opciones={opcionesDe('Todas las zonas', opciones.zonas)} />;
+  const selectorZona = <SelectorCompacto buscable etiqueta="Zona" valor={filtros.idZona === null ? '' : String(filtros.idZona)} onCambiar={(v) => cambiar({ idZona: nulo(v) })} opciones={opcionesDe('Todas las zonas', opciones.zonas)} />;
   // Con un solo supervisor a la vista (p. ej. un supervisor que consulta lo suyo) el filtro no aporta nada
   const selectorSupervisor =
     opciones.supervisores.length > 1 ? (
-      <SelectorCompacto etiqueta="Supervisor" valor={filtros.idSupervisor === null ? '' : String(filtros.idSupervisor)} onCambiar={(v) => cambiar({ idSupervisor: nulo(v) })} opciones={opcionesDe('Todos los supervisores', opciones.supervisores)} />
+      <SelectorCompacto buscable etiqueta="Supervisor" valor={filtros.idSupervisor === null ? '' : String(filtros.idSupervisor)} onCambiar={(v) => cambiar({ idSupervisor: nulo(v) })} opciones={opcionesDe('Todos los supervisores', opciones.supervisores)} />
     ) : null;
   const selectorVendedor = (
-    <SelectorCompacto etiqueta="Vendedor" valor={filtros.idVendedor === null ? '' : String(filtros.idVendedor)} onCambiar={(v) => cambiar({ idVendedor: nulo(v) })} opciones={opcionesDe('Todos los vendedores', opciones.vendedores)} />
+    <SelectorCompacto buscable etiqueta="Vendedor" valor={filtros.idVendedor === null ? '' : String(filtros.idVendedor)} onCambiar={(v) => cambiar({ idVendedor: nulo(v) })} opciones={opcionesDe('Todos los vendedores', opciones.vendedores)} />
   );
-  const selectorRuta = <SelectorCompacto etiqueta="Ruta" valor={filtros.idRuta === null ? '' : String(filtros.idRuta)} onCambiar={(v) => cambiar({ idRuta: nulo(v) })} opciones={opcionesDe('Todas las rutas', rutasParaElegir)} />;
+  const selectorRuta = <SelectorCompacto buscable etiqueta="Ruta" valor={filtros.idRuta === null ? '' : String(filtros.idRuta)} onCambiar={(v) => cambiar({ idRuta: nulo(v) })} opciones={opcionesDe('Todas las rutas', rutasParaElegir)} />;
   const selectorDia = <SelectorDia modo="cobertura" dia={filtros.dia} onDia={(dia) => cambiar({ dia })} />;
 
   const lista = (claseAltura?: string, llenaLaColumna = false) => (

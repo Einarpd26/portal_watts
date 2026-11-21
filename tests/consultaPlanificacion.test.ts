@@ -12,6 +12,7 @@ const ruta = (id: number, extra: Partial<RutaConsulta> = {}): RutaConsulta => ({
   id_zona: 1,
   geojson: { type: "Polygon", coordinates: [] },
   codigo_zona: "ZN",
+  zona_nombre: "",
   id_sucursal: 1,
   sucursal_nombre: "Santa Cruz",
   id_supervisor: 10,
@@ -82,4 +83,9 @@ test("opciones: salen de lo que hay al alcance y los slots sin vendedor no aport
   assert.deepEqual(o.zonas.map(([, n]) => n), ["ZN", "ZO", "ZS"]);
   assert.equal(o.supervisores.length, 3);
   assert.deepEqual(o.vendedores.map(([id]) => id), [50, 51]);
+});
+
+test("opciones: la zona se muestra por su nombre y, si no lo tiene, por su codigo", () => {
+  const o = opcionesDeConsulta([ruta(1, { zona_nombre: "Zona Norte" }), ruta(2, { id_zona: 2, codigo_zona: "ZS", zona_nombre: "" })], []);
+  assert.deepEqual(o.zonas, [[1, "Zona Norte"], [2, "ZS"]]);
 });

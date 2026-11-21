@@ -14,6 +14,7 @@ interface SelectorRutaProps {
 export function SelectorRuta({ rutas, idRuta, onCambiar }: SelectorRutaProps) {
   return (
     <SelectorCompacto
+      buscable
       etiqueta="Ruta"
       valor={idRuta === null ? '' : String(idRuta)}
       onCambiar={(v) => onCambiar(v === '' ? null : Number(v))}

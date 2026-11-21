@@ -34,7 +34,7 @@ export async function consultaDePlanificacion(
   const [poligonos, contornos, zonasRes, supervisoresRes, filas] = await Promise.all([
     listarRutas(idsZona),
     contornosDeZonas([...new Set(enAlcance.enZonaCompleta.map((r) => r.id_zona))], false),
-    db.from('zonas').select('id, codigo_zona, id_sucursal, sucursales ( nombre_sucursal )').in('id', idsZona),
+    db.from('zonas').select('id, codigo_zona, zona, id_sucursal, sucursales ( nombre_sucursal )').in('id', idsZona),
     db
       .from('supervisor_zonas')
       .select('id_zona, id_supervisor, personas!supervisor_zonas_id_supervisor_fkey ( nombres, apellidos )')
@@ -65,7 +65,7 @@ export async function consultaDePlanificacion(
   const nombreDe = new Map((personas.data ?? []).map((p) => [p.id, `${p.apellidos}, ${p.nombres}`]));
 
   const zonaDe = new Map(
-    (zonasRes.data ?? []).map((z) => [z.id, { codigo: z.codigo_zona, idSucursal: z.id_sucursal, sucursal: primero(z.sucursales)?.nombre_sucursal ?? '' }])
+    (zonasRes.data ?? []).map((z) => [z.id, { codigo: z.codigo_zona, nombre: z.zona, idSucursal: z.id_sucursal, sucursal: primero(z.sucursales)?.nombre_sucursal ?? '' }])
   );
   const supervisorDe = new Map(
     (supervisoresRes.data ?? []).map((s) => [s.id_zona, { id: s.id_supervisor, nombre: nombreCompleto(primero(s.personas)) }])
@@ -80,6 +80,7 @@ export async function consultaDePlanificacion(
       return {
         ...r,
         codigo_zona: zona?.codigo ?? '',
+        zona_nombre: zona?.nombre ?? '',
         id_sucursal: zona?.idSucursal ?? 0,
         sucursal_nombre: zona?.sucursal ?? '',
         id_supervisor: supervisor?.id ?? null,

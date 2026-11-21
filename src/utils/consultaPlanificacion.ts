@@ -64,7 +64,7 @@ export function opcionesDeConsulta(rutas: readonly RutaConsulta[], slots: readon
   const vendedores = new Map<number, string>();
   for (const r of rutas) {
     sucursales.set(r.id_sucursal, r.sucursal_nombre);
-    zonas.set(r.id_zona, r.codigo_zona);
+    zonas.set(r.id_zona, r.zona_nombre || r.codigo_zona);
     if (r.id_supervisor !== null) supervisores.set(r.id_supervisor, r.supervisor_nombre ?? `Supervisor ${r.id_supervisor}`);
   }
   for (const s of slots) {

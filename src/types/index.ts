@@ -373,6 +373,7 @@ export interface CoberturaListado {
 // 10f. Consulta de la planificación de todo el alcance (CU-10)
 export interface RutaConsulta extends RutaItem {
   codigo_zona: string;
+  zona_nombre: string;
   id_sucursal: number;
   sucursal_nombre: string;
   /** Supervisor actual de la zona de la ruta */
