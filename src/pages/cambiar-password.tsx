@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import { useRouter } from "next/router";
 import { useState } from "react";
@@ -6,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import { logger } from "@/lib/logger";
 import { validatePassword } from "@/utils/passwordPolicy";
 
 // CU-01 A3 — Cambio obligatorio de la contraseña temporal en el primer inicio
@@ -61,7 +64,7 @@ export default function CambiarPasswordPage() {
         return;
       }
       await refreshUser();
-      await router.replace("/dashboard");
+      await router.replace("/");
     } catch {
       setError("Error de conexión. Intentá de nuevo.");
     } finally {
@@ -78,11 +81,7 @@ export default function CambiarPasswordPage() {
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(140deg,#7f1d1d_0%,#991b1b_35%,#dc2626_100%)] p-4">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(-45deg, rgba(255,255,255,.03) 0px, rgba(255,255,255,.03) 1px, transparent 1px, transparent 14px)",
-        }}
+        className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(-45deg,rgba(255,255,255,.03)_0px,rgba(255,255,255,.03)_1px,transparent_1px,transparent_14px)]"
       />
       <div aria-hidden className="pointer-events-none absolute -top-28 -right-24 h-[22rem] w-[22rem] rounded-full bg-white/[.06]" />
       <div aria-hidden className="pointer-events-none absolute -bottom-16 -left-12 h-56 w-56 rounded-full bg-white/[.06]" />
@@ -111,7 +110,10 @@ export default function CambiarPasswordPage() {
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit} className="w-full space-y-4" noValidate>
+          <form
+            onSubmit={(e) => {
+              handleSubmit(e).catch((err: unknown) => logger.error("Error cambiando la contraseña temporal:", err));
+            }} className="w-full space-y-4" noValidate>
             <Input
               label="Nueva contraseña"
               type="password"

@@ -27,7 +27,7 @@ const TerritorioPage: PageWithLayout = () => {
   // Auth guard: solo quien gestiona zonas o rutas
   useEffect(() => {
     if (!authLoading && user && !puedeZonas && !puedeRutas) {
-      router.replace('/dashboard').catch((navErr: unknown) => {
+      router.replace('/').catch((navErr: unknown) => {
         logger.error('Error redirigiendo usuario sin permisos:', navErr);
       });
     }

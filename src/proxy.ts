@@ -90,7 +90,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (user && pwState === 'none' && isChangePasswordPage) {
-    return redirectTo('/dashboard');
+    return redirectTo('/');
   }
 
   // Regla A: No tiene cuenta e intenta entrar a zona privada -> Al Login
@@ -98,11 +98,11 @@ export async function proxy(request: NextRequest) {
     return redirectTo('/login');
   }
 
-  // Regla B: Ya tiene cuenta activa normal e intenta entrar al Login o a Recuperar -> Al Dashboard
+  // Regla B: Ya tiene cuenta activa normal e intenta entrar al Login o a Recuperar -> A la pantalla de su rol
   // Nota: No se redirige /auth/reset-password porque el usuario que llega desde el correo de recuperación
   // cuenta con una sesión temporal de recovery otorgada por Supabase para cambiar su clave.
   if (user && (isLoginPage || isForgotPasswordPage) && pwState === 'none') {
-    return redirectTo('/dashboard');
+    return redirectTo('/');
   }
 
   // 5. Todo en orden, le abrimos la puerta

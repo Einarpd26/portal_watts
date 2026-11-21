@@ -28,7 +28,7 @@ const PlanificacionPage: PageWithLayout = () => {
 
   useEffect(() => {
     if (!authLoading && user && !user.permisos.includes('planificacion:asignar')) {
-      router.replace('/dashboard').catch((navErr: unknown) => {
+      router.replace('/').catch((navErr: unknown) => {
         logger.error('Error redirigiendo usuario sin permisos:', navErr);
       });
     }

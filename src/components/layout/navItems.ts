@@ -19,14 +19,6 @@ export type NavItem = {
   available: boolean;
 };
 
-// Tab base: home de la zona privada. Visible para todo rol autenticado.
-export const DASHBOARD_TAB: NavItem = {
-  label: "Dashboard",
-  href: "/dashboard",
-  requiredPermissions: [],
-  available: true,
-};
-
 // Grupo "Operación": trabajo diario en terreno.
 export const OPERATION_GROUP_LABEL = "Operación";
 export const OPERATION_GROUP: NavItem[] = [

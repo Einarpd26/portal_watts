@@ -144,7 +144,7 @@ export interface PersonaConAsignacion {
 
 /**
  * Página que puede declarar su propio layout vía `getLayout`.
- * Las páginas internas (dashboard, etc.) lo usan para envolverse en <AppLayout>;
+ * Las páginas internas (planificación, etc.) lo usan para envolverse en <AppLayout>;
  * /login no lo declara y se renderiza sola.
  */
 export type PageWithLayout = NextPage & {

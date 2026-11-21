@@ -1,5 +1,6 @@
 "use client";
 
+import { rutaInicialPorRol } from "@/utils/rutaInicial";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState, type FormEvent } from "react";
@@ -42,10 +43,7 @@ export function LoginPage() {
   // Si ya tiene sesión activa y llega al login, redirigir según su rol
   useEffect(() => {
     if (!authLoading && user) {
-      const destination =
-        user.rol_codigo === "GERENCIA_COMERCIAL" || user.rol_codigo === "FISCALIZADOR"
-          ? "/admin/usuarios"
-          : "/dashboard";
+      const destination = rutaInicialPorRol(user.rol_codigo);
       router.replace(destination).catch((err: unknown) => {
         logger.error("Error redirigiendo usuario autenticado:", err);
       });
@@ -140,10 +138,7 @@ export function LoginPage() {
 
       // Redirección directa según rol
       const rol = result.user?.rol_codigo;
-      const targetRoute =
-        rol === "GERENCIA_COMERCIAL" || rol === "FISCALIZADOR"
-          ? "/admin/usuarios"
-          : "/dashboard";
+      const targetRoute = rutaInicialPorRol(rol ?? "SIN_ROL");
 
       await router.replace(targetRoute);
     } catch (err: unknown) {

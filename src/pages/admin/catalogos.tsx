@@ -24,7 +24,7 @@ const CatalogosPage: PageWithLayout = () => {
   // Auth guard: solo quien tiene el permiso de catálogos
   useEffect(() => {
     if (!authLoading && user && !user.permisos.includes(PERMISO)) {
-      router.replace('/dashboard').catch((navErr: unknown) => {
+      router.replace('/').catch((navErr: unknown) => {
         logger.error('Error redirigiendo usuario sin permisos:', navErr);
       });
     }

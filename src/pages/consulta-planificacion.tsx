@@ -21,7 +21,7 @@ const ConsultaPlanificacionPage: PageWithLayout = () => {
 
   useEffect(() => {
     if (!authLoading && user && !autorizado) {
-      router.replace('/dashboard').catch((navErr: unknown) => {
+      router.replace('/').catch((navErr: unknown) => {
         logger.error('Error redirigiendo usuario sin permisos:', navErr);
       });
     }

@@ -140,7 +140,7 @@ const BitacoraPage: PageWithLayout = () => {
   // Guardia de permisos (bitacora:consultar)
   useEffect(() => {
     if (!authLoading && user && !user.permisos.includes('bitacora:consultar')) {
-      router.replace('/dashboard').catch((navErr: unknown) => {
+      router.replace('/').catch((navErr: unknown) => {
         logger.error('Error redirigiendo usuario sin permisos:', navErr);
       });
     }

@@ -21,7 +21,7 @@ const GestionAccesosPage: PageWithLayout = () => {
   // Auth guard: redirect if no permission
   useEffect(() => {
     if (!authLoading && user && !user.permisos.includes('cuentas:gestionar')) {
-      router.replace('/dashboard').catch((navErr: unknown) => {
+      router.replace('/').catch((navErr: unknown) => {
         logger.error('Error redirigiendo usuario sin permisos:', navErr);
       });
     }
