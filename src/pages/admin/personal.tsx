@@ -1,5 +1,6 @@
 "use client";
 
+import PageLoader from '@/components/ui/PageLoader';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -94,7 +95,7 @@ const GestionPersonalPage: PageWithLayout = () => {
         <FiltrosPersonal filtros={filtros} onCambiar={(cambio) => setFiltros((f) => ({ ...f, ...cambio }))} sucursales={sucursales} cargos={cargos} />
 
         {isLoading ? (
-          <p className="py-16 text-center text-sm text-gray-400">Cargando colaboradores…</p>
+          <PageLoader etiqueta="Cargando colaboradores..." />
         ) : (
           <ListaPersonal personas={visibles} hayFiltros={hayFiltrosActivos(filtros)} onEditar={openEditModal} onCrear={openModal} />
         )}

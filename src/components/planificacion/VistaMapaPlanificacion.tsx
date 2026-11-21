@@ -1,5 +1,6 @@
 "use client";
 
+import PageLoader from '@/components/ui/PageLoader';
 import { useCallback, useMemo, useState } from 'react';
 import { MapaPlanificacion } from './MapaPlanificacion';
 import SelectorDia from './SelectorDia';
@@ -178,7 +179,11 @@ export default function VistaMapaPlanificacion({
           onClickRuta={setSeleccionId}
         />
       ) : (
-        <p className="p-4 text-sm text-gray-500">{error ?? (cargando ? 'Cargando el mapa...' : 'Sin datos del mapa.')}</p>
+        cargando && !error ? (
+        <PageLoader etiqueta="Cargando el mapa..." className="min-h-0 flex-1" />
+      ) : (
+        <p className="p-4 text-sm text-gray-500">{error ?? 'Sin datos del mapa.'}</p>
+      )
       )}
       <LeyendaPlegable titulo={modo === 'planificacion' ? 'Planificación' : 'Cobertura'} filas={filasDeLeyenda} />
       {aviso && <AvisoAsignacion aviso={aviso} onDeshacer={() => void deshacer()} />}

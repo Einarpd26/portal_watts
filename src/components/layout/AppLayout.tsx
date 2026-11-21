@@ -1,5 +1,6 @@
 "use client";
 
+import PageLoader from "@/components/ui/PageLoader";
 import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,12 +41,7 @@ export default function AppLayout({
 
   if (isLoading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
-          <p className="text-sm font-medium text-gray-500">Verificando sesión...</p>
-        </div>
-      </div>
+      <PageLoader etiqueta="Verificando sesión..." className="min-h-screen bg-gray-50" />
     );
   }
 

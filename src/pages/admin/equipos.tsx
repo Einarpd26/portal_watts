@@ -1,5 +1,6 @@
 "use client";
 
+import PageLoader from '@/components/ui/PageLoader';
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -112,7 +113,7 @@ const GestionEquiposPage: PageWithLayout = () => {
 
       <div className="mx-auto max-w-6xl space-y-8 px-6 py-8">
         {isLoading ? (
-          <p className="text-sm text-gray-400">Cargando equipos...</p>
+          <PageLoader etiqueta="Cargando equipos..." />
         ) : (
           <>
             {inactivos.length > 0 && (

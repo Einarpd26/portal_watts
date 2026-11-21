@@ -1,5 +1,6 @@
 "use client";
 
+import PageLoader from '@/components/ui/PageLoader';
 import Select from '@/components/ui/Select';
 import { useEffect, useState, useCallback, type ReactElement } from 'react';
 import { useRouter } from 'next/router';
@@ -384,13 +385,7 @@ const BitacoraPage: PageWithLayout = () => {
                 {loading ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <svg className="h-6 w-6 animate-spin text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                          <path d="M3 3v5h5" />
-                        </svg>
-                        <span>Cargando eventos de bitácora...</span>
-                      </div>
+                      <PageLoader etiqueta="Cargando eventos de bitácora..." className="h-32" />
                     </td>
                   </tr>
                 ) : rows.length === 0 ? (

@@ -1,5 +1,6 @@
 "use client";
 
+import PageLoader from '@/components/ui/PageLoader';
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -49,7 +50,7 @@ const MapaPage: PageWithLayout = () => {
       {error && <Alert state="error">{error}</Alert>}
       {errorCobertura && <Alert state="error">{errorCobertura}</Alert>}
       {isLoading || cargandoCobertura ? (
-        <p className="text-sm text-gray-400">Cargando el mapa...</p>
+        <PageLoader etiqueta="Cargando el mapa..." className="min-h-0 flex-1" />
       ) : (
         mapa && <VistaMapa mapa={mapa} cobertura={cobertura} idRutaInicial={idRutaInicial} modoInicial={modoInicial} alCambiarModo={reflejarModo} />
       )}

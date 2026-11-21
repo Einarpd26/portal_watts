@@ -1,5 +1,6 @@
 "use client";
 
+import PageLoader from '@/components/ui/PageLoader';
 import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import PlanificacionGrid from '@/components/planificacion/PlanificacionGrid';
@@ -73,7 +74,7 @@ function ContenidoPlanificacion({
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           {isLoading ? (
-            <p className="text-sm text-gray-400">Cargando planificación...</p>
+            <PageLoader etiqueta="Cargando planificación..." className="h-48" />
           ) : error ? (
             <p className="text-sm text-primary-600">{error}</p>
           ) : planificacion && planificacion.slots.length === 0 ? (
