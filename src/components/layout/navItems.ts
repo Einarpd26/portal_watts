@@ -47,14 +47,6 @@ export const MANAGEMENT_GROUP: NavItem[] = [
   },
 ];
 
-// Link de ayuda: siempre visible al final del nav (tokens-de-marca.md §5.3).
-export const HELP_LINK: NavItem = {
-  label: "Ayuda",
-  href: "/ayuda",
-  requiredPermissions: [],
-  available: false,
-};
-
 /** ¿La lista de permisos del usuario habilita este item? */
 export function hasPermission(permisos: string[], item: NavItem, roles: string[] = []): boolean {
   const cumpleRequeridos = item.requiredPermissions.every((p) => permisos.includes(p));
