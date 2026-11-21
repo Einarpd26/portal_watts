@@ -89,7 +89,7 @@ const PlanificacionPage: PageWithLayout = () => {
   // El modal se cierra al terminar, con éxito o con error: abierto taparía el aviso del resultado
   const cerrarDespues = (accion: Promise<void>) => {
     setVisitaModal(null);
-    void accion;
+    accion.catch((err: unknown) => logger.error('Error en la accion del modal de visita:', err));
   };
 
   if (authLoading || !user) return null;
