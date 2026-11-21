@@ -1,6 +1,6 @@
 "use client";
 
-import { CargandoMapa } from '@/components/ui/PageLoader';
+import PageLoader from '@/components/ui/PageLoader';
 import { useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useImportarRutas } from '@/hooks/useImportarRutas';
@@ -16,7 +16,7 @@ import { logger } from '@/lib/logger';
 // MapLibre necesita WebGL y el navegador: solo se carga en el cliente y solo en esta pestaña (ADR-002 §4)
 const MapaImportacion = dynamic(
   () => import('@/components/territorio/MapaImportacion').then((m) => m.MapaImportacion),
-  { ssr: false, loading: () => <CargandoMapa /> }
+  { ssr: false, loading: () => <PageLoader className="h-full" /> }
 );
 
 const ID_PANTALLA_COMPLETA = 'mapa-importacion';

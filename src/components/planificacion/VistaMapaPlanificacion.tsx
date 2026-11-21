@@ -180,7 +180,7 @@ export default function VistaMapaPlanificacion({
         />
       ) : (
         cargando && !error ? (
-        <PageLoader etiqueta="Cargando el mapa..." className="min-h-0 flex-1" />
+        <PageLoader className="min-h-0 flex-1" />
       ) : (
         <p className="p-4 text-sm text-gray-500">{error ?? 'Sin datos del mapa.'}</p>
       )

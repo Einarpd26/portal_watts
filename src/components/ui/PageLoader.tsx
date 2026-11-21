@@ -13,23 +13,16 @@ export function Spinner({ className = "h-6 w-6" }: { className?: string }) {
 }
 
 interface PageLoaderProps {
-  /** Texto bajo la rueda («Verificando sesión...», «Cargando el mapa...») */
-  etiqueta?: string;
   /** Tamaño del área; por defecto una franja de 16 rem. Para llenar la pantalla: `min-h-screen`; para llenar un hueco: `flex-1` */
   className?: string;
 }
 
-/** El único estado de carga del portal: rueda con un texto, centrados en el área que ocupará el contenido */
-export default function PageLoader({ etiqueta = "Cargando...", className }: PageLoaderProps) {
+/** El único estado de carga del portal: rueda con «Cargando...», centrados en el área que ocupará el contenido */
+export default function PageLoader({ className }: PageLoaderProps) {
   return (
     <div role="status" aria-live="polite" className={cn("flex flex-col items-center justify-center gap-3", className ?? "h-64")}>
       <Spinner />
-      <p className="text-sm text-gray-500">{etiqueta}</p>
+      <p className="text-sm text-gray-500">Cargando...</p>
     </div>
   );
-}
-
-/** Marcador de los mapas que se cargan aparte (`dynamic` con `ssr: false`) */
-export function CargandoMapa() {
-  return <PageLoader etiqueta="Cargando el mapa..." className="h-full min-h-48 w-full bg-gray-50" />;
 }

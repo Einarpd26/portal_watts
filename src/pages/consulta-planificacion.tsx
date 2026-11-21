@@ -39,7 +39,7 @@ const ConsultaPlanificacionPage: PageWithLayout = () => {
   // Como la planificación del supervisor y el mapa: la pantalla llena la ventana y no se desplaza
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 bg-gray-50 p-3 lg:p-4">
-      {isLoading ? <PageLoader etiqueta="Cargando la planificación..." className="min-h-0 flex-1" /> : consulta && <VistaConsultaPlanificacion consulta={consulta} />}
+      {isLoading ? <PageLoader className="min-h-0 flex-1" /> : consulta && <VistaConsultaPlanificacion consulta={consulta} />}
     </div>
   );
 };

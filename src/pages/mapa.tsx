@@ -50,7 +50,7 @@ const MapaPage: PageWithLayout = () => {
       {error && <Alert state="error">{error}</Alert>}
       {errorCobertura && <Alert state="error">{errorCobertura}</Alert>}
       {isLoading || cargandoCobertura ? (
-        <PageLoader etiqueta="Cargando el mapa..." className="min-h-0 flex-1" />
+        <PageLoader className="min-h-0 flex-1" />
       ) : (
         mapa && <VistaMapa mapa={mapa} cobertura={cobertura} idRutaInicial={idRutaInicial} modoInicial={modoInicial} alCambiarModo={reflejarModo} />
       )}

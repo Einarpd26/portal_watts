@@ -1,6 +1,6 @@
 "use client";
 
-import { CargandoMapa } from '@/components/ui/PageLoader';
+import PageLoader from '@/components/ui/PageLoader';
 import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useGestionRutas } from '@/hooks/useGestionRutas';
@@ -24,7 +24,7 @@ import type { RutaItem } from '@/types';
 // MapLibre necesita WebGL y el navegador: solo se carga en el cliente y solo en esta pestaña (ADR-002 §4)
 const MapaTerritorial = dynamic(
   () => import('@/components/territorio/MapaTerritorial').then((m) => m.MapaTerritorial),
-  { ssr: false, loading: () => <CargandoMapa /> }
+  { ssr: false, loading: () => <PageLoader className="h-full" /> }
 );
 
 // Pasa a pantalla completa todo el contenedor (panel lateral, mapa y avisos), no solo el mapa:

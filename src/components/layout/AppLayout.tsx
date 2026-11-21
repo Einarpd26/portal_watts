@@ -41,7 +41,7 @@ export default function AppLayout({
 
   if (isLoading || !user) {
     return (
-      <PageLoader etiqueta="Verificando sesión..." className="min-h-screen bg-gray-50" />
+      <PageLoader className="min-h-screen bg-gray-50" />
     );
   }
 

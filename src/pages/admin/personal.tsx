@@ -95,7 +95,7 @@ const GestionPersonalPage: PageWithLayout = () => {
         <FiltrosPersonal filtros={filtros} onCambiar={(cambio) => setFiltros((f) => ({ ...f, ...cambio }))} sucursales={sucursales} cargos={cargos} />
 
         {isLoading ? (
-          <PageLoader etiqueta="Cargando colaboradores..." />
+          <PageLoader />
         ) : (
           <ListaPersonal personas={visibles} hayFiltros={hayFiltrosActivos(filtros)} onEditar={openEditModal} onCrear={openModal} />
         )}

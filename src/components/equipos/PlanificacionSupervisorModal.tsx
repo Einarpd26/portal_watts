@@ -74,7 +74,7 @@ function ContenidoPlanificacion({
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           {isLoading ? (
-            <PageLoader etiqueta="Cargando planificación..." className="h-48" />
+            <PageLoader className="h-48" />
           ) : error ? (
             <p className="text-sm text-primary-600">{error}</p>
           ) : planificacion && planificacion.slots.length === 0 ? (

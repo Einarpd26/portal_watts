@@ -113,7 +113,7 @@ const GestionEquiposPage: PageWithLayout = () => {
 
       <div className="mx-auto max-w-6xl space-y-8 px-6 py-8">
         {isLoading ? (
-          <PageLoader etiqueta="Cargando equipos..." />
+          <PageLoader />
         ) : (
           <>
             {inactivos.length > 0 && (

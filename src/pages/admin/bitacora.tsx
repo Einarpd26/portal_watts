@@ -385,7 +385,7 @@ const BitacoraPage: PageWithLayout = () => {
                 {loading ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                      <PageLoader etiqueta="Cargando eventos de bitácora..." className="h-32" />
+                      <PageLoader className="h-32" />
                     </td>
                   </tr>
                 ) : rows.length === 0 ? (

@@ -128,7 +128,7 @@ const PlanificacionPage: PageWithLayout = () => {
 
       <div className={cn('w-full px-4 lg:px-6', enMapa ? 'flex min-h-0 flex-1 flex-col pb-4 pt-4' : 'space-y-4 py-6 lg:py-8')}>
         {isLoading ? (
-          <PageLoader etiqueta="Cargando slots..." />
+          <PageLoader />
         ) : listado.slots.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">
             <p className="text-sm font-medium text-gray-500">Todavía no tienes slots</p>
