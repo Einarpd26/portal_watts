@@ -227,26 +227,20 @@ const GestionPersonalPage: PageWithLayout = () => {
               <div className="grid grid-cols-2 gap-4">
                 <Select
                   label="Sucursal"
-                  value={form.id_sucursal}
-                  onChange={(e) => setForm({ ...form, id_sucursal: e.target.value })}
+                  valor={form.id_sucursal}
+                  onCambiar={(v) => setForm({ ...form, id_sucursal: v })}
+                  opciones={sucursales.map((s) => ({ valor: String(s.id), texto: s.nombre_sucursal }))}
                   error={formErrors.id_sucursal}
                   placeholder="Seleccionar..."
-                >
-                  {sucursales.map((s) => (
-                    <option key={s.id} value={s.id}>{s.nombre_sucursal}</option>
-                  ))}
-                </Select>
+                />
                 <Select
                   label="Cargo"
-                  value={form.id_cargo}
-                  onChange={(e) => setForm({ ...form, id_cargo: e.target.value })}
+                  valor={form.id_cargo}
+                  onCambiar={(v) => setForm({ ...form, id_cargo: v })}
+                  opciones={cargos.map((c) => ({ valor: String(c.id), texto: c.nombre_cargo }))}
                   error={formErrors.id_cargo}
                   placeholder="Seleccionar..."
-                >
-                  {cargos.map((c) => (
-                    <option key={c.id} value={c.id}>{c.nombre_cargo}</option>
-                  ))}
-                </Select>
+                />
               </div>
               {!isEditing && (
                 <Input

@@ -3,6 +3,7 @@
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
+import { aNumeroONulo, deNumeroONulo } from '@/utils/seleccion';
 import type { SucursalOpcion, ZonaForm } from '@/hooks/useGestionTerritorio';
 import { estadoCorreccionSucursal, MENSAJE_CORRECCION_SUCURSAL } from '@/utils/correccionSucursalZona';
 import type { ZonaErrors } from '@/utils/zonaValidation';
@@ -111,17 +112,12 @@ export function FormularioZona({
           <Select
             label="Sucursal"
             placeholder="Seleccionar sucursal"
-            value={form.id_sucursal ?? ''}
-            onChange={(e) => setForm({ ...form, id_sucursal: e.target.value ? Number(e.target.value) : null })}
+            valor={deNumeroONulo(form.id_sucursal)}
+            onCambiar={(v) => setForm({ ...form, id_sucursal: aNumeroONulo(v) })}
+            opciones={sucursales.map((s) => ({ valor: String(s.id), texto: s.nombre }))}
             error={cambiaSucursal ? undefined : errors.id_sucursal}
             disabled={isSubmitting}
-          >
-            {sucursales.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.nombre}
-              </option>
-            ))}
-          </Select>
+          />
         )}
 
         <div>

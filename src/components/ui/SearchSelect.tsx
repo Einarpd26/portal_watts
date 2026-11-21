@@ -22,6 +22,12 @@ interface SearchSelectProps {
   deshabilitado?: boolean;
   /** Dónde se abre el menú; 'top' para campos al pie de una hoja, para no tapar las acciones */
   ubicacionMenu?: "auto" | "top" | "bottom";
+  /** Texto del control mientras no haya una opción elegida (valor sin opción que lo represente) */
+  placeholder?: string;
+  /** Marca el control con borde rojo; el mensaje lo muestra quien lo usa */
+  conError?: boolean;
+  /** id del campo de entrada, para enlazar un <label> */
+  idCampo?: string;
 }
 
 type Opcion = { value: string; label: string; subtitulo?: string };
@@ -34,10 +40,10 @@ const ESTILOS: StylesConfig<Opcion, false> = {
 
 const CLASES: ClassNamesConfig<Opcion, false> = {
   container: () => "min-w-0 flex-1",
-  control: ({ isFocused, isDisabled }) =>
+  control: ({ isFocused, isDisabled, selectProps }) =>
     cn(
       "min-h-10 rounded-lg border bg-white text-sm transition-colors",
-      isFocused ? "border-primary-600" : "border-gray-200 hover:border-gray-300",
+      selectProps["aria-invalid"] ? "border-red-400" : isFocused ? "border-primary-600" : "border-gray-200 hover:border-gray-300",
       isDisabled ? "cursor-not-allowed bg-gray-50" : "cursor-pointer"
     ),
   valueContainer: () => "gap-1 pl-3",
@@ -69,6 +75,9 @@ export default function SearchSelect({
   buscable = false,
   deshabilitado = false,
   ubicacionMenu = "auto",
+  placeholder,
+  conError = false,
+  idCampo,
 }: SearchSelectProps) {
   const lista = useMemo<Opcion[]>(() => opciones.map((o) => ({ value: o.valor, label: o.texto, subtitulo: o.subtitulo })), [opciones]);
   const elegida = lista.find((o) => o.value === valor) ?? null;
@@ -77,6 +86,9 @@ export default function SearchSelect({
     <Select<Opcion, false>
       unstyled
       aria-label={etiqueta}
+      aria-invalid={conError}
+      inputId={idCampo}
+      placeholder={placeholder}
       options={lista}
       value={elegida}
       onChange={(o) => {

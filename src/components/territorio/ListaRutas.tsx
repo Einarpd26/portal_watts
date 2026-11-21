@@ -2,6 +2,7 @@
 
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import { aNumeroONulo, deNumeroONulo } from '@/utils/seleccion';
 import { cn } from '@/utils/cn';
 import type { RutaItem, ZonaDeRuta } from '@/types';
 
@@ -73,16 +74,11 @@ export function ListaRutas({
           <Select
             label="Zona"
             compact
-            value={filtroZona ?? ''}
-            onChange={(e) => onFiltroZona(e.target.value ? Number(e.target.value) : null)}
-          >
-            <option value="">Todas mis zonas</option>
-            {zonas.map((z) => (
-              <option key={z.id} value={z.id}>
-                {z.codigo_zona} — {z.zona}
-              </option>
-            ))}
-          </Select>
+            buscable
+            valor={deNumeroONulo(filtroZona)}
+            onCambiar={(v) => onFiltroZona(aNumeroONulo(v))}
+            opciones={[{ valor: '', texto: 'Todas mis zonas' }, ...zonas.map((z) => ({ valor: String(z.id), texto: `${z.codigo_zona} — ${z.zona}` }))]}
+          />
         )}
       </div>
 

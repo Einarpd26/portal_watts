@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import { aNumeroONulo, deNumeroONulo } from '@/utils/seleccion';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import type { EquipoSupervisor } from '@/types';
 
@@ -69,18 +70,16 @@ export default function SeleccionSupervisorModal({
 
         <Select
           label="Supervisor"
-          value={seleccion ?? ''}
-          onChange={(e) => onSeleccion(e.target.value ? Number(e.target.value) : null)}
+          buscable
+          valor={deNumeroONulo(seleccion)}
+          onCambiar={(v) => onSeleccion(aNumeroONulo(v))}
+          opciones={[
+            ...(etiquetaSinSupervisor === undefined ? [] : [{ valor: '', texto: etiquetaSinSupervisor }]),
+            ...disponibles.map((c) => ({ valor: String(c.id_persona), texto: c.nombre })),
+          ]}
           disabled={isSubmitting}
           placeholder={etiquetaSinSupervisor === undefined ? 'Seleccionar...' : undefined}
-        >
-          {etiquetaSinSupervisor !== undefined && <option value="">{etiquetaSinSupervisor}</option>}
-          {disponibles.map((c) => (
-            <option key={c.id_persona} value={c.id_persona}>
-              {c.nombre}
-            </option>
-          ))}
-        </Select>
+        />
         {disponibles.length === 0 && (
           <p className="mt-2 text-xs text-gray-500">
             No hay supervisores activos con acceso en esta sucursal. Otorga el rol Supervisor desde Accesos.

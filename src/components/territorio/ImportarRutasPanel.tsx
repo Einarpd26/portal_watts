@@ -7,6 +7,7 @@ import { ResultadosImportacion } from '@/components/territorio/ResultadosImporta
 import Alert from '@/components/ui/Alert';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import { aNumeroONulo, deNumeroONulo } from '@/utils/seleccion';
 import { COLOR_ESTADO, COLOR_SIN_EVALUAR, ESTADOS_ORDEN, ETIQUETA_ESTADO, estadoPorIndice } from '@/utils/importacionRutas';
 import { LOTE_MAX_BYTES, LOTE_MAX_RUTAS } from '@/utils/rutaValidation';
 import { logger } from '@/lib/logger';
@@ -56,17 +57,11 @@ export function ImportarRutasPanel() {
             <Select
               label="Sucursal de destino"
               compact
-              value={g.idSucursal ?? ''}
+              valor={deNumeroONulo(g.idSucursal)}
               disabled={g.isLoading || ocupado || confirmada}
-              onChange={(e) => g.elegirSucursal(e.target.value ? Number(e.target.value) : null)}
-            >
-              <option value="">Elige la sucursal</option>
-              {g.sucursales.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nombre}
-                </option>
-              ))}
-            </Select>
+              onCambiar={(v) => g.elegirSucursal(aNumeroONulo(v))}
+              opciones={[{ valor: '', texto: 'Elige la sucursal' }, ...g.sucursales.map((s) => ({ valor: String(s.id), texto: s.nombre }))]}
+            />
             <p className="text-xs text-gray-500">Las zonas del archivo se buscan en esta sucursal; ella no va dentro del archivo.</p>
           </section>
 

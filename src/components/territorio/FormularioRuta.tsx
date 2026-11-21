@@ -3,6 +3,7 @@
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
+import { aNumeroONulo, deNumeroONulo } from '@/utils/seleccion';
 import { cn } from '@/utils/cn';
 import { formatoArea, type EstadoPoligono } from '@/utils/estadoPoligono';
 import type { RutaForm } from '@/hooks/useGestionRutas';
@@ -84,17 +85,13 @@ export function FormularioRuta({
           <Select
             label="Zona"
             placeholder="Seleccionar zona"
-            value={form.id_zona ?? ''}
-            onChange={(e) => setForm({ ...form, id_zona: e.target.value ? Number(e.target.value) : null })}
+            buscable
+            valor={deNumeroONulo(form.id_zona)}
+            onCambiar={(v) => setForm({ ...form, id_zona: aNumeroONulo(v) })}
+            opciones={zonas.map((z) => ({ valor: String(z.id), texto: `${z.codigo_zona} — ${z.zona}` }))}
             error={errors.id_zona}
             disabled={isSubmitting}
-          >
-            {zonas.map((z) => (
-              <option key={z.id} value={z.id}>
-                {z.codigo_zona} — {z.zona}
-              </option>
-            ))}
-          </Select>
+          />
         )}
         <Input
           label="Código"

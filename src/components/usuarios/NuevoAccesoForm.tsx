@@ -2,6 +2,7 @@ import React from 'react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
+import { aNumeroONulo, deNumeroONulo } from '@/utils/seleccion';
 import type { PersonaSinCuenta, Rol, Sucursal } from '@/types';
 import type { FormState } from '@/hooks/useGestionUsuarios';
 
@@ -46,19 +47,13 @@ export default function NuevoAccesoForm({
         {/* Colaborador */}
         <Select
           label="Colaborador"
-          value={form.id_persona ?? ''}
-          onChange={(e) =>
-            setForm({ id_persona: e.target.value ? Number(e.target.value) : null })
-          }
+          buscable
+          valor={deNumeroONulo(form.id_persona)}
+          onCambiar={(v) => setForm({ id_persona: aNumeroONulo(v) })}
+          opciones={personasSinCuenta.map((p) => ({ valor: String(p.id), texto: `${p.apellidos}, ${p.nombres} — CI: ${p.ci}` }))}
           error={formErrors.id_persona}
           placeholder="Seleccionar colaborador"
-        >
-          {personasSinCuenta.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.apellidos}, {p.nombres} — CI: {p.ci}
-            </option>
-          ))}
-        </Select>
+        />
 
         {/* Email */}
         <Input
@@ -74,37 +69,23 @@ export default function NuevoAccesoForm({
         {/* Rol */}
         <Select
           label="Rol"
-          value={form.id_rol ?? ''}
-          onChange={(e) =>
-            setForm({ id_rol: e.target.value ? Number(e.target.value) : null })
-          }
+          valor={deNumeroONulo(form.id_rol)}
+          onCambiar={(v) => setForm({ id_rol: aNumeroONulo(v) })}
+          opciones={roles.map((r) => ({ valor: String(r.id), texto: r.nombre }))}
           error={formErrors.id_rol}
           placeholder="Seleccionar rol"
-        >
-          {roles.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.nombre}
-            </option>
-          ))}
-        </Select>
+        />
 
         {/* Sucursal — solo cuando alcance es SUCURSAL */}
         {form.alcance_tipo === 'SUCURSAL' && (
           <Select
             label="Sucursal"
-            value={form.id_sucursal ?? ''}
-            onChange={(e) =>
-              setForm({ id_sucursal: e.target.value ? Number(e.target.value) : null })
-            }
+            valor={deNumeroONulo(form.id_sucursal)}
+            onCambiar={(v) => setForm({ id_sucursal: aNumeroONulo(v) })}
+            opciones={sucursales.map((s) => ({ valor: String(s.id), texto: s.nombre_sucursal }))}
             error={formErrors.id_sucursal}
             placeholder="Seleccionar sucursal"
-          >
-            {sucursales.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.nombre_sucursal}
-              </option>
-            ))}
-          </Select>
+          />
         )}
 
         <Button

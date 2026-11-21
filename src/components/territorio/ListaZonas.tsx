@@ -2,6 +2,7 @@
 
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import { aNumeroONulo, deNumeroONulo } from '@/utils/seleccion';
 import { cn } from '@/utils/cn';
 import type { ZonaItem } from '@/types';
 import type { SucursalOpcion } from '@/hooks/useGestionTerritorio';
@@ -46,16 +47,10 @@ export function ListaZonas({
           <Select
             label="Sucursal"
             compact
-            value={filtroSucursal ?? ''}
-            onChange={(e) => onFiltroSucursal(e.target.value ? Number(e.target.value) : null)}
-          >
-            <option value="">Todas las sucursales</option>
-            {sucursales.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.nombre}
-              </option>
-            ))}
-          </Select>
+            valor={deNumeroONulo(filtroSucursal)}
+            onCambiar={(v) => onFiltroSucursal(aNumeroONulo(v))}
+            opciones={[{ valor: '', texto: 'Todas las sucursales' }, ...sucursales.map((s) => ({ valor: String(s.id), texto: s.nombre }))]}
+          />
         )}
         <label className="relative block">
           <span className="sr-only">Buscar zona</span>

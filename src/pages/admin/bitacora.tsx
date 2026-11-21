@@ -1,5 +1,6 @@
 "use client";
 
+import Select from '@/components/ui/Select';
 import { useEffect, useState, useCallback, type ReactElement } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -274,41 +275,21 @@ const BitacoraPage: PageWithLayout = () => {
               />
             </div>
 
-            <div>
-              <label htmlFor="modulo-select" className="block text-xs font-semibold text-gray-700">
-                Módulo
-              </label>
-              <select
-                id="modulo-select"
-                value={moduloFiltro}
-                onChange={(e) => setModuloFiltro(e.target.value)}
-                className="mt-1 block w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-800 shadow-xs focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-600 sm:text-sm"
-              >
-                {MODULOS.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              label="Módulo"
+              compact
+              valor={moduloFiltro}
+              onCambiar={setModuloFiltro}
+              opciones={MODULOS.map((m) => ({ valor: m, texto: m }))}
+            />
 
-            <div>
-              <label htmlFor="accion-select" className="block text-xs font-semibold text-gray-700">
-                Acción
-              </label>
-              <select
-                id="accion-select"
-                value={accionFiltro}
-                onChange={(e) => setAccionFiltro(e.target.value)}
-                className="mt-1 block w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-800 shadow-xs focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-600 sm:text-sm"
-              >
-                {ACCIONES.map((a) => (
-                  <option key={a} value={a}>
-                    {a}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              label="Acción"
+              compact
+              valor={accionFiltro}
+              onCambiar={setAccionFiltro}
+              opciones={ACCIONES.map((a) => ({ valor: a, texto: a }))}
+            />
 
             <div>
               <label htmlFor="fecha-desde" className="block text-xs font-semibold text-gray-700">

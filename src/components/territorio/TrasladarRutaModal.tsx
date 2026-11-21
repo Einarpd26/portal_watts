@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import { aNumeroONulo, deNumeroONulo } from '@/utils/seleccion';
 import Alert from '@/components/ui/Alert';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import type { RutaItem, ZonaDeRuta } from '@/types';
@@ -56,17 +57,12 @@ export function TrasladarRutaModal({ ruta, zonas, isSubmitting, error, onConfirm
         ) : (
           <Select
             label="Zona de destino"
-            value={idZonaDestino ?? ''}
-            onChange={(e) => setIdZonaDestino(e.target.value ? Number(e.target.value) : null)}
+            buscable
+            valor={deNumeroONulo(idZonaDestino)}
+            onCambiar={(v) => setIdZonaDestino(aNumeroONulo(v))}
+            opciones={[{ valor: '', texto: 'Seleccionar zona' }, ...destinos.map((z) => ({ valor: String(z.id), texto: `${z.codigo_zona} — ${z.zona}` }))]}
             disabled={isSubmitting}
-          >
-            <option value="">Seleccionar zona</option>
-            {destinos.map((z) => (
-              <option key={z.id} value={z.id}>
-                {z.codigo_zona} — {z.zona}
-              </option>
-            ))}
-          </Select>
+          />
         )}
 
         {error && (

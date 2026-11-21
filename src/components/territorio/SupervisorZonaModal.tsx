@@ -2,6 +2,7 @@
 
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import { aNumeroONulo, deNumeroONulo } from '@/utils/seleccion';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import type { SupervisorCandidato, ZonaItem } from '@/types';
 
@@ -53,17 +54,12 @@ export default function SupervisorZonaModal({
 
         <Select
           label="Supervisor"
-          value={seleccion ?? ''}
-          onChange={(e) => onSeleccion(e.target.value ? Number(e.target.value) : null)}
+          buscable
+          valor={deNumeroONulo(seleccion)}
+          onCambiar={(v) => onSeleccion(aNumeroONulo(v))}
+          opciones={[{ valor: '', texto: 'Sin supervisor' }, ...disponibles.map((c) => ({ valor: String(c.id_persona), texto: c.nombre }))]}
           disabled={isSubmitting}
-        >
-          <option value="">Sin supervisor</option>
-          {disponibles.map((c) => (
-            <option key={c.id_persona} value={c.id_persona}>
-              {c.nombre}
-            </option>
-          ))}
-        </Select>
+        />
 
         {disponibles.length === 0 && (
           <p className="mt-3 text-xs text-amber-700">
