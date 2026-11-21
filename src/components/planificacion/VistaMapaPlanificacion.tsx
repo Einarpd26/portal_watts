@@ -40,8 +40,7 @@ interface VistaMapaPlanificacionProps {
 }
 
 /**
- * Planificación sobre el mapa (ADR-004), con la estructura de la planificación de rutas de la otra aplicación de la
- * empresa. Columna lateral con el modo, el día y la lista de rutas; al elegir una ruta se abre su ficha, y desde ella
+ * Planificación sobre el mapa (ADR-004). Columna lateral con el modo, el día y la lista de rutas; al elegir una ruta se abre su ficha, y desde ella
  * se la asigna a un slot con una frecuencia. En modo Planificación el color dice el estado de cada ruta; en modo
  * Cobertura dice qué slot la cubre y no se edita (D3). Quien no puede editar solo ve Cobertura (D5). Comparte slots
  * y visitas con el calendario, así que lo que se asigna aquí aparece allí.

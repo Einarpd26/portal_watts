@@ -1,5 +1,4 @@
-// Estado del polígono de la ruta en edición, que guía la barra flotante del mapa (patrón de
-// "modo mapa" de perfil-ruta en inventory-manager). Sin dependencias de Node.
+// Estado del polígono de la ruta en edición, que guía la barra flotante del mapa. Sin dependencias de Node.
 import type { ConflictoRuta } from '@/types';
 
 export type EstadoPoligono =

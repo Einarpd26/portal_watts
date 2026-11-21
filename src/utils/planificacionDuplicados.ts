@@ -1,6 +1,5 @@
 // RN-04: una ruta se visita una vez por semana. El sistema permite planificarla más veces (coberturas,
-// transiciones) pero la marca como duplicada para que el supervisor la resuelva. Es la regla de
-// inventory-manager, con una diferencia: las visitas «eventual» no cuentan, porque marcar una
+// transiciones) pero la marca como duplicada para que el supervisor la resuelva. Las visitas «eventual» no cuentan: marcar una
 // planificación como eventual es justamente la forma de resolver el conflicto (CU-09 A3).
 //
 // Dos visitas de una misma ruta chocan si alguna es «semanal» o si tienen la misma frecuencia; solo el

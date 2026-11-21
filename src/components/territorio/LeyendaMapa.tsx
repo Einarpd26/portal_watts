@@ -21,7 +21,7 @@ function Punto({ color }: { color: string | undefined }) {
   );
 }
 
-/** Leyenda plegable del mapa (patrón de MapaRutas en inventory-manager) */
+/** Leyenda plegable del mapa */
 export function LeyendaMapa({ zonas, coloresZona }: LeyendaMapaProps) {
   const [abierta, setAbierta] = useState(false);
   if (zonas.length === 0) return null;

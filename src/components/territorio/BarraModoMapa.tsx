@@ -25,9 +25,8 @@ const PUNTO = {
 } as const;
 
 /**
- * Barra flotante sobre el mapa mientras se crea o edita una ruta (patrón de "modo mapa" de
- * perfil-ruta en inventory-manager): dice qué hacer en el mapa y ofrece la acción siguiente, para
- * que las indicaciones estén donde se actúa.
+ * Barra flotante sobre el mapa mientras se crea o edita una ruta: dice qué hacer en el mapa y ofrece
+ * la acción siguiente, para que las indicaciones estén donde se actúa.
  */
 export function BarraModoMapa({
   estado,

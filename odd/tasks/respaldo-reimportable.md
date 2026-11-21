@@ -8,7 +8,7 @@ Hoy el archivo trae un `Feature` `tipo: "zona"` por contorno (el importador lo r
 
 ## Alcance autorizado (decidido por el usuario)
 - El respaldo NO incluye contornos de zona (se recalculan con las rutas).
-- Un archivo por sucursal, partido en tandas de hasta `LOTE_MAX_RUTAS` (250) y `LOTE_MAX_BYTES` (4 MB), como el exportador de inventory-manager.
+- Un archivo por sucursal, partido en tandas de hasta `LOTE_MAX_RUTAS` (250) y `LOTE_MAX_BYTES` (4 MB), como el exportador del ERP.
 - Descargas múltiples, una por archivo (sin ZIP).
 - La exportación de una sola ruta queda como hoy (un archivo directo).
 - El importador no cambia.

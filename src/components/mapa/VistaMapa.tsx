@@ -22,8 +22,7 @@ interface VistaMapaProps {
 }
 
 /**
- * Mapa de clientes y cobertura de rutas en una sola pantalla (CU-12 y CU-13, ADR-005), con la estructura de la
- * consulta de rutas de la otra aplicación de la empresa. En el escritorio: una columna con el conmutador de modo,
+ * Mapa de clientes y cobertura de rutas en una sola pantalla (CU-12 y CU-13, ADR-005). En el escritorio: una columna con el conmutador de modo,
  * los filtros, la lista, el resumen y la descarga; la ficha como panel; y el mapa. En el celular: una barra superior
  * con el conmutador, el filtro principal y un botón que alterna Lista y Mapa, y abajo una hoja que es el resumen y,
  * al elegir algo, su ficha. Cada modo recuerda sus filtros, y al cambiar de modo la ruta elegida se lleva al otro.

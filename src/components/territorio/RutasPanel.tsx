@@ -38,8 +38,7 @@ const accion = (promesa: Promise<void>, contexto: string) => {
 };
 
 /**
- * Pestaña de rutas (CU-05) con el diseño de perfil-ruta de inventory-manager: panel lateral fijo
- * y mapa a pantalla completa. El panel tiene la lista o los datos de la ruta; el polígono se
+ * Pestaña de rutas (CU-05): panel lateral fijo y mapa a pantalla completa. El panel tiene la lista o los datos de la ruta; el polígono se
  * maneja en el mapa con una barra flotante.
  */
 export function RutasPanel() {
