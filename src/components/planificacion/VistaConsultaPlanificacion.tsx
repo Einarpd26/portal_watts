@@ -162,7 +162,7 @@ export default function VistaConsultaPlanificacion({ consulta }: VistaConsultaPl
       <div className={claseTarjeta}>
         <aside className="flex w-80 shrink-0 flex-col border-r border-gray-200 bg-white">
           <div className="shrink-0 space-y-3 border-b border-gray-200 bg-gray-50 px-3 py-3">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-col gap-2">
               {selectorSucursal}
               {selectorZona}
               {selectorSupervisor}
@@ -201,7 +201,7 @@ export default function VistaConsultaPlanificacion({ consulta }: VistaConsultaPl
 
       {vistaMovil === 'lista' && !pantallaCompleta ? (
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="flex flex-col gap-2">
             {selectorSucursal}
             {selectorZona}
             {selectorSupervisor}
