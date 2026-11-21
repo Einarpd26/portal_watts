@@ -26,13 +26,17 @@ const PlanificacionPage: PageWithLayout = () => {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
 
+  // Los slots son del supervisor: Gerencia tiene el permiso (para otorgar el rol) pero no equipo propio, y consulta
+  // la planificación en Equipos y en Consulta
+  const puedePlanificar = Boolean(user?.permisos.includes('planificacion:asignar') && user.roles.some((r) => r.codigo === 'SUPERVISOR'));
+
   useEffect(() => {
-    if (!authLoading && user && !user.permisos.includes('planificacion:asignar')) {
+    if (!authLoading && user && !puedePlanificar) {
       router.replace('/').catch((navErr: unknown) => {
         logger.error('Error redirigiendo usuario sin permisos:', navErr);
       });
     }
-  }, [authLoading, user, router]);
+  }, [authLoading, user, puedePlanificar, router]);
 
   // Los avisos salen por arriba: abajo quedan la hoja de la ficha y el «Deshacer» del mapa
   useToastPosition('top');
@@ -89,7 +93,7 @@ const PlanificacionPage: PageWithLayout = () => {
   };
 
   if (authLoading || !user) return null;
-  if (!user.permisos.includes('planificacion:asignar')) return null;
+  if (!puedePlanificar) return null;
 
   return (
     <div className={cn('flex flex-col bg-gray-50', enMapa ? 'min-h-0 flex-1' : 'min-h-full flex-none')}>
@@ -124,11 +128,6 @@ const PlanificacionPage: PageWithLayout = () => {
       <div className={cn('w-full px-4 lg:px-6', enMapa ? 'flex min-h-0 flex-1 flex-col pb-4 pt-4' : 'space-y-4 py-6 lg:py-8')}>
         {isLoading ? (
           <p className="text-sm text-gray-400">Cargando slots...</p>
-        ) : !listado.es_supervisor ? (
-          <p className="text-sm text-gray-500">
-            Los slots son de cada supervisor. Para ver la planificación de un supervisor o administrar quién integra su
-            equipo, usa Equipos.
-          </p>
         ) : listado.slots.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center">
             <p className="text-sm font-medium text-gray-500">Todavía no tienes slots</p>

@@ -200,8 +200,9 @@ export default function Navbar() {
   // Cada rol ve su subconjunto: Gerencia → todos; Fiscalizador → Operación+Gestión
   // sin Planificación; Supervisor → Operación; Vendedor → Mapa; SIN_ROL → nada.
   const permisos = user?.permisos ?? [];
-  const operationItems = OPERATION_GROUP.filter((item) => hasPermission(permisos, item));
-  const managementItems = MANAGEMENT_GROUP.filter((item) => hasPermission(permisos, item));
+  const roles = (user?.roles ?? []).map((r) => r.codigo);
+  const operationItems = OPERATION_GROUP.filter((item) => hasPermission(permisos, item, roles));
+  const managementItems = MANAGEMENT_GROUP.filter((item) => hasPermission(permisos, item, roles));
 
   const closeDrawer = () => setIsDrawerOpen(false);
 
