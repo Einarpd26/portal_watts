@@ -38,9 +38,11 @@ CREATE TABLE IF NOT EXISTS public.clientes (
 COMMENT ON TABLE public.clientes IS 'Puntos de venta geolocalizados. La clasificación ABC y la inactividad se derivan de ventas (vista clientes_abc), no se almacenan aquí.';
 
 CREATE INDEX IF NOT EXISTS clientes_id_ruta_idx ON public.clientes (id_ruta);
--- Consultas espaciales («clientes dentro de esta ruta») sin guardar una segunda columna de geometría
+-- Consultas espaciales («clientes dentro de esta ruta») sin guardar una segunda columna de geometría.
+-- PostGIS vive en el esquema `extensions`: en la base alojada el search_path de la migración es solo `public`,
+-- así que las funciones van calificadas (en la base local `extensions` sí está en el search_path).
 CREATE INDEX IF NOT EXISTS clientes_punto_gist_idx ON public.clientes
-    USING gist (ST_SetSRID(ST_MakePoint(longitud::float8, latitud::float8), 4326));
+    USING gist (extensions.ST_SetSRID(extensions.ST_MakePoint(longitud::float8, latitud::float8), 4326));
 
 CREATE TRIGGER trg_clientes_updated_at
     BEFORE UPDATE ON public.clientes
