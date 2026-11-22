@@ -1,6 +1,7 @@
 // Lógica pura de la pantalla de cobertura de rutas (CU-13, ADR-005 D3): tramos de color, resumen, filtros y
 // orden. Sin dependencias de Node ni del navegador.
 import type { RutaCobertura } from '@/types';
+import { depurarTerritorio, opcionesTerritorio, pasaTerritorio, type FacetaTerritorio, type OpcionesTerritorio } from './territorio.ts';
 
 export type TramoCobertura = 'baja' | 'media' | 'alta';
 
@@ -47,21 +48,15 @@ export function resumirCobertura(rutas: readonly RutaCobertura[]): ResumenCobert
 }
 
 export interface FiltrosCobertura {
+  idSucursal: number | null;
   idZona: number | null;
   idSupervisor: number | null;
   idRuta: number | null;
 }
 
-export const FILTROS_COBERTURA_INICIALES: FiltrosCobertura = { idZona: null, idSupervisor: null, idRuta: null };
+export const FILTROS_COBERTURA_INICIALES: FiltrosCobertura = { idSucursal: null, idZona: null, idSupervisor: null, idRuta: null };
 
-export function filtrarCobertura(rutas: readonly RutaCobertura[], f: FiltrosCobertura): RutaCobertura[] {
-  return rutas.filter(
-    (r) =>
-      (f.idZona === null || r.id_zona === f.idZona) &&
-      (f.idSupervisor === null || r.id_supervisor === f.idSupervisor) &&
-      (f.idRuta === null || r.id === f.idRuta)
-  );
-}
+export const filtrarCobertura = (rutas: readonly RutaCobertura[], f: FiltrosCobertura): RutaCobertura[] => rutas.filter((r) => pasaTerritorio(r, f));
 
 export type OrdenCobertura = 'menor' | 'mayor' | 'codigo';
 
@@ -94,3 +89,16 @@ export function momentoDeCalculo(instante: string | null): string | null {
   const dos = (n: number) => String(n).padStart(2, '0');
   return `${dos(f.getUTCDate())}/${dos(f.getUTCMonth() + 1)}/${f.getUTCFullYear()} ${dos(f.getUTCHours())}:${dos(f.getUTCMinutes())}`;
 }
+
+// --- Filtros encadenados -------------------------------------------------------------------------------------
+
+export type FacetaCobertura = FacetaTerritorio;
+
+export const FACETAS_COBERTURA: readonly FacetaCobertura[] = ['idSucursal', 'idZona', 'idSupervisor', 'idRuta'];
+
+export type OpcionesCobertura = OpcionesTerritorio<RutaCobertura>;
+
+export const opcionesCoberturaSegunFiltros = (rutas: readonly RutaCobertura[], f: FiltrosCobertura): OpcionesCobertura => opcionesTerritorio(rutas, f);
+
+export const depurarFiltrosCobertura = (rutas: readonly RutaCobertura[], f: FiltrosCobertura, conservar: FacetaCobertura | null): FiltrosCobertura =>
+  depurarTerritorio(rutas, f, conservar);

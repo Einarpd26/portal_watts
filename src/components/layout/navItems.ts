@@ -21,12 +21,15 @@ export type NavItem = {
   available: boolean;
 };
 
+import { ROLES_DE_SUPERVISION } from "../../utils/clientesScope.ts";
+
 // Grupo "Operación": trabajo diario en terreno.
 export const OPERATION_GROUP_LABEL = "Operación";
 export const OPERATION_GROUP: NavItem[] = [
   { label: "Mapa", href: "/mapa", requiredPermissions: ["mapa:consultar"], available: true },
   { label: "Planificación", href: "/planificacion", requiredPermissions: ["planificacion:asignar"], soloRoles: ["SUPERVISOR"], available: true },
-  { label: "Consulta", href: "/consulta-planificacion", requiredPermissions: ["mapa:consultar"], anyPermissions: ["rutas:gestionar"], available: true },
+  // Consulta de toda la planificación del alcance: es de supervisión (Gerencia y Fiscalizador); el Supervisor tiene la suya en Planificación
+  { label: "Consulta", href: "/consulta-planificacion", requiredPermissions: ["mapa:consultar"], soloRoles: [...ROLES_DE_SUPERVISION], available: true },
 ];
 
 // Grupo "Gestión": administración corporativa de la sucursal.

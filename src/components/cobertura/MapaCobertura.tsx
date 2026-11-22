@@ -60,7 +60,11 @@ export function MapaCobertura({ rutas, contornos, seleccionId, onElegir }: MapaC
     [contornos]
   );
 
-  const caja = useMemo(() => cajaDe([...rutas.map((r) => r.geojson), ...contornos.map((c) => c.geojson)]), [rutas, contornos]);
+  // El encuadre abarca las rutas que dejan los filtros y los contornos de sus zonas: con un supervisor elegido, solo sus zonas
+  const caja = useMemo(() => {
+    const zonasVisibles = new Set(rutas.map((r) => r.id_zona));
+    return cajaDe([...rutas.map((r) => r.geojson), ...contornos.filter((c) => zonasVisibles.has(c.id_zona)).map((c) => c.geojson)]);
+  }, [rutas, contornos]);
   const encuadrar = useCallback(
     (duracion: number) => {
       const mapa = mapaRef.current;

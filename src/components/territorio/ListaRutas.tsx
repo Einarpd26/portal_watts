@@ -75,9 +75,11 @@ export function ListaRutas({
             label="Zona"
             compact
             buscable
+            limpiable
+            placeholder="Todas mis zonas"
             valor={deNumeroONulo(filtroZona)}
             onCambiar={(v) => onFiltroZona(aNumeroONulo(v))}
-            opciones={[{ valor: '', texto: 'Todas mis zonas' }, ...zonas.map((z) => ({ valor: String(z.id), texto: `${z.codigo_zona} — ${z.zona}` }))]}
+            opciones={zonas.map((z) => ({ valor: String(z.id), texto: `${z.codigo_zona} — ${z.zona}` }))}
           />
         )}
       </div>

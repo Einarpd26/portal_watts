@@ -72,3 +72,84 @@ export function opcionesDeConsulta(rutas: readonly RutaConsulta[], slots: readon
   }
   return { sucursales: ordenadas(sucursales), zonas: ordenadas(zonas), supervisores: ordenadas(supervisores), vendedores: ordenadas(vendedores) };
 }
+
+// --- Filtros encadenados -------------------------------------------------------------------------------------
+
+export type Faceta = 'idSucursal' | 'idZona' | 'idSupervisor' | 'idVendedor' | 'idRuta';
+
+/** Los cinco filtros que se eligen de una lista; el día no es uno de ellos: no recorta nada */
+export const FACETAS: readonly Faceta[] = ['idSucursal', 'idZona', 'idSupervisor', 'idVendedor', 'idRuta'];
+
+const LISTA_DE: Record<Faceta, 'sucursales' | 'zonas' | 'supervisores' | 'vendedores' | 'rutas'> = {
+  idSucursal: 'sucursales',
+  idZona: 'zonas',
+  idSupervisor: 'supervisores',
+  idVendedor: 'vendedores',
+  idRuta: 'rutas',
+};
+
+export interface OpcionesEncadenadas extends OpcionesDeConsulta {
+  rutas: Array<[number, string]>;
+}
+
+/**
+ * Valores que se pueden elegir en cada filtro dados los demás. Cada lista sale de las rutas (y sus visitas) que
+ * dejan **los otros** filtros, sin contar el suyo: así, con un supervisor elegido solo se ofrecen los vendedores que
+ * visitan sus rutas, y nunca se puede armar una combinación que no deje ninguna ruta.
+ */
+export function opcionesSegunFiltros(
+  rutas: readonly RutaConsulta[],
+  slots: readonly SlotConsulta[],
+  visitas: readonly VisitaPlanificada[],
+  f: FiltrosConsulta
+): OpcionesEncadenadas {
+  const sin = (faceta: Faceta) => filtrarConsulta(rutas, slots, visitas, { ...f, [faceta]: null });
+  const deRutas = (faceta: Faceta, clave: (r: RutaConsulta) => number | null, texto: (r: RutaConsulta) => string) => {
+    const valores = new Map<number, string>();
+    for (const r of sin(faceta).rutas) {
+      const id = clave(r);
+      if (id !== null) valores.set(id, texto(r));
+    }
+    return ordenadas(valores);
+  };
+
+  const vendedorDelSlot = new Map(slots.flatMap((s) => (s.id_vendedor === null ? [] : [[s.id, { id: s.id_vendedor, nombre: s.vendedor_nombre ?? `Vendedor ${s.id_vendedor}` }] as const])));
+  const vendedores = new Map<number, string>();
+  for (const v of sin('idVendedor').visitas) {
+    const vendedor = vendedorDelSlot.get(v.id_slot);
+    if (vendedor) vendedores.set(vendedor.id, vendedor.nombre);
+  }
+
+  return {
+    sucursales: deRutas('idSucursal', (r) => r.id_sucursal, (r) => r.sucursal_nombre),
+    zonas: deRutas('idZona', (r) => r.id_zona, (r) => r.zona_nombre || r.codigo_zona),
+    supervisores: deRutas('idSupervisor', (r) => r.id_supervisor, (r) => r.supervisor_nombre ?? `Supervisor ${r.id_supervisor}`),
+    vendedores: ordenadas(vendedores),
+    rutas: deRutas('idRuta', (r) => r.id, (r) => r.ruta),
+  };
+}
+
+/**
+ * Quita de los filtros lo elegido que ya no es posible con los demás (p. ej. un vendedor que no visita las rutas del
+ * supervisor recién elegido). El filtro que acaba de cambiar (`conservar`) no se toca: es el que manda.
+ */
+export function depurarFiltros(
+  rutas: readonly RutaConsulta[],
+  slots: readonly SlotConsulta[],
+  visitas: readonly VisitaPlanificada[],
+  f: FiltrosConsulta,
+  conservar: Faceta | null
+): FiltrosConsulta {
+  let actual = f;
+  // Se quita de a uno y se recalcula: al limpiar un filtro, las opciones de los demás pueden volver a ser válidas
+  for (let i = 0; i < FACETAS.length; i++) {
+    const opciones = opcionesSegunFiltros(rutas, slots, visitas, actual);
+    const invalida = FACETAS.find((faceta) => {
+      const valor = actual[faceta];
+      return faceta !== conservar && valor !== null && !opciones[LISTA_DE[faceta]].some(([id]) => id === valor);
+    });
+    if (!invalida) break;
+    actual = { ...actual, [invalida]: null };
+  }
+  return actual;
+}

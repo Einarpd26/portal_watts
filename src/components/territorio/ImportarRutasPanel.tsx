@@ -61,7 +61,8 @@ export function ImportarRutasPanel() {
               valor={deNumeroONulo(g.idSucursal)}
               disabled={g.isLoading || ocupado || confirmada}
               onCambiar={(v) => g.elegirSucursal(aNumeroONulo(v))}
-              opciones={[{ valor: '', texto: 'Elige la sucursal' }, ...g.sucursales.map((s) => ({ valor: String(s.id), texto: s.nombre }))]}
+              placeholder="Elige la sucursal"
+              opciones={g.sucursales.map((s) => ({ valor: String(s.id), texto: s.nombre }))}
             />
             <p className="text-xs text-gray-500">Las zonas del archivo se buscan en esta sucursal; ella no va dentro del archivo.</p>
           </section>

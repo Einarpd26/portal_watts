@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCallerAuth } from '@/utils/requireCallerAuth';
-import { alcanceDeClientes, alcanceDeCobertura, PERMISO_MAPA } from '@/utils/clientesScope';
+import { alcanceDeClientes, alcanceDeCobertura, PERMISO_MAPA, puedeConsultarPlanificacion } from '@/utils/clientesScope';
 import { coberturaDeAlcance } from '@/lib/cobertura';
 import { consultaDePlanificacion } from '@/lib/consultaPlanificacion';
 import { mapaDeClientes } from '@/lib/clientes';
@@ -50,6 +50,8 @@ async function armarReporte(tipo: TipoReporte, req: NextApiRequest, caller: User
     const { filtros, orden } = coberturaDesdeQuery(req.query);
     return [reporteCobertura(cobertura.data, filtros, orden)];
   }
+  // El reporte de la consulta es de supervisión, igual que su pantalla (CU-10)
+  if (!puedeConsultarPlanificacion(caller)) return 'denegado';
   const consulta = await consultaDePlanificacion(alcance, caller.id_persona);
   return consulta.ok ? [reportePlanificacion(consulta.data, planificacionDesdeQuery(req.query))] : 'error';
 }

@@ -60,7 +60,8 @@ export function TrasladarRutaModal({ ruta, zonas, isSubmitting, error, onConfirm
             buscable
             valor={deNumeroONulo(idZonaDestino)}
             onCambiar={(v) => setIdZonaDestino(aNumeroONulo(v))}
-            opciones={[{ valor: '', texto: 'Seleccionar zona' }, ...destinos.map((z) => ({ valor: String(z.id), texto: `${z.codigo_zona} — ${z.zona}` }))]}
+            placeholder="Seleccionar zona"
+            opciones={destinos.map((z) => ({ valor: String(z.id), texto: `${z.codigo_zona} — ${z.zona}` }))}
             disabled={isSubmitting}
           />
         )}

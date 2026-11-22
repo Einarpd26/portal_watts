@@ -49,10 +49,8 @@ export default function AsignarEnFicha({ slots, dia, deshabilitado, existe, onAs
         etiqueta="Slot al que se asigna la ruta"
         valor={idSlot === null ? '' : String(idSlot)}
         onCambiar={(v) => setIdSlot(v === '' ? null : Number(v))}
-        opciones={[
-          { valor: '', texto: 'Elige un slot…' },
-          ...slots.map((s, i) => ({ valor: String(s.id), texto: `${etiquetaDeSlot(s, i)} · ${s.vendedor_nombre ?? 'Sin vendedor'}` })),
-        ]}
+        placeholder="Elige un slot…"
+        opciones={slots.map((s, i) => ({ valor: String(s.id), texto: `${etiquetaDeSlot(s, i)} · ${s.vendedor_nombre ?? 'Sin vendedor'}` }))}
       />
       <SelectorFrecuencia frecuencia={frecuencia} onFrecuencia={setFrecuencia} />
       {repetida && <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">Ya está planificada en ese slot, ese día y con esa frecuencia.</p>}

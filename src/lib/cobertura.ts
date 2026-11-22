@@ -11,16 +11,18 @@ export type CoberturaResultado = { ok: true; data: CoberturaListado } | { ok: fa
 type Persona = { nombres: string; apellidos: string } | null;
 const nombreCompleto = (p: Persona) => (p ? `${p.apellidos}, ${p.nombres}` : null);
 
-/** Código de cada zona y su supervisor actual (una zona tiene a lo sumo uno) */
+/** Código y sucursal de cada zona, y su supervisor actual (una zona tiene a lo sumo uno) */
 async function zonasConSupervisor(idsZona: number[]) {
   const db = createAdminClient();
   const [zonas, supervisores] = await Promise.all([
-    db.from('zonas').select('id, codigo_zona').in('id', idsZona),
+    db.from('zonas').select('id, codigo_zona, id_sucursal, sucursales ( nombre_sucursal )').in('id', idsZona),
     db.from('supervisor_zonas').select('id_zona, id_supervisor, personas!supervisor_zonas_id_supervisor_fkey ( nombres, apellidos )').in('id_zona', idsZona),
   ]);
   if (zonas.error || supervisores.error) return null;
   return {
-    codigoDe: new Map((zonas.data ?? []).map((z) => [z.id, z.codigo_zona])),
+    zonaDe: new Map(
+      (zonas.data ?? []).map((z) => [z.id, { codigo: z.codigo_zona, idSucursal: z.id_sucursal, sucursal: primero(z.sucursales)?.nombre_sucursal ?? '' }])
+    ),
     supervisorDe: new Map(
       (supervisores.data ?? []).map((s) => [s.id_zona, { id: s.id_supervisor, nombre: nombreCompleto(primero(s.personas)) }])
     ),
@@ -62,13 +64,16 @@ export async function coberturaDeAlcance(
     const c = coberturaDe.get(r.id);
     if (!c) return [];
     const supervisor = zonas.supervisorDe.get(r.id_zona);
+    const zona = zonas.zonaDe.get(r.id_zona);
     return [
       {
         id: r.id,
         codigo_ruta: r.codigo_ruta,
         ruta: r.ruta,
         id_zona: r.id_zona,
-        codigo_zona: zonas.codigoDe.get(r.id_zona) ?? '',
+        codigo_zona: zona?.codigo ?? '',
+        id_sucursal: zona?.idSucursal ?? 0,
+        sucursal_nombre: zona?.sucursal ?? '',
         id_supervisor: supervisor?.id ?? null,
         supervisor_nombre: supervisor?.nombre ?? null,
         clientes_habilitados: c.clientes_habilitados ?? 0,

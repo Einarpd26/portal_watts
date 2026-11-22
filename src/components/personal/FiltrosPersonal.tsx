@@ -33,13 +33,17 @@ export default function FiltrosPersonal({ filtros, onCambiar, sucursales, cargos
           etiqueta="Sucursal"
           valor={filtros.idSucursal}
           onCambiar={(idSucursal) => onCambiar({ idSucursal })}
-          opciones={[{ valor: "", texto: "Todas las sucursales" }, ...sucursales.map((s) => ({ valor: String(s.id), texto: s.nombre_sucursal }))]}
+          limpiable
+          placeholder="Todas las sucursales"
+          opciones={sucursales.map((s) => ({ valor: String(s.id), texto: s.nombre_sucursal }))}
         />
         <SelectorCompacto
           etiqueta="Cargo"
           valor={filtros.idCargo}
           onCambiar={(idCargo) => onCambiar({ idCargo })}
-          opciones={[{ valor: "", texto: "Todos los cargos" }, ...cargos.map((c) => ({ valor: String(c.id), texto: c.nombre_cargo }))]}
+          limpiable
+          placeholder="Todos los cargos"
+          opciones={cargos.map((c) => ({ valor: String(c.id), texto: c.nombre_cargo }))}
         />
       </div>
     </div>

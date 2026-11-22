@@ -7,7 +7,7 @@ import type { ClaseAbc } from '@/types';
 
 interface InterruptoresClaseProps {
   filtros: Filtros;
-  onCambiar: (filtros: Filtros) => void;
+  onCambiar: (cambio: Partial<Filtros>) => void;
   /** Hay clientes no habilitados en el ámbito elegido: se ofrece su interruptor */
   haySinClase: boolean;
 }
@@ -36,7 +36,7 @@ export function InterruptoresClase({ filtros, onCambiar, haySinClase }: Interrup
   const alternarClase = (clase: ClaseAbc) => {
     const clases = new Set(filtros.clases);
     if (!clases.delete(clase)) clases.add(clase);
-    onCambiar({ ...filtros, clases });
+    onCambiar({ clases });
   };
 
   return (
@@ -44,7 +44,7 @@ export function InterruptoresClase({ filtros, onCambiar, haySinClase }: Interrup
       {CLASES_ABC.map((clase) => (
         <Interruptor key={clase} activo={filtros.clases.has(clase)} clase={clase} titulo={DESCRIPCION_CLASE[clase]} onClick={() => alternarClase(clase)} />
       ))}
-      {haySinClase && <Interruptor activo={filtros.sinClase} clase={null} titulo="Sin clasificar" onClick={() => onCambiar({ ...filtros, sinClase: !filtros.sinClase })} />}
+      {haySinClase && <Interruptor activo={filtros.sinClase} clase={null} titulo="Sin clasificar" onClick={() => onCambiar({ sinClase: !filtros.sinClase })} />}
     </div>
   );
 }

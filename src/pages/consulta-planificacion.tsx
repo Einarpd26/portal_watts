@@ -8,7 +8,7 @@ import { useToast, useToastPosition } from '@/contexts/ToastContext';
 import { useConsultaPlanificacion } from '@/hooks/useConsultaPlanificacion';
 import AppLayout from '@/components/layout/AppLayout';
 import VistaConsultaPlanificacion from '@/components/planificacion/VistaConsultaPlanificacion';
-import { PERMISO_MAPA } from '@/utils/clientesScope';
+import { puedeConsultarPlanificacion } from '@/utils/clientesScope';
 import { logger } from '@/lib/logger';
 import type { PageWithLayout } from '@/types';
 
@@ -18,7 +18,7 @@ const ConsultaPlanificacionPage: PageWithLayout = () => {
   const { showToast } = useToast();
   // Los avisos salen por arriba: abajo quedan la hoja de la ficha y los controles del mapa
   useToastPosition('top');
-  const autorizado = !!user && user.permisos.includes(PERMISO_MAPA);
+  const autorizado = !!user && puedeConsultarPlanificacion(user);
 
   useEffect(() => {
     if (!authLoading && user && !autorizado) {

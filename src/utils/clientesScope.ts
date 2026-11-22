@@ -44,3 +44,14 @@ export function alcanceDeClientes(solicitante: { roles: RolDeConsulta[] }): Alca
 export function alcanceDeCobertura(solicitante: { roles: RolDeConsulta[] }): AlcanceClientes {
   return alcanceDeClientes({ roles: solicitante.roles.filter((r) => r.codigo !== ROL_VENDEDOR) });
 }
+
+/** Roles de supervisión: consultan la planificación de todo su alcance (CU-10). El Supervisor ya tiene la suya en su pantalla de planificación */
+export const ROLES_DE_SUPERVISION = ['GERENCIA_COMERCIAL', 'FISCALIZADOR'] as const;
+
+/**
+ * Quien puede abrir la consulta de planificación y descargar su reporte. Con solo el rol Supervisor o Vendedor no:
+ * la consulta incluye slots de otros supervisores y rutas sin planificar, que ellos no pueden atender.
+ */
+export function puedeConsultarPlanificacion(solicitante: { roles: RolDeConsulta[] }): boolean {
+  return solicitante.roles.some((r) => r.permisos.includes(PERMISO_MAPA) && (ROLES_DE_SUPERVISION as readonly string[]).includes(r.codigo));
+}

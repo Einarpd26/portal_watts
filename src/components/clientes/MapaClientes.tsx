@@ -22,8 +22,8 @@ interface MapaClientesProps {
   contornos: ContornoZona[];
   /** Clientes que pasan los filtros */
   clientes: ClienteMapa[];
-  /** Si hay una ruta elegida en los filtros, el mapa se encuadra sobre ella; si no, sobre todo el territorio */
-  idRutaEnfoque: number | null;
+  /** Rutas que dejan los filtros territoriales: el mapa se encuadra sobre ellas; con null, sobre todo el territorio */
+  idsRutasEnfoque: number[] | null;
   seleccionId: number | null;
   onElegir: (idCliente: number | null) => void;
 }
@@ -39,22 +39,24 @@ interface BajoElCursor {
  * el polígono de su ruta y el contorno de la zona. Una sola fuente de datos; los marcadores son imágenes del
  * mapa elegidas por expresión de estilo, así que escala a miles de clientes.
  */
-export function MapaClientes({ rutas, contornos, clientes, idRutaEnfoque, seleccionId, onElegir }: MapaClientesProps) {
+export function MapaClientes({ rutas, contornos, clientes, idsRutasEnfoque, seleccionId, onElegir }: MapaClientesProps) {
   const mapaRef = useRef<MapRef>(null);
   const [bajoElCursor, setBajoElCursor] = useState<BajoElCursor | null>(null);
   // La capa de clientes se monta recién cuando las imágenes de los marcadores ya están en el mapa
   const [pinesListos, setPinesListos] = useState(false);
+
+  const enfoque = useMemo(() => (idsRutasEnfoque === null ? null : new Set(idsRutasEnfoque)), [idsRutasEnfoque]);
 
   const datosRutas = useMemo<GeoJSON.FeatureCollection>(
     () => ({
       type: 'FeatureCollection',
       features: rutas.map((r) => ({
         type: 'Feature',
-        properties: { id: r.id, codigo: r.codigo_ruta, enfocada: r.id === idRutaEnfoque },
+        properties: { id: r.id, codigo: r.codigo_ruta, enfocada: enfoque?.has(r.id) ?? false },
         geometry: r.geojson,
       })),
     }),
-    [rutas, idRutaEnfoque]
+    [rutas, enfoque]
   );
 
   const datosContornos = useMemo<GeoJSON.FeatureCollection>(
@@ -78,10 +80,10 @@ export function MapaClientes({ rutas, contornos, clientes, idRutaEnfoque, selecc
   );
 
   const caja = useMemo(() => {
-    const enfocadas = idRutaEnfoque === null ? rutas : rutas.filter((r) => r.id === idRutaEnfoque);
+    const enfocadas = enfoque === null ? rutas : rutas.filter((r) => enfoque.has(r.id));
     const geometrias = enfocadas.length > 0 ? enfocadas.map((r) => r.geojson) : rutas.map((r) => r.geojson);
-    return cajaDe(idRutaEnfoque === null ? [...geometrias, ...contornos.map((c) => c.geojson)] : geometrias);
-  }, [rutas, contornos, idRutaEnfoque]);
+    return cajaDe(enfoque === null ? [...geometrias, ...contornos.map((c) => c.geojson)] : geometrias);
+  }, [rutas, contornos, enfoque]);
 
   const encuadrar = useCallback(
     (duracion: number) => {

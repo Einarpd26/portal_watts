@@ -39,8 +39,8 @@ interface BitacoraApiResponse {
   };
 }
 
-const MODULOS = ['TODOS', 'AUTENTICACION', 'ACCESOS', 'PERSONAL', 'TERRITORIO', 'PLANIFICACION', 'REPORTES', 'SISTEMA'];
-const ACCIONES = ['TODAS', ...ACCIONES_BITACORA];
+const MODULOS = ['AUTENTICACION', 'ACCESOS', 'PERSONAL', 'TERRITORIO', 'PLANIFICACION', 'REPORTES', 'SISTEMA'];
+const ACCIONES = ACCIONES_BITACORA;
 
 function getModuloBadgeClasses(modulo: string): string {
   switch (modulo) {
@@ -127,8 +127,8 @@ const BitacoraPage: PageWithLayout = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Filtros
-  const [moduloFiltro, setModuloFiltro] = useState('TODOS');
-  const [accionFiltro, setAccionFiltro] = useState('TODAS');
+  const [moduloFiltro, setModuloFiltro] = useState('');
+  const [accionFiltro, setAccionFiltro] = useState('');
   const [search, setSearch] = useState('');
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
@@ -157,8 +157,8 @@ const BitacoraPage: PageWithLayout = () => {
         limit: '20',
       });
 
-      if (moduloFiltro !== 'TODOS') params.set('modulo', moduloFiltro);
-      if (accionFiltro !== 'TODAS') params.set('accion', accionFiltro);
+      if (moduloFiltro) params.set('modulo', moduloFiltro);
+      if (accionFiltro) params.set('accion', accionFiltro);
       if (search.trim()) params.set('search', search.trim());
       if (fechaDesde) params.set('fecha_desde', fechaDesde);
       if (fechaHasta) params.set('fecha_hasta', fechaHasta);
@@ -189,8 +189,8 @@ const BitacoraPage: PageWithLayout = () => {
   }, [loadData, user]);
 
   const handleResetFilters = () => {
-    setModuloFiltro('TODOS');
-    setAccionFiltro('TODAS');
+    setModuloFiltro('');
+    setAccionFiltro('');
     setSearch('');
     setFechaDesde('');
     setFechaHasta('');
@@ -279,6 +279,8 @@ const BitacoraPage: PageWithLayout = () => {
             <Select
               label="Módulo"
               compact
+              limpiable
+              placeholder="Todos los módulos"
               valor={moduloFiltro}
               onCambiar={setModuloFiltro}
               opciones={MODULOS.map((m) => ({ valor: m, texto: m }))}
@@ -287,6 +289,8 @@ const BitacoraPage: PageWithLayout = () => {
             <Select
               label="Acción"
               compact
+              limpiable
+              placeholder="Todas las acciones"
               valor={accionFiltro}
               onCambiar={setAccionFiltro}
               opciones={ACCIONES.map((a) => ({ valor: a, texto: a }))}

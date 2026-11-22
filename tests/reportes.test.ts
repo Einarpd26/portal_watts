@@ -27,9 +27,9 @@ test("tipo: solo se aceptan los reportes que existen", () => {
 });
 
 test("cobertura: los filtros viajan en la dirección y vuelven iguales", () => {
-  const filtros = { idZona: 2, idSupervisor: 10, idRuta: null };
+  const filtros = { idSucursal: 1, idZona: 2, idSupervisor: 10, idRuta: null };
   const qs = parametrosDeCobertura(filtros, "mayor");
-  assert.equal(qs, "zona=2&supervisor=10&orden=mayor");
+  assert.equal(qs, "sucursal=1&zona=2&supervisor=10&orden=mayor");
   assert.deepEqual(coberturaDesdeQuery(aObjeto(qs)), { filtros, orden: "mayor" });
 });
 
@@ -50,8 +50,10 @@ test("planificación: un día que no existe se ignora", () => {
 });
 
 test("clientes: ida y vuelta de clases, no habilitados, ruta y texto", () => {
-  const filtros = { idRuta: 7, clases: new Set<ClaseAbc>(["A", "B"]), sinClase: false, texto: "don pepe" };
+  const filtros = { idSucursal: 1, idZona: 3, idRuta: 7, clases: new Set<ClaseAbc>(["A", "B"]), sinClase: false, texto: "don pepe" };
   const vuelta = clientesDesdeQuery(aObjeto(parametrosDeClientes(filtros)));
+  assert.equal(vuelta.idSucursal, 1);
+  assert.equal(vuelta.idZona, 3);
   assert.equal(vuelta.idRuta, 7);
   assert.deepEqual([...vuelta.clases], ["A", "B"]);
   assert.equal(vuelta.sinClase, false);

@@ -47,9 +47,11 @@ export function ListaZonas({
           <Select
             label="Sucursal"
             compact
+            limpiable
+            placeholder="Todas las sucursales"
             valor={deNumeroONulo(filtroSucursal)}
             onCambiar={(v) => onFiltroSucursal(aNumeroONulo(v))}
-            opciones={[{ valor: '', texto: 'Todas las sucursales' }, ...sucursales.map((s) => ({ valor: String(s.id), texto: s.nombre }))]}
+            opciones={sucursales.map((s) => ({ valor: String(s.id), texto: s.nombre }))}
           />
         )}
         <label className="relative block">
