@@ -94,3 +94,51 @@ export function momentoDeCalculo(instante: string | null): string | null {
   const dos = (n: number) => String(n).padStart(2, '0');
   return `${dos(f.getUTCDate())}/${dos(f.getUTCMonth() + 1)}/${f.getUTCFullYear()} ${dos(f.getUTCHours())}:${dos(f.getUTCMinutes())}`;
 }
+
+// --- Filtros encadenados -------------------------------------------------------------------------------------
+
+export type FacetaCobertura = keyof FiltrosCobertura;
+
+export const FACETAS_COBERTURA: readonly FacetaCobertura[] = ['idZona', 'idSupervisor', 'idRuta'];
+
+export interface OpcionesCobertura {
+  zonas: Array<[number, string]>;
+  supervisores: Array<[number, string]>;
+  rutas: RutaCobertura[];
+}
+
+/**
+ * Lo que se puede elegir en cada filtro dados los demás: cada lista sale de las rutas que dejan los otros filtros,
+ * sin contar el suyo. Con una zona elegida solo se ofrecen sus supervisores y sus rutas, y al revés.
+ */
+export function opcionesCoberturaSegunFiltros(rutas: readonly RutaCobertura[], f: FiltrosCobertura): OpcionesCobertura {
+  const sin = (faceta: FacetaCobertura) => filtrarCobertura(rutas, { ...f, [faceta]: null });
+  const zonas = new Map<number, string>();
+  for (const r of sin('idZona')) zonas.set(r.id_zona, r.codigo_zona);
+  const supervisores = new Map<number, string>();
+  for (const r of sin('idSupervisor')) {
+    if (r.id_supervisor !== null) supervisores.set(r.id_supervisor, r.supervisor_nombre ?? `Supervisor ${r.id_supervisor}`);
+  }
+  const porNombre = (a: [number, string], b: [number, string]) => a[1].localeCompare(b[1]);
+  return {
+    zonas: [...zonas.entries()].sort(porNombre),
+    supervisores: [...supervisores.entries()].sort(porNombre),
+    rutas: [...sin('idRuta')].sort((a, b) => a.codigo_ruta.localeCompare(b.codigo_ruta)),
+  };
+}
+
+/** Quita de los filtros lo elegido que ya no es posible con los demás; el filtro que acaba de cambiar (`conservar`) manda */
+export function depurarFiltrosCobertura(rutas: readonly RutaCobertura[], f: FiltrosCobertura, conservar: FacetaCobertura | null): FiltrosCobertura {
+  let actual = f;
+  for (let i = 0; i < FACETAS_COBERTURA.length; i++) {
+    const o = opcionesCoberturaSegunFiltros(rutas, actual);
+    const invalida = FACETAS_COBERTURA.find((faceta) => {
+      const valor = actual[faceta];
+      if (faceta === conservar || valor === null) return false;
+      return faceta === 'idRuta' ? !o.rutas.some((r) => r.id === valor) : !(faceta === 'idZona' ? o.zonas : o.supervisores).some(([id]) => id === valor);
+    });
+    if (!invalida) break;
+    actual = { ...actual, [invalida]: null };
+  }
+  return actual;
+}

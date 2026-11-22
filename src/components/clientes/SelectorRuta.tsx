@@ -18,7 +18,9 @@ export function SelectorRuta({ rutas, idRuta, onCambiar }: SelectorRutaProps) {
       etiqueta="Ruta"
       valor={idRuta === null ? '' : String(idRuta)}
       onCambiar={(v) => onCambiar(v === '' ? null : Number(v))}
-      opciones={[{ valor: '', texto: 'Todas las rutas' }, ...rutas.map((r) => ({ valor: String(r.id), texto: `${r.codigo_ruta} — ${r.ruta}` }))]}
+      limpiable
+      placeholder="Todas las rutas"
+      opciones={rutas.map((r) => ({ valor: String(r.id), texto: `${r.codigo_ruta} — ${r.ruta}` }))}
     />
   );
 }

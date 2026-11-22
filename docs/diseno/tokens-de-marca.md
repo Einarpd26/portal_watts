@@ -168,6 +168,13 @@ Con título opcional `text-base font-bold text-gray-900` + descripción `text-gr
 
 ---
 
+### Selector (`SearchSelect`, `SelectorCompacto`, `Select`)
+Un solo control (react-select) para todo el portal. Cómo se usa depende de si «sin elección» es un estado válido del campo:
+- **Filtro opcional** (la pantalla acepta ver «todo»): sin opción «Todos» en la lista; el `placeholder` dice qué es («Todos los vendedores») y `limpiable` agrega un botón «×» dentro del control que quita la elección. Si la pantalla tiene varios filtros, se **encadenan**: las opciones de cada uno salen de lo que dejan los demás, y al elegir uno se limpian los otros que dejan de ser posibles. Aplica a Consulta, Cobertura, Mapa de clientes, Personal, Territorio y Bitácora.
+- **Campo obligatorio de formulario**: sin `limpiable`; el `placeholder` dice «Seleccionar …». Nunca una opción vacía que simule el placeholder.
+- **«Sin …» con efecto** (p. ej. «Sin supervisor», que deja la zona sin responsable): es una opción real de la lista, no un «×»: quitarla es una acción que debe ser explícita.
+- **Valor que siempre existe** (orden, día de planificación): sin `limpiable`.
+
 ## 7. Login de Referencia (Estructura)
 
 1. Fondo: gradiente 140deg de §5.1 + textura diagonal + orbs.

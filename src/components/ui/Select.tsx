@@ -15,11 +15,13 @@ interface SelectProps {
   placeholder?: string;
   /** Con muchas opciones (colaboradores, zonas, supervisores): se puede escribir para filtrar */
   buscable?: boolean;
+  /** Botón «×» dentro del control para quitar la elección: solo en filtros opcionales, con el placeholder como «Todos» */
+  limpiable?: boolean;
   disabled?: boolean;
 }
 
 /** Selector de formulario: rótulo arriba, mensaje de error abajo y el mismo control que el resto del portal */
-export default function Select({ label, valor, onCambiar, opciones, error, compact = false, placeholder, buscable, disabled }: SelectProps) {
+export default function Select({ label, valor, onCambiar, opciones, error, compact = false, placeholder, buscable, limpiable, disabled }: SelectProps) {
   const id = useId();
 
   return (
@@ -36,6 +38,7 @@ export default function Select({ label, valor, onCambiar, opciones, error, compa
         placeholder={placeholder}
         conError={Boolean(error)}
         buscable={buscable}
+        limpiable={limpiable}
         deshabilitado={disabled}
       />
       {error && <p className="text-xs text-red-500">{error}</p>}

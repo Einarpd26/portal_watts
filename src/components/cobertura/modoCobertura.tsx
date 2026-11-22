@@ -11,10 +11,13 @@ import type { PiezasDelModo } from '@/components/mapa/piezasDelModo';
 import { cn } from '@/utils/cn';
 import { parametrosDeCobertura, urlDeReporte } from '@/utils/reportes';
 import {
+  FACETAS_COBERTURA,
   FILTROS_COBERTURA_INICIALES,
+  depurarFiltrosCobertura,
   filtrarCobertura,
   momentoDeCalculo,
   nombreDelMes,
+  opcionesCoberturaSegunFiltros,
   ordenarCobertura,
   resumirCobertura,
   tramoDe,
@@ -61,20 +64,22 @@ export function useModoCobertura({ cobertura, alVerEnMapa, alVerClientes }: Para
     return cuenta;
   }, [visibles]);
 
-  // Las opciones de cada filtro salen de las rutas del alcance
-  const zonas = useMemo(() => [...new Map(cobertura.rutas.map((r) => [r.id_zona, r.codigo_zona])).entries()].sort((a, b) => a[1].localeCompare(b[1])), [cobertura.rutas]);
+  // Lo que existe al alcance decide si se ofrece el filtro de supervisor (con uno solo no hay nada que elegir); lo que se puede
+  // elegir en cada filtro depende de los demás (filtros encadenados)
+  const disponibles = useMemo(() => opcionesCoberturaSegunFiltros(cobertura.rutas, filtros), [cobertura.rutas, filtros]);
   const supervisores = useMemo(
     () => [...new Map(cobertura.rutas.flatMap((r) => (r.id_supervisor === null ? [] : [[r.id_supervisor, r.supervisor_nombre ?? `Supervisor ${r.id_supervisor}`] as const]))).entries()],
     [cobertura.rutas]
   );
-  const rutasParaElegir = useMemo(() => [...cobertura.rutas].sort((a, b) => a.codigo_ruta.localeCompare(b.codigo_ruta)), [cobertura.rutas]);
 
   const mes = nombreDelMes(cobertura.mes);
   const momento = momentoDeCalculo(cobertura.calculado_en);
   const elegida = cobertura.rutas.find((r) => r.id === seleccionId) ?? null;
 
   const cambiar = (cambio: Partial<FiltrosCobertura>) => {
-    const siguientes = { ...filtros, ...cambio };
+    // Lo que el filtro recién elegido deja sin sentido en los otros se limpia; el que cambió manda
+    const cambiado = FACETAS_COBERTURA.find((faceta) => faceta in cambio) ?? null;
+    const siguientes = depurarFiltrosCobertura(cobertura.rutas, { ...filtros, ...cambio }, cambiado);
     setFiltros(siguientes);
     // Una selección que el filtro oculta deja de tener sentido
     if (seleccionId !== null && filtrarCobertura(cobertura.rutas.filter((r) => r.id === seleccionId), siguientes).length === 0) setSeleccionId(null);
@@ -89,7 +94,9 @@ export function useModoCobertura({ cobertura, alVerEnMapa, alVerClientes }: Para
       etiqueta="Zona"
       valor={filtros.idZona === null ? '' : String(filtros.idZona)}
       onCambiar={(v) => cambiar({ idZona: numero(v) })}
-      opciones={[{ valor: '', texto: 'Todas las zonas' }, ...zonas.map(([id, codigo]) => ({ valor: String(id), texto: codigo }))]}
+      limpiable
+      placeholder="Todas las zonas"
+      opciones={disponibles.zonas.map(([id, codigo]) => ({ valor: String(id), texto: codigo }))}
     />
   );
   // Con un solo supervisor a la vista (p. ej. un supervisor que consulta sus propias zonas) el filtro no aporta nada
@@ -99,7 +106,9 @@ export function useModoCobertura({ cobertura, alVerEnMapa, alVerClientes }: Para
         etiqueta="Supervisor"
         valor={filtros.idSupervisor === null ? '' : String(filtros.idSupervisor)}
         onCambiar={(v) => cambiar({ idSupervisor: numero(v) })}
-        opciones={[{ valor: '', texto: 'Todos los supervisores' }, ...supervisores.map(([id, nombre]) => ({ valor: String(id), texto: nombre }))]}
+        limpiable
+        placeholder="Todos los supervisores"
+        opciones={disponibles.supervisores.map(([id, nombre]) => ({ valor: String(id), texto: nombre }))}
       />
     );
   const selectorRuta = (
@@ -107,7 +116,9 @@ export function useModoCobertura({ cobertura, alVerEnMapa, alVerClientes }: Para
       etiqueta="Ruta"
       valor={filtros.idRuta === null ? '' : String(filtros.idRuta)}
       onCambiar={(v) => cambiar({ idRuta: numero(v) })}
-      opciones={[{ valor: '', texto: 'Todas las rutas' }, ...rutasParaElegir.map((r) => ({ valor: String(r.id), texto: r.codigo_ruta }))]}
+      limpiable
+      placeholder="Todas las rutas"
+      opciones={disponibles.rutas.map((r) => ({ valor: String(r.id), texto: r.codigo_ruta }))}
     />
   );
   const selectorOrden = <SelectorCompacto etiqueta="Orden" valor={orden} onCambiar={(v) => setOrden(v as OrdenCobertura)} opciones={ORDENES} />;
