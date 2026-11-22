@@ -173,6 +173,10 @@ export function RutasPanel() {
           <ListaRutas
             rutas={rutasFiltradas}
             zonas={g.zonas}
+            sucursales={g.sucursales}
+            filtroSucursal={g.filtroSucursal}
+            onFiltroSucursal={g.setFiltroSucursal}
+            zonasDelFiltro={g.zonasDelFiltro}
             coloresZona={coloresZona}
             isLoading={g.isLoading}
             filtroZona={g.filtroZona}
