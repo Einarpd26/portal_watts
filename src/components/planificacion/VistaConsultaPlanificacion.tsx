@@ -109,7 +109,7 @@ export default function VistaConsultaPlanificacion({ consulta }: VistaConsultaPl
       <SelectorCompacto etiqueta="Sucursal" valor={filtros.idSucursal === null ? '' : String(filtros.idSucursal)} onCambiar={(v) => cambiar({ idSucursal: nulo(v) })} opciones={opcionesDe('Todas las sucursales', opciones.sucursales)} />
     ) : null;
   const selectorZona = <SelectorCompacto buscable etiqueta="Zona" valor={filtros.idZona === null ? '' : String(filtros.idZona)} onCambiar={(v) => cambiar({ idZona: nulo(v) })} opciones={opcionesDe('Todas las zonas', opciones.zonas)} />;
-  // Con un solo supervisor a la vista (p. ej. un supervisor que consulta lo suyo) el filtro no aporta nada
+  // Con un solo supervisor a la vista (p. ej. un Fiscalizador cuya sucursal tiene uno solo) el filtro no aporta nada
   const selectorSupervisor =
     opciones.supervisores.length > 1 ? (
       <SelectorCompacto buscable etiqueta="Supervisor" valor={filtros.idSupervisor === null ? '' : String(filtros.idSupervisor)} onCambiar={(v) => cambiar({ idSupervisor: nulo(v) })} opciones={opcionesDe('Todos los supervisores', opciones.supervisores)} />

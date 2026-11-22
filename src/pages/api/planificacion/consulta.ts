@@ -1,11 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireCallerAuth } from '@/utils/requireCallerAuth';
-import { alcanceDeCobertura, PERMISO_MAPA } from '@/utils/clientesScope';
+import { alcanceDeCobertura, PERMISO_MAPA, puedeConsultarPlanificacion } from '@/utils/clientesScope';
 import { consultaDePlanificacion } from '@/lib/consultaPlanificacion';
 import { logger } from '@/lib/logger';
 
 // Consulta de la planificación de todas las rutas del alcance del solicitante (CU-10). Solo lectura.
-// El Vendedor no la consulta: su planificación es la de su slot. El alcance sale de la sesión, nunca del cliente.
+// Es de supervisión: la consultan Gerencia y Fiscalizador. El Supervisor tiene la suya en su pantalla de planificación y el
+// Vendedor, la de su slot. El alcance sale de la sesión, nunca del cliente.
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -14,6 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const caller = await requireCallerAuth(req, res, PERMISO_MAPA);
   if (!caller) return;
 
+  if (!puedeConsultarPlanificacion(caller)) return res.status(403).json({ error: 'Sin permiso para consultar la planificación' });
   const alcance = alcanceDeCobertura(caller);
   if (alcance.tipo === 'denegado') return res.status(403).json({ error: 'Sin alcance para consultar la planificación' });
 
