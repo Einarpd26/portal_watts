@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Layer, Map, NavigationControl, Popup, Source } from '@vis.gl/react-maplibre';
 import type { MapEvent, MapLayerMouseEvent, MapRef } from '@vis.gl/react-maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { AtribucionMapa } from '@/components/mapa/AtribucionMapa';
 import { ESTILO_BASE, VISTA_INICIAL, cajaDe, encuadrarEnCaja } from '@/components/mapa/baseMapa';
 import { registrarPines } from '@/components/mapa/pinesClientes';
 import { tieneUbicacion } from '@/utils/clientesMapa';
@@ -139,6 +140,7 @@ export function MapaClientes({ rutas, contornos, clientes, idRutaEnfoque, selecc
       mapLib={import('maplibre-gl')}
       initialViewState={VISTA_INICIAL}
       mapStyle={ESTILO_BASE}
+      attributionControl={false}
       interactiveLayerIds={['clientes-puntos']}
       onClick={(e) => onElegir(idDe(e))}
       onMouseMove={alMoverElCursor}
@@ -154,6 +156,7 @@ export function MapaClientes({ rutas, contornos, clientes, idRutaEnfoque, selecc
       onResize={alRedimensionar}
       cursor={bajoElCursor ? 'pointer' : 'auto'}
     >
+      <AtribucionMapa position="top-right" />
       <NavigationControl position="top-left" />
 
       <Source id="rutas" type="geojson" data={datosRutas}>

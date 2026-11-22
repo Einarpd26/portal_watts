@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Layer, Map, NavigationControl, Popup, Source } from '@vis.gl/react-maplibre';
 import type { MapEvent, MapLayerMouseEvent, MapRef } from '@vis.gl/react-maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { AtribucionMapa } from '@/components/mapa/AtribucionMapa';
 import { ESTILO_BASE, VISTA_INICIAL, cajaDe, encuadrarEnCaja } from '@/components/mapa/baseMapa';
 import { COLOR_DUPLICADA, type PropiedadesRutaEnMapa } from '@/utils/planificacionMapa';
 import type { ContornoZona, RutaItem } from '@/types';
@@ -102,6 +103,7 @@ export function MapaPlanificacion({ rutas, contornos, propiedades, descripciones
       mapLib={import('maplibre-gl')}
       initialViewState={VISTA_INICIAL}
       mapStyle={ESTILO_BASE}
+      attributionControl={false}
       interactiveLayerIds={['rutas-relleno']}
       onClick={(e) => onClickRuta(idDe(e))}
       onMouseMove={alMoverElCursor}
@@ -110,6 +112,7 @@ export function MapaPlanificacion({ rutas, contornos, propiedades, descripciones
       onResize={alRedimensionar}
       cursor={bajoElCursor ? 'pointer' : 'auto'}
     >
+      <AtribucionMapa position="bottom-left" />
       <NavigationControl position="top-left" showCompass={false} />
 
       <Source id="rutas" type="geojson" data={datosRutas}>

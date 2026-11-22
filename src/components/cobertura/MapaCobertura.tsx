@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Layer, Map, NavigationControl, Popup, Source } from '@vis.gl/react-maplibre';
 import type { MapEvent, MapLayerMouseEvent, MapRef } from '@vis.gl/react-maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { AtribucionMapa } from '@/components/mapa/AtribucionMapa';
 import { ESTILO_BASE, VISTA_INICIAL, cajaDe, encuadrarEnCaja } from '@/components/mapa/baseMapa';
 import { COLOR_TRAMO, tramoDe } from '@/utils/coberturaRutas';
 import type { ContornoZona, RutaCobertura } from '@/types';
@@ -108,6 +109,7 @@ export function MapaCobertura({ rutas, contornos, seleccionId, onElegir }: MapaC
       mapLib={import('maplibre-gl')}
       initialViewState={VISTA_INICIAL}
       mapStyle={ESTILO_BASE}
+      attributionControl={false}
       interactiveLayerIds={['cobertura-relleno']}
       onClick={(e) => onElegir(idDe(e))}
       onMouseMove={alMoverElCursor}
@@ -121,6 +123,7 @@ export function MapaCobertura({ rutas, contornos, seleccionId, onElegir }: MapaC
       onResize={alRedimensionar}
       cursor={bajoElCursor ? 'pointer' : 'auto'}
     >
+      <AtribucionMapa position="top-right" />
       <NavigationControl position="top-left" />
 
       <Source id="rutas" type="geojson" data={datosRutas}>

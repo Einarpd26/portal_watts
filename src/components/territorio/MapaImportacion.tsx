@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { FullscreenControl, Layer, Map, NavigationControl, Source } from '@vis.gl/react-maplibre';
 import type { MapLayerMouseEvent, MapRef } from '@vis.gl/react-maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { AtribucionMapa } from '@/components/mapa/AtribucionMapa';
 import { ESTILO_BASE, VISTA_INICIAL, cajaDe, encuadrarEnCaja, type CajaGeografica } from '@/components/mapa/baseMapa';
 import { COLOR_ESTADO, COLOR_SIN_EVALUAR } from '@/utils/importacionRutas';
 import type { EstadoRuta } from '@/utils/rutaInforme';
@@ -73,10 +74,12 @@ export function MapaImportacion({ rutas, estados, seleccionIndice, onSeleccionar
       mapLib={import('maplibre-gl')}
       initialViewState={VISTA_INICIAL}
       mapStyle={ESTILO_BASE}
+      attributionControl={false}
       interactiveLayerIds={['importacion-relleno']}
       onClick={alHacerClic}
       cursor="auto"
     >
+      <AtribucionMapa position="bottom-right" />
       <NavigationControl position="bottom-right" showCompass={false} />
       <FullscreenControl position="bottom-right" containerId={idPantallaCompleta} />
 
