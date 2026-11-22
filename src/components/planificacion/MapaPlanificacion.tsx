@@ -22,6 +22,8 @@ interface MapaPlanificacionProps {
   /** Una línea por visita de cada ruta, para el tooltip */
   descripciones: ReadonlyMap<number, string[]>;
   seleccionId: number | null;
+  /** Encuadra solo las rutas que se ven, sin los contornos de zona (la consulta se acerca a lo que el filtro deja) */
+  encuadrarSoloRutas?: boolean;
   /** Clic sobre una ruta, o sobre el mapa vacío (null) */
   onClickRuta: (idRuta: number | null) => void;
 }
@@ -37,7 +39,7 @@ interface RutaBajoElCursor {
  * naranja si está duplicada, sobre el contorno de las zonas. Una sola fuente de datos y colores resueltos
  * por expresiones de estilo, para no recrear capas en cada cambio.
  */
-export function MapaPlanificacion({ rutas, contornos, propiedades, descripciones, seleccionId, onClickRuta }: MapaPlanificacionProps) {
+export function MapaPlanificacion({ rutas, contornos, propiedades, descripciones, seleccionId, encuadrarSoloRutas = false, onClickRuta }: MapaPlanificacionProps) {
   const mapaRef = useRef<MapRef>(null);
   const [bajoElCursor, setBajoElCursor] = useState<RutaBajoElCursor | null>(null);
 
@@ -61,8 +63,13 @@ export function MapaPlanificacion({ rutas, contornos, propiedades, descripciones
     [contornos]
   );
 
-  // El mapa se encuadra sobre todo el territorio del supervisor cuando llegan los polígonos
-  const caja = useMemo(() => cajaDe([...rutas.map((r) => r.geojson), ...contornos.map((c) => c.geojson)]), [rutas, contornos]);
+  // El mapa se encuadra sobre todo el territorio del supervisor cuando llegan los polígonos; con encuadrarSoloRutas,
+  // sobre las rutas visibles (si no queda ninguna, sobre los contornos)
+  const caja = useMemo(() => {
+    const deRutas = rutas.map((r) => r.geojson);
+    if (encuadrarSoloRutas && deRutas.length > 0) return cajaDe(deRutas);
+    return cajaDe([...deRutas, ...contornos.map((c) => c.geojson)]);
+  }, [rutas, contornos, encuadrarSoloRutas]);
   const encuadrar = useCallback(
     (duracion: number) => {
       const mapa = mapaRef.current;

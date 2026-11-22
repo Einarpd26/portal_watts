@@ -52,6 +52,12 @@ export default function VistaConsultaPlanificacion({ consulta }: VistaConsultaPl
     [consulta.rutas, consulta.slots, consulta.visitas, filtros]
   );
 
+  // Los límites de zona que se dibujan son los de las zonas con rutas a la vista: al filtrar, el resto desaparece del mapa
+  const contornos = useMemo(() => {
+    const zonas = new Set(rutas.map((r) => r.id_zona));
+    return consulta.contornos.filter((c) => zonas.has(c.id_zona));
+  }, [rutas, consulta.contornos]);
+
   const propiedades = useMemo(
     () => propiedadesDeRutas(rutas, visitas, consulta.slots, { modo: 'planificacion', dia: filtros.dia }),
     [rutas, visitas, consulta.slots, filtros.dia]
@@ -148,7 +154,7 @@ export default function VistaConsultaPlanificacion({ consulta }: VistaConsultaPl
 
   const mapaConControles = (
     <div className="relative isolate min-h-0 min-w-0 flex-1 overflow-hidden bg-gray-100">
-      <MapaPlanificacion rutas={rutas} contornos={consulta.contornos} propiedades={propiedades} descripciones={descripciones} seleccionId={seleccionId} onClickRuta={setSeleccionId} />
+      <MapaPlanificacion rutas={rutas} contornos={contornos} propiedades={propiedades} descripciones={descripciones} seleccionId={seleccionId} encuadrarSoloRutas onClickRuta={setSeleccionId} />
       <LeyendaPlegable titulo="Planificación" filas={filasDe('planificacion', conteo, filtros.dia && `el ${DIA_LABELS[filtros.dia].toLowerCase()}`)} />
       <BotonPantallaCompleta activa={pantallaCompleta} onClick={alternarPantallaCompleta} />
     </div>
