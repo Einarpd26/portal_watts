@@ -1,10 +1,35 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { alcanceDeClientes } from "../src/utils/clientesScope.ts";
-import { CLASES_ABC, FILTROS_INICIALES, colorDeCliente, COLOR_SIN_CLASE, conteoPorClase, filtrarClientes, tieneUbicacion } from "../src/utils/clientesMapa.ts";
-import type { ClaseAbc, ClienteMapa } from "../src/types/index.ts";
+import {
+  CLASES_ABC,
+  FILTROS_INICIALES,
+  colorDeCliente,
+  COLOR_SIN_CLASE,
+  conteoPorClase,
+  depurarFiltrosClientes,
+  filtrarClientes,
+  opcionesClientesSegunFiltros,
+  tieneUbicacion,
+} from "../src/utils/clientesMapa.ts";
+import type { ClaseAbc, ClienteMapa, RutaMapa } from "../src/types/index.ts";
 
 const rol = (codigo: string, alcance_tipo: string, id_sucursal: number | null, permisos = ["mapa:consultar"]) => ({ codigo, permisos, alcance_tipo, id_sucursal });
+
+const geo = { type: "Polygon" as const, coordinates: [] };
+const rutaDe = (id: number, id_zona: number, id_sucursal: number): RutaMapa => ({
+  id,
+  codigo_ruta: `R-${id}`,
+  ruta: `Ruta ${id}`,
+  descripcion_ruta: null,
+  id_zona,
+  geojson: geo,
+  codigo_zona: `Z${id_zona}`,
+  id_sucursal,
+  sucursal_nombre: `Sucursal ${id_sucursal}`,
+});
+// Sucursal 1: zona 1 (rutas 1 y 2). Sucursal 2: zona 2 (ruta 3)
+const rutas = [rutaDe(1, 1, 1), rutaDe(2, 1, 1), rutaDe(3, 2, 2)];
 
 const cliente = (id: number, id_ruta: number, clasificacion: ClaseAbc | null, extra: Partial<ClienteMapa> = {}): ClienteMapa => ({
   id,
@@ -71,21 +96,21 @@ test("color: cada clase tiene el suyo y el no habilitado es gris", () => {
 
 test("filtros: sin filtros activos se ve todo", () => {
   const clientes = [cliente(1, 1, "A"), cliente(2, 1, "I"), cliente(3, 2, null)];
-  assert.equal(filtrarClientes(clientes, FILTROS_INICIALES).length, 3);
+  assert.equal(filtrarClientes(clientes, FILTROS_INICIALES, rutas).length, 3);
 });
 
 test("filtros: por clase, por ruta y los no habilitados se ocultan aparte", () => {
   const clientes = [cliente(1, 1, "A"), cliente(2, 1, "B"), cliente(3, 2, "A"), cliente(4, 2, null)];
-  assert.deepEqual(filtrarClientes(clientes, { ...FILTROS_INICIALES, clases: new Set<ClaseAbc>(["A"]) }).map((c) => c.id), [1, 3, 4]);
-  assert.deepEqual(filtrarClientes(clientes, { ...FILTROS_INICIALES, clases: new Set<ClaseAbc>(["A"]), sinClase: false }).map((c) => c.id), [1, 3]);
-  assert.deepEqual(filtrarClientes(clientes, { ...FILTROS_INICIALES, idRuta: 2 }).map((c) => c.id), [3, 4]);
+  assert.deepEqual(filtrarClientes(clientes, { ...FILTROS_INICIALES, clases: new Set<ClaseAbc>(["A"]) }, rutas).map((c) => c.id), [1, 3, 4]);
+  assert.deepEqual(filtrarClientes(clientes, { ...FILTROS_INICIALES, clases: new Set<ClaseAbc>(["A"]), sinClase: false }, rutas).map((c) => c.id), [1, 3]);
+  assert.deepEqual(filtrarClientes(clientes, { ...FILTROS_INICIALES, idRuta: 2 }, rutas).map((c) => c.id), [3, 4]);
 });
 
 test("filtros: la búsqueda ignora mayúsculas y tildes y mira código, nombre y dirección", () => {
   const clientes = [cliente(1, 1, "A", { nombre_completo: "Tienda Don José" }), cliente(2, 1, "A", { direccion: "Av. Cañoto 10" })];
-  assert.deepEqual(filtrarClientes(clientes, { ...FILTROS_INICIALES, texto: "jose" }).map((c) => c.id), [1]);
-  assert.deepEqual(filtrarClientes(clientes, { ...FILTROS_INICIALES, texto: "CANOTO" }).map((c) => c.id), [2]);
-  assert.deepEqual(filtrarClientes(clientes, { ...FILTROS_INICIALES, texto: "c-2" }).map((c) => c.id), [2]);
+  assert.deepEqual(filtrarClientes(clientes, { ...FILTROS_INICIALES, texto: "jose" }, rutas).map((c) => c.id), [1]);
+  assert.deepEqual(filtrarClientes(clientes, { ...FILTROS_INICIALES, texto: "CANOTO" }, rutas).map((c) => c.id), [2]);
+  assert.deepEqual(filtrarClientes(clientes, { ...FILTROS_INICIALES, texto: "c-2" }, rutas).map((c) => c.id), [2]);
 });
 
 test("conteo: cuenta cada clase y los sin clasificar", () => {
@@ -104,4 +129,27 @@ test("formato: fecha, porcentaje y monto de la ficha del cliente", async () => {
   assert.equal(formatearFecha(null), null);
   assert.equal(formatearPorcentaje(0.8234), "82 %");
   assert.ok(formatearMonto(12345.5).startsWith("Bs 12"));
+});
+
+test("filtros territoriales: por sucursal y por zona dejan los clientes de sus rutas", () => {
+  const clientes = [cliente(1, 1, "A"), cliente(2, 2, "B"), cliente(3, 3, "C")];
+  assert.deepEqual(filtrarClientes(clientes, { ...FILTROS_INICIALES, idSucursal: 1 }, rutas).map((c) => c.id), [1, 2]);
+  assert.deepEqual(filtrarClientes(clientes, { ...FILTROS_INICIALES, idSucursal: 2 }, rutas).map((c) => c.id), [3]);
+  assert.deepEqual(filtrarClientes(clientes, { ...FILTROS_INICIALES, idZona: 1 }, rutas).map((c) => c.id), [1, 2]);
+  assert.deepEqual(filtrarClientes(clientes, { ...FILTROS_INICIALES, idSucursal: 2, idZona: 1 }, rutas), []);
+});
+
+test("encadenado: con una sucursal solo se ofrecen sus zonas y sus rutas, y al revés", () => {
+  const o = opcionesClientesSegunFiltros(rutas, { ...FILTROS_INICIALES, idSucursal: 1 });
+  assert.deepEqual(o.zonas, [[1, "Z1"]]);
+  assert.deepEqual(o.rutas.map((r) => r.id), [1, 2]);
+  // la lista de sucursales no se recorta por la propia sucursal elegida
+  assert.equal(o.sucursales.length, 2);
+  assert.deepEqual(opcionesClientesSegunFiltros(rutas, { ...FILTROS_INICIALES, idRuta: 3 }).sucursales, [[2, "Sucursal 2"]]);
+});
+
+test("encadenado: lo elegido que deja de ser posible se limpia y el filtro que cambió manda", () => {
+  const f = { ...FILTROS_INICIALES, idSucursal: 1, idZona: 1, idRuta: 1 };
+  assert.deepEqual(depurarFiltrosClientes(rutas, { ...f, idSucursal: 2 }, "idSucursal"), { ...FILTROS_INICIALES, idSucursal: 2 });
+  assert.deepEqual(depurarFiltrosClientes(rutas, f, null), f);
 });

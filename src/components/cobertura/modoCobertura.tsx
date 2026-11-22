@@ -72,6 +72,8 @@ export function useModoCobertura({ cobertura, alVerEnMapa, alVerClientes }: Para
     [cobertura.rutas]
   );
 
+  const hayVariasSucursales = useMemo(() => new Set(cobertura.rutas.map((r) => r.id_sucursal)).size > 1, [cobertura.rutas]);
+
   const mes = nombreDelMes(cobertura.mes);
   const momento = momentoDeCalculo(cobertura.calculado_en);
   const elegida = cobertura.rutas.find((r) => r.id === seleccionId) ?? null;
@@ -89,6 +91,17 @@ export function useModoCobertura({ cobertura, alVerEnMapa, alVerClientes }: Para
     alVerEnMapa();
   };
 
+  // Con una sola sucursal a la vista (p. ej. un fiscalizador) el filtro no aporta nada
+  const selectorSucursal = hayVariasSucursales && (
+    <SelectorCompacto
+      etiqueta="Sucursal"
+      valor={filtros.idSucursal === null ? '' : String(filtros.idSucursal)}
+      onCambiar={(v) => cambiar({ idSucursal: numero(v) })}
+      limpiable
+      placeholder="Todas las sucursales"
+      opciones={disponibles.sucursales.map(([id, nombre]) => ({ valor: String(id), texto: nombre }))}
+    />
+  );
   const selectorZona = (
     <SelectorCompacto
       etiqueta="Zona"
@@ -123,6 +136,8 @@ export function useModoCobertura({ cobertura, alVerEnMapa, alVerClientes }: Para
   );
   const selectorOrden = <SelectorCompacto etiqueta="Orden" valor={orden} onCambiar={(v) => setOrden(v as OrdenCobertura)} opciones={ORDENES} />;
 
+  // En la lista del celular, dos selectores por fila; la ruta ocupa la fila entera si queda sola
+  const previosALaRuta = (selectorSucursal && selectorZona ? 1 : 0) + (selectorSupervisor ? 1 : 0);
   const lista = (cabecera?: ReactNode) => (
     <ListaRutasCobertura rutas={visibles} seleccionId={seleccionId} onElegir={setSeleccionId} onVerEnMapa={verEnMapa} cabecera={cabecera} />
   );
@@ -130,20 +145,23 @@ export function useModoCobertura({ cobertura, alVerEnMapa, alVerClientes }: Para
   const piezas: PiezasDelModo = {
     filtrosEscritorio: (
       <>
+        {selectorSucursal}
         {selectorZona}
         {selectorSupervisor}
         {selectorRuta}
         {selectorOrden}
       </>
     ),
-    filtroBarraMovil: selectorZona,
+    // En la barra superior del celular va el filtro más general; los demás van sobre la lista
+    filtroBarraMovil: selectorSucursal || selectorZona,
     etiquetaLista: 'Ver la lista de rutas',
     lista: lista(),
     listaMovil: lista(
-      <div className={cn('grid gap-2', selectorSupervisor ? 'grid-cols-2' : 'grid-cols-1')}>
+      <div className="grid grid-cols-2 gap-2">
+        {selectorSucursal && selectorZona}
         {selectorSupervisor}
-        {selectorRuta}
-        <div className={cn('flex', selectorSupervisor && 'col-span-2')}>{selectorOrden}</div>
+        <div className={cn('flex', previosALaRuta % 2 === 0 && 'col-span-2')}>{selectorRuta}</div>
+        <div className="col-span-2 flex">{selectorOrden}</div>
       </div>
     ),
     resumen: (accion) => <ResumenDeCobertura resumen={resumen} rutasPorTramo={rutasPorTramo} mes={mes} momento={momento} accion={accion} />,

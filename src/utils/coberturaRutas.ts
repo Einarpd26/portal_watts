@@ -1,6 +1,7 @@
 // Lógica pura de la pantalla de cobertura de rutas (CU-13, ADR-005 D3): tramos de color, resumen, filtros y
 // orden. Sin dependencias de Node ni del navegador.
 import type { RutaCobertura } from '@/types';
+import { depurarTerritorio, opcionesTerritorio, pasaTerritorio, type FacetaTerritorio, type OpcionesTerritorio } from './territorio.ts';
 
 export type TramoCobertura = 'baja' | 'media' | 'alta';
 
@@ -47,21 +48,15 @@ export function resumirCobertura(rutas: readonly RutaCobertura[]): ResumenCobert
 }
 
 export interface FiltrosCobertura {
+  idSucursal: number | null;
   idZona: number | null;
   idSupervisor: number | null;
   idRuta: number | null;
 }
 
-export const FILTROS_COBERTURA_INICIALES: FiltrosCobertura = { idZona: null, idSupervisor: null, idRuta: null };
+export const FILTROS_COBERTURA_INICIALES: FiltrosCobertura = { idSucursal: null, idZona: null, idSupervisor: null, idRuta: null };
 
-export function filtrarCobertura(rutas: readonly RutaCobertura[], f: FiltrosCobertura): RutaCobertura[] {
-  return rutas.filter(
-    (r) =>
-      (f.idZona === null || r.id_zona === f.idZona) &&
-      (f.idSupervisor === null || r.id_supervisor === f.idSupervisor) &&
-      (f.idRuta === null || r.id === f.idRuta)
-  );
-}
+export const filtrarCobertura = (rutas: readonly RutaCobertura[], f: FiltrosCobertura): RutaCobertura[] => rutas.filter((r) => pasaTerritorio(r, f));
 
 export type OrdenCobertura = 'menor' | 'mayor' | 'codigo';
 
@@ -97,48 +92,13 @@ export function momentoDeCalculo(instante: string | null): string | null {
 
 // --- Filtros encadenados -------------------------------------------------------------------------------------
 
-export type FacetaCobertura = keyof FiltrosCobertura;
+export type FacetaCobertura = FacetaTerritorio;
 
-export const FACETAS_COBERTURA: readonly FacetaCobertura[] = ['idZona', 'idSupervisor', 'idRuta'];
+export const FACETAS_COBERTURA: readonly FacetaCobertura[] = ['idSucursal', 'idZona', 'idSupervisor', 'idRuta'];
 
-export interface OpcionesCobertura {
-  zonas: Array<[number, string]>;
-  supervisores: Array<[number, string]>;
-  rutas: RutaCobertura[];
-}
+export type OpcionesCobertura = OpcionesTerritorio<RutaCobertura>;
 
-/**
- * Lo que se puede elegir en cada filtro dados los demás: cada lista sale de las rutas que dejan los otros filtros,
- * sin contar el suyo. Con una zona elegida solo se ofrecen sus supervisores y sus rutas, y al revés.
- */
-export function opcionesCoberturaSegunFiltros(rutas: readonly RutaCobertura[], f: FiltrosCobertura): OpcionesCobertura {
-  const sin = (faceta: FacetaCobertura) => filtrarCobertura(rutas, { ...f, [faceta]: null });
-  const zonas = new Map<number, string>();
-  for (const r of sin('idZona')) zonas.set(r.id_zona, r.codigo_zona);
-  const supervisores = new Map<number, string>();
-  for (const r of sin('idSupervisor')) {
-    if (r.id_supervisor !== null) supervisores.set(r.id_supervisor, r.supervisor_nombre ?? `Supervisor ${r.id_supervisor}`);
-  }
-  const porNombre = (a: [number, string], b: [number, string]) => a[1].localeCompare(b[1]);
-  return {
-    zonas: [...zonas.entries()].sort(porNombre),
-    supervisores: [...supervisores.entries()].sort(porNombre),
-    rutas: [...sin('idRuta')].sort((a, b) => a.codigo_ruta.localeCompare(b.codigo_ruta)),
-  };
-}
+export const opcionesCoberturaSegunFiltros = (rutas: readonly RutaCobertura[], f: FiltrosCobertura): OpcionesCobertura => opcionesTerritorio(rutas, f);
 
-/** Quita de los filtros lo elegido que ya no es posible con los demás; el filtro que acaba de cambiar (`conservar`) manda */
-export function depurarFiltrosCobertura(rutas: readonly RutaCobertura[], f: FiltrosCobertura, conservar: FacetaCobertura | null): FiltrosCobertura {
-  let actual = f;
-  for (let i = 0; i < FACETAS_COBERTURA.length; i++) {
-    const o = opcionesCoberturaSegunFiltros(rutas, actual);
-    const invalida = FACETAS_COBERTURA.find((faceta) => {
-      const valor = actual[faceta];
-      if (faceta === conservar || valor === null) return false;
-      return faceta === 'idRuta' ? !o.rutas.some((r) => r.id === valor) : !(faceta === 'idZona' ? o.zonas : o.supervisores).some(([id]) => id === valor);
-    });
-    if (!invalida) break;
-    actual = { ...actual, [invalida]: null };
-  }
-  return actual;
-}
+export const depurarFiltrosCobertura = (rutas: readonly RutaCobertura[], f: FiltrosCobertura, conservar: FacetaCobertura | null): FiltrosCobertura =>
+  depurarTerritorio(rutas, f, conservar);

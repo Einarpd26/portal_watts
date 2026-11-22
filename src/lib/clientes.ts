@@ -3,7 +3,7 @@ import { contornosDeZonas, listarRutas } from '@/lib/rutas';
 import { todas } from '@/lib/paginar';
 import { primero } from '@/utils/postgrest';
 import type { AlcanceClientes } from '@/utils/clientesScope';
-import type { ClaseAbc, ClienteMapa, MapaClientes } from '@/types';
+import type { ClaseAbc, ClienteMapa, MapaClientes, RutaMapa } from '@/types';
 
 export type ClientesResultado = { ok: true; data: MapaClientes } | { ok: false };
 
@@ -109,6 +109,16 @@ async function clientesDeRutas(idsRuta: number[]): Promise<ClienteMapa[] | null>
   });
 }
 
+/** Código y sucursal de cada zona, para los filtros territoriales del mapa */
+async function zonasDeRutas(idsZona: number[]) {
+  if (idsZona.length === 0) return new Map<number, Pick<RutaMapa, 'codigo_zona' | 'id_sucursal' | 'sucursal_nombre'>>();
+  const { data, error } = await createAdminClient().from('zonas').select('id, codigo_zona, id_sucursal, sucursales ( nombre_sucursal )').in('id', idsZona);
+  if (error) return null;
+  return new Map(
+    (data ?? []).map((z) => [z.id, { codigo_zona: z.codigo_zona, id_sucursal: z.id_sucursal, sucursal_nombre: primero(z.sucursales)?.nombre_sucursal ?? '' }])
+  );
+}
+
 /** Mapa de clientes del solicitante (CU-12): rutas, contornos y clientes que su alcance permite ver */
 export async function mapaDeClientes(
   alcance: Exclude<AlcanceClientes, { tipo: 'denegado' }>,
@@ -121,13 +131,18 @@ export async function mapaDeClientes(
   const idsZona = [...new Set(rutas.todas.map((r) => r.id_zona))];
   const idsZonaContorno = [...new Set(rutas.enZonaCompleta.map((r) => r.id_zona))];
 
-  const [poligonos, contornos, clientes] = await Promise.all([
+  const [poligonos, contornos, clientes, zonas] = await Promise.all([
     listarRutas(idsZona),
     contornosDeZonas(idsZonaContorno, false),
     clientesDeRutas([...idsRuta]),
+    zonasDeRutas(idsZona),
   ]);
-  if (!poligonos.ok || !contornos.ok || !clientes) return { ok: false };
+  if (!poligonos.ok || !contornos.ok || !clientes || !zonas) return { ok: false };
 
   // listarRutas devuelve las zonas completas: se conservan solo las rutas del alcance
-  return { ok: true, data: { rutas: poligonos.data.filter((r) => idsRuta.has(r.id)), contornos: contornos.data, clientes } };
+  const rutasDelMapa: RutaMapa[] = poligonos.data.flatMap((r) => {
+    const zona = zonas.get(r.id_zona);
+    return idsRuta.has(r.id) && zona ? [{ ...r, ...zona }] : [];
+  });
+  return { ok: true, data: { rutas: rutasDelMapa, contornos: contornos.data, clientes } };
 }

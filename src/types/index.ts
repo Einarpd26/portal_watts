@@ -340,8 +340,15 @@ export interface ComprasCliente {
 }
 
 /** Rutas del alcance con sus clientes clasificados (el contorno de zona solo para quien ve zonas completas) */
+/** Ruta del mapa de clientes con su zona y su sucursal, para los filtros territoriales */
+export interface RutaMapa extends RutaItem {
+  codigo_zona: string;
+  id_sucursal: number;
+  sucursal_nombre: string;
+}
+
 export interface MapaClientes {
-  rutas: RutaItem[];
+  rutas: RutaMapa[];
   contornos: ContornoZona[];
   clientes: ClienteMapa[];
 }
@@ -353,6 +360,8 @@ export interface RutaCobertura {
   ruta: string;
   id_zona: number;
   codigo_zona: string;
+  id_sucursal: number;
+  sucursal_nombre: string;
   id_supervisor: number | null;
   supervisor_nombre: string | null;
   clientes_habilitados: number;

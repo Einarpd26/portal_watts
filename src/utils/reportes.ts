@@ -35,12 +35,12 @@ export const urlDeReporte = (tipo: TipoReporte, parametros: string) => `/api/rep
 // --- Cobertura -----------------------------------------------------------------------------------------------
 
 export const parametrosDeCobertura = (f: FiltrosCobertura, orden: OrdenCobertura) =>
-  aParametros({ zona: f.idZona, supervisor: f.idSupervisor, ruta: f.idRuta, orden });
+  aParametros({ sucursal: f.idSucursal, zona: f.idZona, supervisor: f.idSupervisor, ruta: f.idRuta, orden });
 
 export function coberturaDesdeQuery(q: Query): { filtros: FiltrosCobertura; orden: OrdenCobertura } {
   const orden = unico(q.orden);
   return {
-    filtros: { idZona: entero(q.zona), idSupervisor: entero(q.supervisor), idRuta: entero(q.ruta) },
+    filtros: { idSucursal: entero(q.sucursal), idZona: entero(q.zona), idSupervisor: entero(q.supervisor), idRuta: entero(q.ruta) },
     orden: ORDENES.find((o) => o === orden) ?? 'menor',
   };
 }
@@ -65,12 +65,14 @@ export function planificacionDesdeQuery(q: Query): FiltrosConsulta {
 // --- Clientes ------------------------------------------------------------------------------------------------
 
 export const parametrosDeClientes = (f: FiltrosClientes) =>
-  aParametros({ ruta: f.idRuta, clases: CLASES.filter((c) => f.clases.has(c)).join(','), sinclase: f.sinClase ? 1 : 0, q: f.texto.trim() });
+  aParametros({ sucursal: f.idSucursal, zona: f.idZona, ruta: f.idRuta, clases: CLASES.filter((c) => f.clases.has(c)).join(','), sinclase: f.sinClase ? 1 : 0, q: f.texto.trim() });
 
 export function clientesDesdeQuery(q: Query): FiltrosClientes {
   const texto = unico(q.q) ?? '';
   const pedidas = (unico(q.clases) ?? CLASES.join(',')).split(',');
   return {
+    idSucursal: entero(q.sucursal),
+    idZona: entero(q.zona),
     idRuta: entero(q.ruta),
     clases: new Set(CLASES.filter((c) => pedidas.includes(c))),
     sinClase: unico(q.sinclase) !== '0',

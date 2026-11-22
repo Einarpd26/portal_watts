@@ -53,6 +53,7 @@ const RELLENO_TRAMO = { baja: ROJO, media: AMBAR, alta: VERDE } as const;
 export function reporteCobertura(cobertura: CoberturaListado, filtros: FiltrosCobertura, orden: OrdenCobertura): ReporteExcel {
   const rutas = ordenarCobertura(filtrarCobertura(cobertura.rutas, filtros), orden);
   const resumen = resumirCobertura(rutas);
+  const sucursal = filtros.idSucursal === null ? null : (cobertura.rutas.find((r) => r.id_sucursal === filtros.idSucursal)?.sucursal_nombre ?? String(filtros.idSucursal));
   const zona = filtros.idZona === null ? null : (cobertura.rutas.find((r) => r.id_zona === filtros.idZona)?.codigo_zona ?? String(filtros.idZona));
   const supervisor = filtros.idSupervisor === null ? null : (cobertura.rutas.find((r) => r.id_supervisor === filtros.idSupervisor)?.supervisor_nombre ?? String(filtros.idSupervisor));
   const ruta = filtros.idRuta === null ? null : (cobertura.rutas.find((r) => r.id === filtros.idRuta)?.codigo_ruta ?? String(filtros.idRuta));
@@ -63,7 +64,7 @@ export function reporteCobertura(cobertura: CoberturaListado, filtros: FiltrosCo
     notas: [
       `Último recálculo: ${momentoDeCalculo(cobertura.calculado_en) ?? 'sin calcular'}. Las ventas del día se incorporan en el siguiente recálculo nocturno.`,
       `Cobertura general: ${resumen.porcentaje} % (${resumen.clientesAtendidos} de ${resumen.clientesHabilitados} clientes habilitados) en ${resumen.rutas} rutas.`,
-      textoDeFiltros([['Zona', zona], ['Supervisor', supervisor], ['Ruta', ruta]]),
+      textoDeFiltros([['Sucursal', sucursal], ['Zona', zona], ['Supervisor', supervisor], ['Ruta', ruta]]),
     ],
     columnas: [
       { encabezado: 'Ruta', ancho: 12 },
@@ -177,7 +178,7 @@ const ordenDeClase = (clase: ClaseAbc | null) => (clase === null ? CLASES_ABC.le
 
 export function reporteClientes(mapa: MapaClientes, filtros: FiltrosClientes): ReporteExcel {
   const rutaDe = new Map(mapa.rutas.map((r) => [r.id, r]));
-  const clientes = filtrarClientes(mapa.clientes, filtros).sort(
+  const clientes = filtrarClientes(mapa.clientes, filtros, mapa.rutas).sort(
     (a, b) =>
       (rutaDe.get(a.id_ruta)?.codigo_ruta ?? '').localeCompare(rutaDe.get(b.id_ruta)?.codigo_ruta ?? '') ||
       ordenDeClase(a.clasificacion) - ordenDeClase(b.clasificacion) ||
@@ -186,6 +187,8 @@ export function reporteClientes(mapa: MapaClientes, filtros: FiltrosClientes): R
   const porClase = Object.fromEntries(CLASES_ABC.map((c) => [c, clientes.filter((x) => x.clasificacion === c).length])) as Record<ClaseAbc, number>;
   const clasesPedidas = CLASES_ABC.filter((c) => filtros.clases.has(c));
   const ruta = filtros.idRuta === null ? null : (rutaDe.get(filtros.idRuta)?.codigo_ruta ?? String(filtros.idRuta));
+  const sucursal = filtros.idSucursal === null ? null : (mapa.rutas.find((r) => r.id_sucursal === filtros.idSucursal)?.sucursal_nombre ?? String(filtros.idSucursal));
+  const zona = filtros.idZona === null ? null : (mapa.rutas.find((r) => r.id_zona === filtros.idZona)?.codigo_zona ?? String(filtros.idZona));
 
   return {
     hoja: 'Clientes',
@@ -194,6 +197,8 @@ export function reporteClientes(mapa: MapaClientes, filtros: FiltrosClientes): R
       `${clientes.length} clientes: A ${porClase.A}, B ${porClase.B}, C ${porClase.C}, inactivos ${porClase.I}. Ventas vigentes de los últimos 6 meses.`,
       `A: ${DESCRIPCION_CLASE.A.toLowerCase()} · B: ${DESCRIPCION_CLASE.B.toLowerCase()} · C: ${DESCRIPCION_CLASE.C.toLowerCase()} · I: ${DESCRIPCION_CLASE.I.toLowerCase()}.`,
       textoDeFiltros([
+        ['Sucursal', sucursal],
+        ['Zona', zona],
         ['Ruta', ruta],
         ['Clases', clasesPedidas.length === CLASES_ABC.length && filtros.sinClase ? null : `${clasesPedidas.join(', ') || 'ninguna'}${filtros.sinClase ? ' y no habilitados' : ''}`],
         ['Búsqueda', filtros.texto.trim() || null],

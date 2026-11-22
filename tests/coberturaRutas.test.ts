@@ -20,6 +20,8 @@ const ruta = (id: number, codigo_ruta: string, atendidos: number, habilitados: n
   ruta: `Ruta ${codigo_ruta}`,
   id_zona: 1,
   codigo_zona: "ZN",
+  id_sucursal: 1,
+  sucursal_nombre: "Central",
   id_supervisor: 10,
   supervisor_nombre: "Daniel",
   clientes_habilitados: habilitados,
@@ -130,4 +132,15 @@ test("depurar: una combinación posible no se toca y quitar un filtro no limpia 
   const posible = { idZona: 2, idSupervisor: 11, idRuta: 3 };
   assert.deepEqual(depurarFiltrosCobertura(RUTAS_ENCADENADAS, posible, "idRuta"), posible);
   assert.deepEqual(depurarFiltrosCobertura(RUTAS_ENCADENADAS, { ...posible, idRuta: null }, "idRuta"), { ...posible, idRuta: null });
+});
+
+test("encadenado: la sucursal acota zonas, supervisores y rutas, y se limpia si deja de ser posible", () => {
+  const rutas = [ruta(1, "R-1", 5, 10), ruta(2, "R-2", 5, 10, { id_zona: 2, codigo_zona: "ZS", id_sucursal: 2, sucursal_nombre: "Sur", id_supervisor: 11 })];
+  const f = { ...FILTROS_COBERTURA_INICIALES, idSucursal: 2 };
+  assert.deepEqual(filtrarCobertura(rutas, f).map((r) => r.id), [2]);
+  const o = opcionesCoberturaSegunFiltros(rutas, f);
+  assert.deepEqual(o.zonas, [[2, "ZS"]]);
+  assert.deepEqual(o.supervisores.map(([id]) => id), [11]);
+  assert.equal(o.sucursales.length, 2);
+  assert.deepEqual(depurarFiltrosCobertura(rutas, { ...f, idZona: 1 }, "idSucursal"), f);
 });
