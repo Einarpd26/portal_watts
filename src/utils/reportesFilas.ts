@@ -7,7 +7,7 @@ import { ETIQUETA_TRAMO, filtrarCobertura, momentoDeCalculo, nombreDelMes, orden
 import { filtrarConsulta, type FiltrosConsulta } from './consultaPlanificacion.ts';
 import { rutasDuplicadasEnSemana } from './planificacionDuplicados.ts';
 import { TITULO_REPORTE } from './reportes.ts';
-import type { ClaseAbc, CoberturaListado, ConsultaPlanificacion, MapaClientes } from '@/types';
+import type { ClaseAbc, CoberturaListado, ConsultaPlanificacion, MapaClientes, RutaPlanificable, SlotItem, VisitaPlanificada } from '@/types';
 
 export interface ColumnaReporte {
   encabezado: string;
@@ -16,6 +16,8 @@ export interface ColumnaReporte {
   /** Formato de número de Excel («0.0», «#,##0.00», «dd/mm/yyyy»); sin él, la celda es texto */
   formato?: string;
   alineacion?: 'left' | 'center' | 'right';
+  /** Las celdas con varias líneas se muestran completas, alineadas arriba */
+  ajustarTexto?: boolean;
 }
 
 export type Celda = string | number | Date | null;
@@ -231,4 +233,94 @@ export function reporteClientes(mapa: MapaClientes, filtros: FiltrosClientes): R
       return clase ? RELLENO_CLASE[clase] : GRIS;
     },
   };
+}
+
+// --- Grilla de planificación del supervisor (CU-08, CU-09) ---------------------------------------------------
+
+/** Identifica el archivo de la grilla; la versión sube si cambian las columnas de la hoja «Visitas» */
+export const FORMATO_GRILLA = { nombre: 'grilla-planificacion', version: 1 } as const;
+
+export interface DatosGrilla {
+  slots: SlotItem[];
+  visitas: VisitaPlanificada[];
+  /** Rutas de las zonas del supervisor: de ahí sale el código de zona de cada visita */
+  rutas: RutaPlanificable[];
+  supervisor: string;
+  /** Fecha del archivo, «2026-11-21» */
+  fecha: string;
+}
+
+const COLUMNAS_DIAS: ColumnaReporte[] = DIAS_ORDEN.map((d) => ({ encabezado: DIA_LABELS[d], ancho: 24, ajustarTexto: true }));
+
+/**
+ * Tres hojas con lo que el supervisor ve en su calendario: la «Grilla» (un slot por fila y un día por columna), las
+ * «Visitas» (una fila por ruta, día y frecuencia, con los códigos tal como los guarda la base) y «Control», que
+ * identifica el formato y su versión. Los slots se identifican por su posición en la grilla, no por su nombre,
+ * que el supervisor puede cambiar.
+ */
+export function reporteGrilla({ slots, visitas, rutas, supervisor, fecha }: DatosGrilla): ReporteExcel[] {
+  const nombreDe = (s: SlotItem, i: number) => s.nombre ?? `Slot ${i + 1}`;
+  const vendedorDe = (s: SlotItem) => s.vendedor_nombre ?? 'Sin vendedor';
+  const zonaDe = new Map(rutas.map((r) => [r.id, r.codigo_zona]));
+  const delSlot = (idSlot: number) => visitas.filter((v) => v.id_slot === idSlot);
+  const rutaYFrecuencia = (v: VisitaPlanificada) => (v.frecuencia === 'semanal' ? v.codigo_ruta : `${v.codigo_ruta} (${FRECUENCIA_LABELS[v.frecuencia]})`);
+  const nota = `Supervisor: ${supervisor} · ${fecha}`;
+
+  const grilla: ReporteExcel = {
+    hoja: 'Grilla',
+    titulo: TITULO_REPORTE.grilla,
+    notas: [`${slots.length} slots y ${visitas.length} visitas planificadas.`, nota],
+    columnas: [{ encabezado: 'Slot', ancho: 16 }, { encabezado: 'Vendedor', ancho: 28 }, ...COLUMNAS_DIAS, { encabezado: 'Visitas', ancho: 9, formato: '0', alineacion: 'center' }],
+    filas: slots.map((s, i) => {
+      const suyas = delSlot(s.id);
+      const porDia = DIAS_ORDEN.map((d) => {
+        const deldia = suyas.filter((v) => v.dia === d).sort((a, b) => a.codigo_ruta.localeCompare(b.codigo_ruta));
+        return deldia.length > 0 ? deldia.map(rutaYFrecuencia).join('\n') : null;
+      });
+      return [nombreDe(s, i), vendedorDe(s), ...porDia, suyas.length];
+    }),
+  };
+
+  const filasVisitas: Celda[][] = [];
+  slots.forEach((s, i) => {
+    const suyas = [...delSlot(s.id)].sort((a, b) => DIAS_ORDEN.indexOf(a.dia) - DIAS_ORDEN.indexOf(b.dia) || a.codigo_ruta.localeCompare(b.codigo_ruta));
+    for (const v of suyas) {
+      filasVisitas.push([i + 1, nombreDe(s, i), vendedorDe(s), zonaDe.get(v.id_ruta) ?? '', v.codigo_ruta, v.ruta, DIA_LABELS[v.dia], v.dia, FRECUENCIA_LABELS[v.frecuencia], v.frecuencia]);
+    }
+  });
+  const hojaVisitas: ReporteExcel = {
+    hoja: 'Visitas',
+    titulo: 'Visitas planificadas',
+    notas: [`${filasVisitas.length} visitas: una fila por ruta, día y frecuencia.`, nota],
+    columnas: [
+      { encabezado: 'Posición del slot', ancho: 11, formato: '0', alineacion: 'center' },
+      { encabezado: 'Slot', ancho: 16 },
+      { encabezado: 'Vendedor', ancho: 28 },
+      { encabezado: 'Zona', ancho: 12 },
+      { encabezado: 'Código de ruta', ancho: 16 },
+      { encabezado: 'Ruta', ancho: 30 },
+      { encabezado: 'Día', ancho: 12 },
+      { encabezado: 'Código de día', ancho: 9, alineacion: 'center' },
+      { encabezado: 'Frecuencia', ancho: 13 },
+      { encabezado: 'Código de frecuencia', ancho: 13 },
+    ],
+    filas: filasVisitas,
+  };
+
+  const control: ReporteExcel = {
+    hoja: 'Control',
+    titulo: 'Datos del archivo',
+    notas: ['Identifica el formato de este archivo y su versión.'],
+    columnas: [{ encabezado: 'Campo', ancho: 22 }, { encabezado: 'Valor', ancho: 40 }],
+    filas: [
+      ['formato', FORMATO_GRILLA.nombre],
+      ['version', String(FORMATO_GRILLA.version)],
+      ['supervisor', supervisor],
+      ['fecha', fecha],
+      ['slots', String(slots.length)],
+      ['visitas', String(visitas.length)],
+    ],
+  };
+
+  return [grilla, hojaVisitas, control];
 }

@@ -5,6 +5,7 @@ import { FullscreenControl, Layer, Map, NavigationControl, Popup, Source } from 
 import type { MapEvent, MapLayerMouseEvent, MapRef } from '@vis.gl/react-maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { CapaDibujo } from '@/components/territorio/CapaDibujo';
+import { AtribucionMapa } from '@/components/mapa/AtribucionMapa';
 import { ESTILO_BASE, VISTA_INICIAL, cajaDe, encuadrarEnCaja } from '@/components/mapa/baseMapa';
 import type { Posicion } from '@/utils/ajusteVertices';
 import { COLOR_CONFLICTO, COLOR_INVALIDO, COLOR_PROPUESTA, PALETA_ZONAS } from '@/utils/coloresTerritorio';
@@ -174,6 +175,7 @@ export function MapaTerritorial({
       mapLib={import('maplibre-gl')}
       initialViewState={VISTA_INICIAL}
       mapStyle={ESTILO_BASE}
+      attributionControl={false}
       // Mientras se dibuja, los clics son del dibujo y no seleccionan rutas
       interactiveLayerIds={dibujo ? [] : [seleccion === 'zona' ? 'contornos-relleno' : 'rutas-relleno']}
       onClick={alHacerClic}
@@ -181,6 +183,7 @@ export function MapaTerritorial({
       cursor="auto"
     >
       {/* Arriba quedan la leyenda y las herramientas; los controles del mapa van abajo a la derecha */}
+      <AtribucionMapa position="bottom-right" />
       <NavigationControl position="bottom-right" showCompass={false} />
       <FullscreenControl position="bottom-right" containerId={idPantallaCompleta} />
 

@@ -4,14 +4,8 @@ import type { ReporteExcel } from '@/utils/reportesFilas';
 const COLOR_ENCABEZADO = 'FF111827'; // gray-900
 const COLOR_TITULO = 'FFB91C1C'; // red-700
 
-/**
- * Libro de Excel de un reporte: título, notas, encabezado fijo con filtro automático y las filas. Devuelve los
- * bytes del archivo .xlsx para enviarlos tal cual.
- */
-export async function construirLibro(reporte: ReporteExcel): Promise<Buffer> {
-  const libro = new ExcelJS.Workbook();
-  libro.creator = 'Portal Watts';
-  libro.created = new Date();
+/** Agrega al libro una hoja con título, notas, encabezado fijo con filtro automático y las filas */
+function agregarHoja(libro: ExcelJS.Workbook, reporte: ReporteExcel): void {
   const hoja = libro.addWorksheet(reporte.hoja.slice(0, 31));
   const ultima = reporte.columnas.length;
 
@@ -43,6 +37,7 @@ export async function construirLibro(reporte: ReporteExcel): Promise<Buffer> {
       const celda = fila.getCell(j + 1);
       if (columna.formato) celda.numFmt = columna.formato;
       if (columna.alineacion) celda.alignment = { horizontal: columna.alineacion };
+      if (columna.ajustarTexto) celda.alignment = { ...celda.alignment, vertical: 'top', wrapText: true };
       const color = reporte.relleno?.(i, j, valores[j]);
       if (color) celda.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
     });
@@ -50,6 +45,16 @@ export async function construirLibro(reporte: ReporteExcel): Promise<Buffer> {
 
   hoja.views = [{ state: 'frozen', ySplit: encabezado.number }];
   hoja.autoFilter = { from: { row: encabezado.number, column: 1 }, to: { row: encabezado.number, column: ultima } };
+}
 
+/**
+ * Libro de Excel de un reporte, con una hoja por cada elemento recibido. Devuelve los bytes del archivo .xlsx
+ * para enviarlos tal cual.
+ */
+export async function construirLibro(reporte: ReporteExcel | ReporteExcel[]): Promise<Buffer> {
+  const libro = new ExcelJS.Workbook();
+  libro.creator = 'Portal Watts';
+  libro.created = new Date();
+  for (const hoja of Array.isArray(reporte) ? reporte : [reporte]) agregarHoja(libro, hoja);
   return Buffer.from(await libro.xlsx.writeBuffer());
 }

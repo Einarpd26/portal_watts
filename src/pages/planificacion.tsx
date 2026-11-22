@@ -12,6 +12,7 @@ import PlanificacionGrid from '@/components/planificacion/PlanificacionGrid';
 import ConmutadorVista, { type VistaPlanificacion } from '@/components/planificacion/ConmutadorVista';
 import VistaMapaPlanificacion from '@/components/planificacion/VistaMapaPlanificacion';
 import BotonModoEdicion from '@/components/planificacion/BotonModoEdicion';
+import BotonExportar from '@/components/ui/BotonExportar';
 import AvisoModoEdicion from '@/components/planificacion/AvisoModoEdicion';
 import LeyendaPlanificacion from '@/components/planificacion/LeyendaPlanificacion';
 import ResumenSemana from '@/components/planificacion/ResumenSemana';
@@ -20,6 +21,7 @@ import { useToastPosition } from '@/contexts/ToastContext';
 import { useAtajoTecla } from '@/hooks/useAtajoTecla';
 import { resumirPlanificacion, semanaIso } from '@/utils/planificacionResumen';
 import { cn } from '@/utils/cn';
+import { urlDeReporte } from '@/utils/reportes';
 import { logger } from '@/lib/logger';
 import type { PageWithLayout } from '@/types';
 
@@ -113,6 +115,7 @@ const PlanificacionPage: PageWithLayout = () => {
                   Agregar slot
                 </Button>
               )}
+              {listado.slots.length > 0 && <BotonExportar href={urlDeReporte('grilla', '')} />}
               <BotonModoEdicion editMode={editMode} onToggle={alternarEdicion} disabled={isLoading} />
             </div>
           )}

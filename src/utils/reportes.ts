@@ -7,7 +7,7 @@ import type { FiltrosClientes } from './clientesMapa.ts';
 import type { FiltrosCobertura, OrdenCobertura } from './coberturaRutas.ts';
 import type { FiltrosConsulta } from './consultaPlanificacion.ts';
 
-export const TIPOS_REPORTE = ['cobertura', 'planificacion', 'clientes'] as const;
+export const TIPOS_REPORTE = ['cobertura', 'planificacion', 'clientes', 'grilla'] as const;
 export type TipoReporte = (typeof TIPOS_REPORTE)[number];
 
 export const esTipoReporte = (valor: unknown): valor is TipoReporte => TIPOS_REPORTE.includes(valor as TipoReporte);
@@ -80,7 +80,7 @@ export function clientesDesdeQuery(q: Query): FiltrosClientes {
 
 // --- Archivo -------------------------------------------------------------------------------------------------
 
-const PREFIJO: Record<TipoReporte, string> = { cobertura: 'cobertura-rutas', planificacion: 'planificacion', clientes: 'clientes-abc' };
+const PREFIJO: Record<TipoReporte, string> = { cobertura: 'cobertura-rutas', planificacion: 'planificacion', clientes: 'clientes-abc', grilla: 'grilla-planificacion' };
 
 /** «cobertura-rutas_2026-11-20.xlsx» */
 export const nombreArchivoReporte = (tipo: TipoReporte, fecha: string) => `${PREFIJO[tipo]}_${fecha}.xlsx`;
@@ -89,4 +89,5 @@ export const TITULO_REPORTE: Record<TipoReporte, string> = {
   cobertura: 'Cobertura de rutas',
   planificacion: 'Planificación de rutas',
   clientes: 'Clientes clasificados (ABC por ruta)',
+  grilla: 'Grilla de planificación del supervisor',
 };
