@@ -7,27 +7,15 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import AppLayout from '@/components/layout/AppLayout';
 import Button from '@/components/ui/Button';
+import { Paginacion } from '@/components/ui/Paginacion';
 import Input from '@/components/ui/Input';
-import { ACCIONES_BITACORA, formatToUtcString } from '@/utils/bitacoraUtils';
+import { ACCIONES_BITACORA, formatToUtcString, getAccionBadgeClasses, getModuloBadgeClasses, type BitacoraRow } from '@/utils/bitacoraUtils';
+import EventoTarjeta from '@/components/bitacora/EventoTarjeta';
+import FiltrosBitacoraMovil from '@/components/bitacora/FiltrosBitacoraMovil';
 import { cn } from '@/utils/cn';
 import { logger } from '@/lib/logger';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import type { PageWithLayout } from '@/types';
-
-interface BitacoraRow {
-  id: number;
-  id_persona: number | null;
-  auth_user_id: string | null;
-  usuario_email: string;
-  usuario_rol: string | null;
-  modulo: string;
-  accion: string;
-  descripcion: string;
-  direccion_ip: string | null;
-  user_agent: string | null;
-  detalles_json: Record<string, unknown> | null;
-  created_at: string;
-}
 
 interface BitacoraApiResponse {
   data: BitacoraRow[];
@@ -41,79 +29,6 @@ interface BitacoraApiResponse {
 
 const MODULOS = ['AUTENTICACION', 'ACCESOS', 'PERSONAL', 'TERRITORIO', 'PLANIFICACION', 'REPORTES', 'SISTEMA'];
 const ACCIONES = ACCIONES_BITACORA;
-
-function getModuloBadgeClasses(modulo: string): string {
-  switch (modulo) {
-    case 'AUTENTICACION':
-      return 'bg-blue-50 text-blue-700 border-blue-200';
-    case 'ACCESOS':
-      return 'bg-purple-50 text-purple-700 border-purple-200';
-    case 'PERSONAL':
-      return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-    case 'TERRITORIO':
-      return 'bg-amber-50 text-amber-700 border-amber-200';
-    case 'PLANIFICACION':
-      return 'bg-cyan-50 text-cyan-700 border-cyan-200';
-    case 'SISTEMA':
-      return 'bg-gray-100 text-gray-700 border-gray-200';
-    default:
-      return 'bg-neutral-50 text-neutral-700 border-neutral-200';
-  }
-}
-
-function getAccionBadgeClasses(accion: string): string {
-  switch (accion) {
-    case 'INICIO_SESION':
-      return 'bg-emerald-100 text-emerald-800';
-    case 'CIERRE_SESION':
-      return 'bg-slate-100 text-slate-700';
-    case 'LOGIN_FALLIDO':
-    case 'LOGIN_RECHAZADO':
-      return 'bg-red-100 text-red-800';
-    case 'BLOQUEO_TEMPORAL_15M':
-    case 'BLOQUEO_TEMPORAL_1H':
-    case 'BLOQUEO_PERMANENTE':
-    case 'ALERTA_ATAQUE_DISTRIBUIDO':
-      return 'bg-orange-100 text-orange-800';
-    case 'DESBLOQUEO_CUENTA':
-    case 'SOLICITUD_RECUPERACION_PASSWORD':
-    case 'RECUPERACION_PASSWORD':
-      return 'bg-violet-100 text-violet-800';
-    case 'CREAR_PERSONAL':
-    case 'INVITAR_USUARIO':
-    case 'CREAR_SUCURSAL':
-    case 'CREAR_CARGO':
-    case 'CREAR_ZONA':
-    case 'ASIGNAR_SUPERVISOR_ZONA':
-    case 'ASIGNAR_VENDEDOR_EQUIPO':
-    case 'CREAR_SLOT':
-    case 'ASIGNAR_VENDEDOR_SLOT':
-    case 'PLANIFICAR_RUTA':
-      return 'bg-sky-100 text-sky-800';
-    case 'EDITAR_PERSONAL':
-    case 'EDITAR_SUCURSAL':
-    case 'EDITAR_CARGO':
-    case 'EDITAR_ZONA':
-    case 'CAMBIO_PASSWORD':
-    case 'REEMPLAZAR_SUPERVISOR':
-    case 'CAMBIAR_FRECUENCIA_VISITA':
-    case 'MOVER_VISITA':
-      return 'bg-amber-100 text-amber-800';
-    case 'BAJA_PERSONAL':
-    case 'REVOCAR_ACCESO':
-    case 'ELIMINAR_SUCURSAL':
-    case 'ELIMINAR_CARGO':
-    case 'ELIMINAR_ZONA':
-    case 'QUITAR_SUPERVISOR_ZONA':
-    case 'QUITAR_VENDEDOR_EQUIPO':
-    case 'QUITAR_VENDEDOR_SLOT':
-    case 'ELIMINAR_SLOT':
-    case 'QUITAR_VISITA':
-      return 'bg-rose-100 text-rose-800';
-    default:
-      return 'bg-gray-100 text-gray-700';
-  }
-}
 
 const BitacoraPage: PageWithLayout = () => {
   const router = useRouter();
@@ -204,10 +119,10 @@ const BitacoraPage: PageWithLayout = () => {
   return (
     <div className="min-h-full bg-gray-50 pb-12">
       {/* Encabezado */}
-      <header className="px-6 pt-6">
+      <header className="px-4 pt-4 md:px-6 md:pt-6">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-700">
+            <div className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-700 md:flex">
               <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
                 <rect x="9" y="3" width="6" height="4" rx="1" />
@@ -215,10 +130,10 @@ const BitacoraPage: PageWithLayout = () => {
               </svg>
             </div>
             <div>
-              <h1 className="text-xl font-extrabold tracking-tight text-gray-900 sm:text-2xl">
+              <h1 className="text-lg font-extrabold tracking-tight text-gray-900 md:text-2xl">
                 Bitácora de Auditoría del Sistema
               </h1>
-              <p className="mt-0.5 text-xs text-gray-500 sm:text-sm">
+              <p className="mt-0.5 hidden text-xs text-gray-500 md:block md:text-sm">
                 Registro inmutable de transacciones informáticas conforme al estándar UTC 0
               </p>
             </div>
@@ -231,22 +146,24 @@ const BitacoraPage: PageWithLayout = () => {
               size="sm"
               onClick={() => void loadData(page)}
               disabled={loading}
+              aria-label="Actualizar"
             >
-              <svg className={cn("mr-1.5 h-4 w-4", loading && "animate-spin")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <svg className={cn("h-4 w-4 md:mr-1.5", loading && "animate-spin")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
                 <path d="M3 3v5h5" />
                 <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
                 <path d="M16 21h5v-5" />
               </svg>
-              Actualizar
+              <span className="hidden md:inline">Actualizar</span>
             </Button>
           </div>
         </div>
       </header>
 
       {/* Banner de cumplimiento UTC 0 */}
-      <section className="mx-auto max-w-7xl px-6 pt-5">
-        <aside className="rounded-xl border border-blue-200 bg-blue-50/90 p-4 text-blue-900 shadow-xs">
+      <section className="mx-auto max-w-7xl px-4 pt-3 md:px-6 md:pt-5">
+        <p className="text-xs text-gray-500 md:hidden">Las horas se muestran en UTC 0 (tiempo universal coordinado).</p>
+        <aside className="hidden rounded-xl border border-blue-200 bg-blue-50/90 p-4 text-blue-900 shadow-xs md:block">
           <div className="flex items-start gap-3">
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-200 text-xs font-bold text-blue-800">
               UTC
@@ -262,8 +179,23 @@ const BitacoraPage: PageWithLayout = () => {
       </section>
 
       {/* Barra de Filtros */}
-      <section className="mx-auto max-w-7xl px-6 pt-6">
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs sm:p-5">
+      <section className="mx-auto max-w-7xl px-4 pt-3 md:px-6 md:pt-6">
+        <FiltrosBitacoraMovil
+          modulos={MODULOS}
+          busqueda={search}
+          onBusqueda={setSearch}
+          modulo={moduloFiltro}
+          onModulo={setModuloFiltro}
+          accion={accionFiltro}
+          onAccion={setAccionFiltro}
+          desde={fechaDesde}
+          onDesde={setFechaDesde}
+          hasta={fechaHasta}
+          onHasta={setFechaHasta}
+          total={total}
+          onLimpiar={handleResetFilters}
+        />
+        <div className="hidden rounded-2xl border border-gray-200 bg-white p-4 shadow-xs md:block sm:p-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <div>
               <Input
@@ -351,7 +283,7 @@ const BitacoraPage: PageWithLayout = () => {
 
       {/* Mensaje de error si falla la carga */}
       {fetchError && (
-        <section className="mx-auto max-w-7xl px-6 pt-4">
+        <section className="mx-auto max-w-7xl px-4 pt-4 md:px-6">
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-xs font-medium text-red-800">
             {fetchError}
           </div>
@@ -359,9 +291,26 @@ const BitacoraPage: PageWithLayout = () => {
       )}
 
       {/* Tabla de Resultados */}
-      <main className="mx-auto max-w-7xl px-6 pt-6">
+      <main className="mx-auto max-w-7xl px-4 pt-3 md:px-6 md:pt-6">
         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs">
-          <div className="overflow-x-auto">
+          {/* Celular: una tarjeta por evento; tocarla abre el detalle */}
+          <ul className="space-y-2 p-3 md:hidden" aria-label="Eventos de la bitácora">
+            {loading && (
+              <li>
+                <PageLoader className="h-32" />
+              </li>
+            )}
+            {!loading && rows.length === 0 && (
+              <li className="px-4 py-10 text-center">
+                <p className="text-sm font-semibold text-gray-700">No se encontraron eventos</p>
+                <p className="mt-1 text-xs text-gray-400">Prueba ajustando los filtros de búsqueda o fecha.</p>
+              </li>
+            )}
+            {!loading && rows.map((row) => <EventoTarjeta key={row.id} evento={row} onAbrir={setSelectedEvent} />)}
+          </ul>
+
+          {/* Escritorio: tabla */}
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-left text-xs sm:text-sm">
               <thead className="border-b border-gray-200 bg-gray-50 text-[11px] font-bold uppercase tracking-wider text-gray-500">
                 <tr>
@@ -473,31 +422,11 @@ const BitacoraPage: PageWithLayout = () => {
           </div>
 
           {/* Paginación */}
-          <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-gray-200 bg-gray-50/50 px-4 py-3 sm:px-6">
+          <footer className="flex flex-col items-center justify-between gap-3 border-t border-gray-200 bg-gray-50/50 px-4 py-3 sm:flex-row sm:px-6">
             <span className="text-xs text-gray-600">
-              Página <strong className="font-semibold text-gray-900">{page}</strong> de{' '}
-              <strong className="font-semibold text-gray-900">{totalPages}</strong> ({total} registros en total)
+              <strong className="font-semibold text-gray-900">{total}</strong> registros en total
             </span>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={page <= 1 || loading}
-                onClick={() => void loadData(page - 1)}
-              >
-                Anterior
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={page >= totalPages || loading}
-                onClick={() => void loadData(page + 1)}
-              >
-                Siguiente
-              </Button>
-            </div>
+            <Paginacion pagina={page} totalPaginas={totalPages} onCambiar={(p) => void loadData(p)} deshabilitada={loading} />
           </footer>
         </div>
       </main>
