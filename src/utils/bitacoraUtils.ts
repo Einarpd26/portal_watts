@@ -162,3 +162,92 @@ export const ACCIONES_BITACORA = [
   'MOVER_VISITA',
   'EXPORTAR_REPORTE',
 ] as const;
+
+export interface BitacoraRow {
+  id: number;
+  id_persona: number | null;
+  auth_user_id: string | null;
+  usuario_email: string;
+  usuario_rol: string | null;
+  modulo: string;
+  accion: string;
+  descripcion: string;
+  direccion_ip: string | null;
+  user_agent: string | null;
+  detalles_json: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export function getModuloBadgeClasses(modulo: string): string {
+  switch (modulo) {
+    case 'AUTENTICACION':
+      return 'bg-blue-50 text-blue-700 border-blue-200';
+    case 'ACCESOS':
+      return 'bg-purple-50 text-purple-700 border-purple-200';
+    case 'PERSONAL':
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    case 'TERRITORIO':
+      return 'bg-amber-50 text-amber-700 border-amber-200';
+    case 'PLANIFICACION':
+      return 'bg-cyan-50 text-cyan-700 border-cyan-200';
+    case 'SISTEMA':
+      return 'bg-gray-100 text-gray-700 border-gray-200';
+    default:
+      return 'bg-neutral-50 text-neutral-700 border-neutral-200';
+  }
+}
+
+export function getAccionBadgeClasses(accion: string): string {
+  switch (accion) {
+    case 'INICIO_SESION':
+      return 'bg-emerald-100 text-emerald-800';
+    case 'CIERRE_SESION':
+      return 'bg-slate-100 text-slate-700';
+    case 'LOGIN_FALLIDO':
+    case 'LOGIN_RECHAZADO':
+      return 'bg-red-100 text-red-800';
+    case 'BLOQUEO_TEMPORAL_15M':
+    case 'BLOQUEO_TEMPORAL_1H':
+    case 'BLOQUEO_PERMANENTE':
+    case 'ALERTA_ATAQUE_DISTRIBUIDO':
+      return 'bg-orange-100 text-orange-800';
+    case 'DESBLOQUEO_CUENTA':
+    case 'SOLICITUD_RECUPERACION_PASSWORD':
+    case 'RECUPERACION_PASSWORD':
+      return 'bg-violet-100 text-violet-800';
+    case 'CREAR_PERSONAL':
+    case 'INVITAR_USUARIO':
+    case 'CREAR_SUCURSAL':
+    case 'CREAR_CARGO':
+    case 'CREAR_ZONA':
+    case 'ASIGNAR_SUPERVISOR_ZONA':
+    case 'ASIGNAR_VENDEDOR_EQUIPO':
+    case 'CREAR_SLOT':
+    case 'ASIGNAR_VENDEDOR_SLOT':
+    case 'PLANIFICAR_RUTA':
+      return 'bg-sky-100 text-sky-800';
+    case 'EDITAR_PERSONAL':
+    case 'EDITAR_SUCURSAL':
+    case 'EDITAR_CARGO':
+    case 'EDITAR_ZONA':
+    case 'CAMBIO_PASSWORD':
+    case 'REEMPLAZAR_SUPERVISOR':
+    case 'CAMBIAR_FRECUENCIA_VISITA':
+    case 'MOVER_VISITA':
+      return 'bg-amber-100 text-amber-800';
+    case 'BAJA_PERSONAL':
+    case 'REVOCAR_ACCESO':
+    case 'ELIMINAR_SUCURSAL':
+    case 'ELIMINAR_CARGO':
+    case 'ELIMINAR_ZONA':
+    case 'QUITAR_SUPERVISOR_ZONA':
+    case 'QUITAR_VENDEDOR_EQUIPO':
+    case 'QUITAR_VENDEDOR_SLOT':
+    case 'ELIMINAR_SLOT':
+    case 'QUITAR_VISITA':
+      return 'bg-rose-100 text-rose-800';
+    default:
+      return 'bg-gray-100 text-gray-700';
+  }
+}
+

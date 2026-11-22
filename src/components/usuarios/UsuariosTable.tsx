@@ -1,6 +1,10 @@
 "use client";
 
 import Button from '@/components/ui/Button';
+import { Paginacion } from '@/components/ui/Paginacion';
+import { usePaginacion } from '@/hooks/usePaginacion';
+import { textoDeAlcance } from '@/utils/cuentasActivas';
+import CuentaFila from './CuentaFila';
 import type { UsuarioActivo } from '@/types';
 
 export interface UsuariosTableProps {
@@ -12,6 +16,9 @@ export interface UsuariosTableProps {
   callerIdSucursal: number | null;
   callerIdPersona: number;
 }
+
+/** Cuántas cuentas tiene cada página de la tabla */
+const CUENTAS_POR_PAGINA = 10;
 
 function RolBadge({ codigo }: { codigo: string }) {
   return (
@@ -42,6 +49,8 @@ export function UsuariosTable({
   callerIdSucursal,
   callerIdPersona,
 }: UsuariosTableProps) {
+  const paginacion = usePaginacion(users, CUENTAS_POR_PAGINA, '');
+
   const canRevokeUser = (user: UsuarioActivo): boolean => {
     if (user.id_persona === callerIdPersona) return false;
     if (callerAlcanceTipo === 'GLOBAL') return true;
@@ -52,15 +61,33 @@ export function UsuariosTable({
   return (
     <div className="bg-white rounded-card shadow-card overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-gray-100">
         <h2 className="text-base font-bold text-gray-900">Cuentas Activas</h2>
         <span className="inline-flex items-center justify-center min-w-[1.5rem] h-6 px-2 rounded-full bg-gray-100 text-xs font-semibold text-gray-600">
           {users.length}
         </span>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
+      {/* Celular: una fila por cuenta, con su menú de acciones */}
+      <ul className="space-y-2 p-3 md:hidden" aria-label="Cuentas activas">
+        {isLoading &&
+          Array.from({ length: 3 }, (_, i) => <li key={i} className="h-20 animate-pulse rounded-lg bg-gray-100" aria-hidden="true" />)}
+        {!isLoading && users.length === 0 && <li className="px-4 py-10 text-center text-sm text-gray-400">No hay cuentas activas</li>}
+        {!isLoading &&
+          paginacion.visibles.map((cuenta) => (
+            <CuentaFila
+              key={cuenta.id_persona}
+              cuenta={cuenta}
+              esPropia={cuenta.id_persona === callerIdPersona}
+              puedeRevocar={canRevokeUser(cuenta)}
+              onRevocar={onRevoke}
+              onDesbloquear={onUnlock}
+            />
+          ))}
+      </ul>
+
+      {/* Escritorio: tabla */}
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/50">
@@ -112,7 +139,7 @@ export function UsuariosTable({
                 </td>
               </tr>
             ) : (
-              users.map((user) => {
+              paginacion.visibles.map((user) => {
                 const primaryRole = user.roles[0];
                 const canRevoke = canRevokeUser(user);
 
@@ -150,11 +177,7 @@ export function UsuariosTable({
                       )}
                     </td>
                     <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
-                      {primaryRole?.alcance_tipo === 'GLOBAL'
-                        ? 'Global'
-                        : primaryRole?.id_sucursal
-                        ? `Sucursal #${primaryRole.id_sucursal}`
-                        : '—'}
+                      {textoDeAlcance(primaryRole)}
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
@@ -189,6 +212,15 @@ export function UsuariosTable({
           </tbody>
         </table>
       </div>
+
+      {paginacion.totalPaginas > 1 && (
+        <div className="flex flex-col items-center justify-between gap-2 border-t border-gray-100 px-4 py-3 sm:flex-row sm:px-6">
+          <span className="text-xs text-gray-500">
+            {paginacion.desde}–{paginacion.hasta} de {users.length}
+          </span>
+          <Paginacion pagina={paginacion.pagina} totalPaginas={paginacion.totalPaginas} onCambiar={paginacion.irA} deshabilitada={isLoading} />
+        </div>
+      )}
     </div>
   );
 }

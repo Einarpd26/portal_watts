@@ -10,6 +10,8 @@ import Select from '@/components/ui/Select';
 import Alert from '@/components/ui/Alert';
 import FiltrosPersonal from '@/components/personal/FiltrosPersonal';
 import ListaPersonal from '@/components/personal/ListaPersonal';
+import { Paginacion } from '@/components/ui/Paginacion';
+import { usePaginacion } from '@/hooks/usePaginacion';
 import { FILTROS_PERSONAL_INICIALES, filtrarPersonal, hayFiltrosActivos } from '@/utils/filtrarPersonal';
 import Button from '@/components/ui/Button';
 import DarDeBajaModal from '@/components/personal/DarDeBajaModal';
@@ -17,6 +19,9 @@ import AppLayout from '@/components/layout/AppLayout';
 import { logger } from '@/lib/logger';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import type { PageWithLayout } from '@/types';
+
+/** Cuántos colaboradores tiene cada página de la lista */
+const PERSONAS_POR_PAGINA = 15;
 
 const GestionPersonalPage: PageWithLayout = () => {
   const router = useRouter();
@@ -59,6 +64,7 @@ const GestionPersonalPage: PageWithLayout = () => {
 
   const [filtros, setFiltros] = useState(FILTROS_PERSONAL_INICIALES);
   const visibles = useMemo(() => filtrarPersonal(personas, filtros), [personas, filtros]);
+  const paginacion = usePaginacion(visibles, PERSONAS_POR_PAGINA, JSON.stringify(filtros));
   const personaEnEdicion = isEditing ? (personas.find((p) => p.id === editingId) ?? null) : null;
 
   // Esc cierra el modal de alta/edición, igual que Cancelar (salvo mientras se envía)
@@ -97,7 +103,17 @@ const GestionPersonalPage: PageWithLayout = () => {
         {isLoading ? (
           <PageLoader />
         ) : (
-          <ListaPersonal personas={visibles} hayFiltros={hayFiltrosActivos(filtros)} onEditar={openEditModal} onCrear={openModal} />
+          <>
+            <ListaPersonal personas={paginacion.visibles} hayFiltros={hayFiltrosActivos(filtros)} onEditar={openEditModal} onCrear={openModal} />
+            {paginacion.totalPaginas > 1 && (
+              <div className="mt-3 flex flex-col items-center justify-between gap-2 sm:flex-row">
+                <span className="text-xs text-gray-500">
+                  {paginacion.desde}–{paginacion.hasta} de {visibles.length}
+                </span>
+                <Paginacion pagina={paginacion.pagina} totalPaginas={paginacion.totalPaginas} onCambiar={paginacion.irA} />
+              </div>
+            )}
+          </>
         )}
       </div>
 

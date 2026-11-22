@@ -113,6 +113,7 @@ export function useModoClientes({ mapa, idRutaInicial, alVerEnMapa }: Parametros
       seleccionId={seleccionId}
       onElegir={setSeleccionId}
       onVerEnMapa={verEnMapa}
+      clavePagina={JSON.stringify([filtros.idSucursal, filtros.idZona, filtros.idRuta, [...filtros.clases], filtros.sinClase, filtros.texto])}
       texto={filtros.texto}
       onTexto={(texto) => cambiarFiltros({ texto })}
       filtros={
