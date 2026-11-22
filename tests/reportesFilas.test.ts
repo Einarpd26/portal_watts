@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { reporteClientes, reporteCobertura, reportePlanificacion } from "../src/utils/reportesFilas.ts";
+import { FORMATO_GRILLA, reporteClientes, reporteCobertura, reporteGrilla, reportePlanificacion } from "../src/utils/reportesFilas.ts";
 import { FILTROS_COBERTURA_INICIALES } from "../src/utils/coberturaRutas.ts";
 import { FILTROS_CONSULTA_INICIALES } from "../src/utils/consultaPlanificacion.ts";
 import { FILTROS_INICIALES } from "../src/utils/clientesMapa.ts";
-import type { ClaseAbc, ClienteMapa, CoberturaListado, ConsultaPlanificacion, RutaConsulta, RutaCobertura } from "../src/types/index.ts";
+import type { ClaseAbc, ClienteMapa, CoberturaListado, ConsultaPlanificacion, RutaConsulta, RutaCobertura, SlotItem, VisitaPlanificada } from "../src/types/index.ts";
 
 const geo = { type: "Polygon" as const, coordinates: [] };
 const cob = (id: number, codigo: string, atendidos: number, habilitados: number, zona = 1): RutaCobertura => ({
@@ -114,4 +114,62 @@ test("clientes: los filtros de la pantalla recortan el reporte y quedan anotados
   const r = reporteClientes(mapa, { ...FILTROS_INICIALES, idRuta: 1, clases: new Set<ClaseAbc>(["A"]), sinClase: false });
   assert.deepEqual(r.filas.map((f) => f[0]), ["C-1"]);
   assert.ok(r.notas.some((n) => n.includes("Ruta: R-1") && n.includes("Clases: A")));
+});
+
+const slotG = (id: number, orden: number, nombre: string | null, vendedor: string | null): SlotItem => ({ id, orden, nombre, id_vendedor: vendedor ? id * 10 : null, vendedor_nombre: vendedor });
+const visitaG = (id: number, id_slot: number, id_ruta: number, codigo: string, dia: VisitaPlanificada["dia"], frecuencia: VisitaPlanificada["frecuencia"]): VisitaPlanificada => ({
+  id,
+  id_slot,
+  id_ruta,
+  codigo_ruta: codigo,
+  ruta: `Ruta ${codigo}`,
+  dia,
+  frecuencia,
+});
+
+const datosGrilla = () => ({
+  slots: [slotG(1, 0, "Titular", "Ana Pérez"), slotG(2, 1, null, null)],
+  visitas: [
+    visitaG(1, 1, 101, "R-2", "LU", "semanal"),
+    visitaG(2, 1, 100, "R-1", "LU", "par"),
+    visitaG(3, 1, 100, "R-1", "MI", "semanal"),
+  ],
+  rutas: [
+    { id: 100, codigo_ruta: "R-1", ruta: "Ruta R-1", codigo_zona: "Z1" },
+    { id: 101, codigo_ruta: "R-2", ruta: "Ruta R-2", codigo_zona: "Z2" },
+  ],
+  supervisor: "Laura Gómez",
+  fecha: "2026-11-21",
+});
+
+test("grilla: tres hojas, la grilla con un slot por fila y un día por columna", () => {
+  const [grilla, visitas, control] = reporteGrilla(datosGrilla());
+  assert.deepEqual([grilla.hoja, visitas.hoja, control.hoja], ["Grilla", "Visitas", "Control"]);
+  assert.deepEqual(grilla.columnas.map((c) => c.encabezado), ["Slot", "Vendedor", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Visitas"]);
+  // Lunes: las dos rutas ordenadas por código, con la frecuencia solo cuando no es semanal; martes vacío
+  assert.deepEqual(grilla.filas[0], ["Titular", "Ana Pérez", "R-1 (Sem. par)\nR-2", null, "R-1", null, null, null, 3]);
+  // Un slot sin nombre ni vendedor se rotula por su posición
+  assert.deepEqual(grilla.filas[1], ["Slot 2", "Sin vendedor", null, null, null, null, null, null, 0]);
+  assert.ok(grilla.notas.some((n) => n === "Supervisor: Laura Gómez · 2026-11-21"));
+});
+
+test("grilla: una fila por visita, con la posición del slot y los códigos de día y frecuencia", () => {
+  const [, visitas] = reporteGrilla(datosGrilla());
+  assert.equal(visitas.filas.length, 3);
+  assert.deepEqual(visitas.filas[0], [1, "Titular", "Ana Pérez", "Z1", "R-1", "Ruta R-1", "Lunes", "LU", "Sem. par", "par"]);
+  assert.deepEqual(visitas.filas.map((f) => f[7]), ["LU", "LU", "MI"]);
+});
+
+test("grilla: la hoja de control identifica el formato y la versión", () => {
+  const [, , control] = reporteGrilla(datosGrilla());
+  const campos = Object.fromEntries(control.filas.map((f) => [f[0], f[1]]));
+  assert.equal(campos.formato, FORMATO_GRILLA.nombre);
+  assert.equal(campos.version, String(FORMATO_GRILLA.version));
+  assert.equal(campos.slots, "2");
+  assert.equal(campos.visitas, "3");
+});
+
+test("grilla: sin slots el archivo sale igual, con las hojas vacías", () => {
+  const hojas = reporteGrilla({ ...datosGrilla(), slots: [], visitas: [] });
+  assert.deepEqual(hojas.map((h) => h.filas.length), [0, 0, 6]);
 });

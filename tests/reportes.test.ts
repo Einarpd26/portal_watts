@@ -21,6 +21,7 @@ const aObjeto = (qs: string) => Object.fromEntries(new URLSearchParams(qs));
 test("tipo: solo se aceptan los reportes que existen", () => {
   assert.equal(esTipoReporte("cobertura"), true);
   assert.equal(esTipoReporte("clientes"), true);
+  assert.equal(esTipoReporte("grilla"), true);
   assert.equal(esTipoReporte("../etc/passwd"), false);
   assert.equal(esTipoReporte(undefined), false);
 });
