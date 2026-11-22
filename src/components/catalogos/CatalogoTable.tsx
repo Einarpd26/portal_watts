@@ -1,4 +1,6 @@
-import Button from '@/components/ui/Button';
+"use client";
+
+import { MenuAcciones, type AccionDeFila } from '@/components/ui/MenuAcciones';
 import type { CatalogoItem } from '@/types';
 
 interface CatalogoTableProps {
@@ -10,78 +12,100 @@ interface CatalogoTableProps {
   onDelete: (item: CatalogoItem) => void;
 }
 
-function SkeletonRow() {
+const ENCABEZADO = 'px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500';
+
+/** Un elemento en uso no se elimina: el menú lo muestra deshabilitado y dice por qué */
+const accionesDe = (item: CatalogoItem, etiqueta: string, onEdit: CatalogoTableProps['onEdit'], onDelete: CatalogoTableProps['onDelete']): AccionDeFila[] => {
+  const enUso = item.referencias > 0;
+  return [
+    { etiqueta: 'Editar', onClick: () => onEdit(item) },
+    {
+      etiqueta: 'Eliminar',
+      variante: 'peligro',
+      deshabilitada: enUso,
+      motivo: enUso ? 'No se puede eliminar: está en uso por otros registros' : `Eliminar ${etiqueta}`,
+      onClick: () => onDelete(item),
+    },
+  ];
+};
+
+const textoEnUso = (n: number) => (n === 0 ? 'Sin uso' : n === 1 ? 'En uso: 1 registro' : `En uso: ${n} registros`);
+
+function EsqueletoFila() {
   return (
     <tr aria-hidden="true">
       <td className="px-4 py-3"><div className="h-4 w-40 animate-pulse rounded bg-gray-100" /></td>
       <td className="px-4 py-3"><div className="h-4 w-64 animate-pulse rounded bg-gray-100" /></td>
       <td className="px-4 py-3"><div className="h-4 w-10 animate-pulse rounded bg-gray-100" /></td>
-      <td className="px-4 py-3"><div className="ml-auto h-8 w-32 animate-pulse rounded bg-gray-100" /></td>
+      <td className="px-4 py-3"><div className="ml-auto h-8 w-8 animate-pulse rounded bg-gray-100" /></td>
     </tr>
   );
 }
 
+/**
+ * Elementos de un catálogo. En escritorio, una tabla compacta con columnas alineadas; en el celular, una tarjeta por
+ * elemento con el nombre, el detalle y el menú de acciones, sin desplazamiento horizontal.
+ */
 export default function CatalogoTable({ items, isLoading, etiqueta, onEdit, onDelete }: CatalogoTableProps) {
+  const vacio = <p className="px-4 py-12 text-center text-sm text-gray-400">No hay {etiqueta.plural} registradas</p>;
+
   return (
     <section className="overflow-hidden rounded-card bg-white shadow-card">
-      <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-        <h2 className="text-base font-bold capitalize text-gray-900">{etiqueta.plural}</h2>
-        <span className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-gray-100 px-2 text-xs font-semibold text-gray-600">
-          {items.length}
-        </span>
-      </div>
+      {/* Celular: una tarjeta por elemento */}
+      <ul className="space-y-2 p-3 md:hidden" aria-label={etiqueta.plural}>
+        {isLoading &&
+          Array.from({ length: 3 }, (_, i) => (
+            <li key={i} className="h-16 animate-pulse rounded-lg bg-gray-100" aria-hidden="true" />
+          ))}
+        {!isLoading && items.length === 0 && <li>{vacio}</li>}
+        {!isLoading &&
+          items.map((item) => (
+            <li key={item.id} className="flex items-start justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="break-words text-sm font-semibold text-gray-900">{item.nombre}</p>
+                {item.descripcion && <p className="mt-0.5 break-words text-xs text-gray-500">{item.descripcion}</p>}
+                <p className="mt-0.5 text-xs text-gray-400">{textoEnUso(item.referencias)}</p>
+              </div>
+              <MenuAcciones etiqueta={`Acciones para ${item.nombre}`} acciones={accionesDe(item, etiqueta.singular, onEdit, onDelete)} />
+            </li>
+          ))}
+      </ul>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-sm">
+      {/* Escritorio: tabla compacta */}
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/50">
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Nombre</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Descripción</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">En uso</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Acciones</th>
+              <th className={ENCABEZADO}>Nombre</th>
+              <th className={ENCABEZADO}>Descripción</th>
+              <th className={ENCABEZADO}>En uso</th>
+              <th className="w-12 px-4 py-2.5" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {isLoading ? (
+            {isLoading && (
               <>
-                <SkeletonRow />
-                <SkeletonRow />
-                <SkeletonRow />
+                <EsqueletoFila />
+                <EsqueletoFila />
+                <EsqueletoFila />
               </>
-            ) : items.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="px-4 py-12 text-center text-sm text-gray-400">
-                  No hay {etiqueta.plural} registradas
-                </td>
-              </tr>
-            ) : (
-              items.map((item) => {
-                const enUso = item.referencias > 0;
-                return (
-                  <tr key={item.id} className="transition-colors hover:bg-gray-50/60">
-                    <td className="px-4 py-3 font-semibold text-gray-900">{item.nombre}</td>
-                    <td className="px-4 py-3 text-gray-600">{item.descripcion || '—'}</td>
-                    <td className="px-4 py-3 text-gray-600">{item.referencias}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="secondary" size="sm" onClick={() => onEdit(item)}>
-                          Editar
-                        </Button>
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          disabled={enUso}
-                          title={enUso ? 'No se puede eliminar: está en uso por otros registros' : `Eliminar ${etiqueta.singular}`}
-                          onClick={() => onDelete(item)}
-                        >
-                          Eliminar
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
             )}
+            {!isLoading && items.length === 0 && (
+              <tr>
+                <td colSpan={4}>{vacio}</td>
+              </tr>
+            )}
+            {!isLoading &&
+              items.map((item) => (
+                <tr key={item.id} className="transition-colors hover:bg-gray-50/60">
+                  <td className="px-4 py-2.5 font-semibold text-gray-900">{item.nombre}</td>
+                  <td className="px-4 py-2.5 text-gray-600">{item.descripcion || '—'}</td>
+                  <td className="px-4 py-2.5 text-gray-600">{item.referencias}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    <MenuAcciones etiqueta={`Acciones para ${item.nombre}`} acciones={accionesDe(item, etiqueta.singular, onEdit, onDelete)} />
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
