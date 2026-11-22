@@ -4,11 +4,19 @@ import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import { aNumeroONulo, deNumeroONulo } from '@/utils/seleccion';
 import { cn } from '@/utils/cn';
+import type { SucursalDeZonas } from '@/utils/sucursalesDeZonas';
 import type { RutaItem, ZonaDeRuta } from '@/types';
 
 interface ListaRutasProps {
   rutas: RutaItem[];
+  /** Todas las zonas del alcance: de ellas salen el nombre de cada ruta y el aviso de «sin zonas» */
   zonas: ZonaDeRuta[];
+  /** Sucursales del alcance; con una sola el selector no se ofrece */
+  sucursales: SucursalDeZonas[];
+  filtroSucursal: number | null;
+  onFiltroSucursal: (id: number | null) => void;
+  /** Zonas que ofrece el filtro de zona: las de la sucursal elegida, o todas */
+  zonasDelFiltro: ZonaDeRuta[];
   coloresZona: Map<number, string>;
   isLoading: boolean;
   filtroZona: number | null;
@@ -24,10 +32,14 @@ interface ListaRutasProps {
   onTrasladar?: (ruta: RutaItem) => void;
 }
 
-/** Panel lateral de rutas: búsqueda, filtro por zona y lista con el color de su zona */
+/** Panel lateral de rutas: búsqueda, filtros de sucursal y zona (encadenados) y lista con el color de su zona */
 export function ListaRutas({
   rutas,
   zonas,
+  sucursales,
+  filtroSucursal,
+  onFiltroSucursal,
+  zonasDelFiltro,
   coloresZona,
   isLoading,
   filtroZona,
@@ -70,6 +82,17 @@ export function ListaRutas({
             className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-8 pr-3 text-sm placeholder-gray-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/30"
           />
         </label>
+        {sucursales.length > 1 && (
+          <Select
+            label="Sucursal"
+            compact
+            limpiable
+            placeholder="Todas las sucursales"
+            valor={deNumeroONulo(filtroSucursal)}
+            onCambiar={(v) => onFiltroSucursal(aNumeroONulo(v))}
+            opciones={sucursales.map((s) => ({ valor: String(s.id), texto: s.nombre }))}
+          />
+        )}
         {zonas.length > 1 && (
           <Select
             label="Zona"
@@ -79,7 +102,7 @@ export function ListaRutas({
             placeholder="Todas mis zonas"
             valor={deNumeroONulo(filtroZona)}
             onCambiar={(v) => onFiltroZona(aNumeroONulo(v))}
-            opciones={zonas.map((z) => ({ valor: String(z.id), texto: `${z.codigo_zona} — ${z.zona}` }))}
+            opciones={zonasDelFiltro.map((z) => ({ valor: String(z.id), texto: `${z.codigo_zona} — ${z.zona}` }))}
           />
         )}
       </div>

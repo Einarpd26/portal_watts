@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { logger } from '@/lib/logger';
 import { GEOJSON_MAX_BYTES, interpretarGeoJson, validarRuta, type RutaErrors } from '@/utils/rutaValidation';
 import { verticesDeRutas, type Posicion } from '@/utils/ajusteVertices';
+import { sucursalesDeZonas, zonaCompatible, zonasDeSucursal, type SucursalDeZonas } from '@/utils/sucursalesDeZonas';
 import type { ConflictoRuta, ContornoZona, PoligonoRuta, RutaExportable, RutaItem, ZonaDeRuta } from '@/types';
 
 export interface RutaForm {
@@ -61,6 +62,12 @@ export interface UseGestionRutasReturn {
   isEvaluando: boolean;
   isSubmitting: boolean;
   isExportando: boolean;
+  /** Sucursales de las zonas del alcance, para el filtro; con una sola no hay nada que elegir */
+  sucursales: SucursalDeZonas[];
+  filtroSucursal: number | null;
+  setFiltroSucursal: (id: number | null) => void;
+  /** Zonas que ofrece el filtro de zona: las de la sucursal elegida, o todas */
+  zonasDelFiltro: ZonaDeRuta[];
   filtroZona: number | null;
   setFiltroZona: (id: number | null) => void;
   seleccionId: number | null;
@@ -100,6 +107,7 @@ export function useGestionRutas(): UseGestionRutasReturn {
   const [isEvaluando, setIsEvaluando] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExportando, setIsExportando] = useState(false);
+  const [filtroSucursal, setFiltroSucursalEstado] = useState<number | null>(null);
   const [filtroZona, setFiltroZona] = useState<number | null>(null);
   const [seleccionId, setSeleccionId] = useState<number | null>(null);
 
@@ -160,13 +168,30 @@ export function useGestionRutas(): UseGestionRutasReturn {
     void load();
   }, [load]);
 
+  const sucursales = useMemo(() => sucursalesDeZonas(zonas), [zonas]);
+  const zonasDelFiltro = useMemo(() => zonasDeSucursal(zonas, filtroSucursal), [zonas, filtroSucursal]);
+  // Las zonas a la vista: la elegida, o las de la sucursal elegida, o todas
+  const idsZonaVisibles = useMemo(
+    () => (filtroZona === null ? new Set(zonasDelFiltro.map((z) => z.id)) : new Set([filtroZona])),
+    [filtroZona, zonasDelFiltro]
+  );
   const rutasVisibles = useMemo(
-    () => (filtroZona === null ? rutas : rutas.filter((r) => r.id_zona === filtroZona)),
-    [rutas, filtroZona]
+    () => (filtroZona === null && filtroSucursal === null ? rutas : rutas.filter((r) => idsZonaVisibles.has(r.id_zona))),
+    [rutas, filtroZona, filtroSucursal, idsZonaVisibles]
   );
   const contornosVisibles = useMemo(
-    () => (filtroZona === null ? contornos : contornos.filter((c) => c.id_zona === filtroZona)),
-    [contornos, filtroZona]
+    () => (filtroZona === null && filtroSucursal === null ? contornos : contornos.filter((c) => idsZonaVisibles.has(c.id_zona))),
+    [contornos, filtroZona, filtroSucursal, idsZonaVisibles]
+  );
+
+  // Cambiar de sucursal limpia la zona elegida si ya no pertenece, y deja sin selección: podría quedar fuera del filtro
+  const setFiltroSucursal = useCallback(
+    (id: number | null) => {
+      setFiltroSucursalEstado(id);
+      setFiltroZona((zona) => zonaCompatible(zonas, id, zona));
+      setSeleccionId(null);
+    },
+    [zonas]
   );
 
   // El dibujo se pega a los vértices de las demás rutas del alcance (no a los de la que se edita)
@@ -266,12 +291,12 @@ export function useGestionRutas(): UseGestionRutasReturn {
     limpiarPoligono();
     setDibujo(null);
     // Con una sola zona disponible no hay nada que elegir
-    const unica = filtroZona ?? (zonas.length === 1 ? zonas[0].id : null);
+    const unica = filtroZona ?? (zonasDelFiltro.length === 1 ? zonasDelFiltro[0].id : null);
     setFormState({ ...FORM_VACIO, id_zona: unica });
     setFormErrors({});
     setSeleccionId(null);
     setEditor({ ruta: null });
-  }, [clearToast, limpiarPoligono, filtroZona, zonas]);
+  }, [clearToast, limpiarPoligono, filtroZona, zonasDelFiltro]);
 
   const openEditar = useCallback(
     (ruta: RutaItem) => {
@@ -460,7 +485,7 @@ export function useGestionRutas(): UseGestionRutasReturn {
 
   return {
     zonas, rutas, rutasVisibles, contornos: contornosVisibles, isLoading, isEvaluando, isSubmitting, isExportando,
-    filtroZona, setFiltroZona, seleccionId, setSeleccionId,
+    sucursales, filtroSucursal, setFiltroSucursal, zonasDelFiltro, filtroZona, setFiltroZona, seleccionId, setSeleccionId,
     editor, form, setForm, formErrors, evaluacion, puedeGuardar,
     openCrear, openEditar, closeEditor, elegirArchivo,
     dibujo, verticesVecinos, iniciarDibujo, detenerDibujo, alCambiarDibujo,
