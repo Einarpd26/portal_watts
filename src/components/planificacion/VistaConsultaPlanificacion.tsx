@@ -16,7 +16,7 @@ import { usePantallaCompleta } from '@/hooks/usePantallaCompleta';
 import { cn } from '@/utils/cn';
 import { parametrosDePlanificacion, urlDeReporte } from '@/utils/reportes';
 import { DIAS_ORDEN, DIA_LABELS, type DiaKey } from '@/utils/diasSemana';
-import { FILTROS_CONSULTA_INICIALES, filtrarConsulta, opcionesDeConsulta, type FiltrosConsulta } from '@/utils/consultaPlanificacion';
+import { FACETAS, FILTROS_CONSULTA_INICIALES, depurarFiltros, filtrarConsulta, opcionesDeConsulta, opcionesSegunFiltros, type FiltrosConsulta } from '@/utils/consultaPlanificacion';
 import { descripcionDeVisita, propiedadesDeRutas } from '@/utils/planificacionMapa';
 import type { ConsultaPlanificacion } from '@/types';
 
@@ -26,10 +26,8 @@ interface VistaConsultaPlanificacionProps {
 
 const nulo = (valor: string) => (valor === '' ? null : Number(valor));
 
-const opcionesDe = (todos: string, pares: Array<[number, string]>) => [
-  { valor: '', texto: todos },
-  ...pares.map(([id, nombre]) => ({ valor: String(id), texto: nombre })),
-];
+// Sin opción «Todos»: con nada elegido el selector muestra su texto de ayuda, y el botón «×» quita la elección
+const opcionesDe = (pares: Array<[number, string]>) => pares.map(([id, nombre]) => ({ valor: String(id), texto: nombre }));
 
 /**
  * Consulta de la planificación de todo el alcance del usuario (CU-10), en solo lectura, con la misma estructura de
@@ -46,7 +44,10 @@ export default function VistaConsultaPlanificacion({ consulta }: VistaConsultaPl
   // Pantalla completa: la columna del mapa (en el celular, toda la tarjeta, para conservar la hoja inferior)
   const { ref: columnaMapaRef, activa: pantallaCompleta, alternar: alternarPantallaCompleta } = usePantallaCompleta<HTMLDivElement>();
 
+  // Lo que existe al alcance decide qué filtros se ofrecen (no hay supervisor que elegir si hay uno solo); lo que se puede
+  // elegir en cada uno depende de los demás filtros (filtros encadenados)
   const opciones = useMemo(() => opcionesDeConsulta(consulta.rutas, consulta.slots), [consulta.rutas, consulta.slots]);
+  const disponibles = useMemo(() => opcionesSegunFiltros(consulta.rutas, consulta.slots, consulta.visitas, filtros), [consulta.rutas, consulta.slots, consulta.visitas, filtros]);
   const { rutas, visitas } = useMemo(
     () => filtrarConsulta(consulta.rutas, consulta.slots, consulta.visitas, filtros),
     [consulta.rutas, consulta.slots, consulta.visitas, filtros]
@@ -89,7 +90,9 @@ export default function VistaConsultaPlanificacion({ consulta }: VistaConsultaPl
   );
 
   const cambiar = (cambio: Partial<FiltrosConsulta>) => {
-    const siguientes = { ...filtros, ...cambio };
+    // Lo que el filtro recién elegido deja sin sentido en los otros se limpia; el que cambió manda
+    const cambiado = FACETAS.find((faceta) => faceta in cambio) ?? null;
+    const siguientes = depurarFiltros(consulta.rutas, consulta.slots, consulta.visitas, { ...filtros, ...cambio }, cambiado);
     setFiltros(siguientes);
     // Una selección que el filtro oculta deja de tener sentido
     if (seleccionId !== null && !filtrarConsulta(consulta.rutas, consulta.slots, consulta.visitas, siguientes).rutas.some((r) => r.id === seleccionId)) {
@@ -102,22 +105,21 @@ export default function VistaConsultaPlanificacion({ consulta }: VistaConsultaPl
   }
 
   const elegida = rutas.find((r) => r.id === seleccionId) ?? null;
-  const rutasParaElegir = [...consulta.rutas].sort((a, b) => a.ruta.localeCompare(b.ruta)).map((r): [number, string] => [r.id, r.ruta]);
 
   const selectorSucursal =
     opciones.sucursales.length > 1 ? (
-      <SelectorCompacto etiqueta="Sucursal" valor={filtros.idSucursal === null ? '' : String(filtros.idSucursal)} onCambiar={(v) => cambiar({ idSucursal: nulo(v) })} opciones={opcionesDe('Todas las sucursales', opciones.sucursales)} />
+      <SelectorCompacto etiqueta="Sucursal" valor={filtros.idSucursal === null ? '' : String(filtros.idSucursal)} onCambiar={(v) => cambiar({ idSucursal: nulo(v) })} placeholder="Todas las sucursales" limpiable opciones={opcionesDe(disponibles.sucursales)} />
     ) : null;
-  const selectorZona = <SelectorCompacto buscable etiqueta="Zona" valor={filtros.idZona === null ? '' : String(filtros.idZona)} onCambiar={(v) => cambiar({ idZona: nulo(v) })} opciones={opcionesDe('Todas las zonas', opciones.zonas)} />;
+  const selectorZona = <SelectorCompacto buscable etiqueta="Zona" valor={filtros.idZona === null ? '' : String(filtros.idZona)} onCambiar={(v) => cambiar({ idZona: nulo(v) })} placeholder="Todas las zonas" limpiable opciones={opcionesDe(disponibles.zonas)} />;
   // Con un solo supervisor a la vista (p. ej. un Fiscalizador cuya sucursal tiene uno solo) el filtro no aporta nada
   const selectorSupervisor =
     opciones.supervisores.length > 1 ? (
-      <SelectorCompacto buscable etiqueta="Supervisor" valor={filtros.idSupervisor === null ? '' : String(filtros.idSupervisor)} onCambiar={(v) => cambiar({ idSupervisor: nulo(v) })} opciones={opcionesDe('Todos los supervisores', opciones.supervisores)} />
+      <SelectorCompacto buscable etiqueta="Supervisor" valor={filtros.idSupervisor === null ? '' : String(filtros.idSupervisor)} onCambiar={(v) => cambiar({ idSupervisor: nulo(v) })} placeholder="Todos los supervisores" limpiable opciones={opcionesDe(disponibles.supervisores)} />
     ) : null;
   const selectorVendedor = (
-    <SelectorCompacto buscable etiqueta="Vendedor" valor={filtros.idVendedor === null ? '' : String(filtros.idVendedor)} onCambiar={(v) => cambiar({ idVendedor: nulo(v) })} opciones={opcionesDe('Todos los vendedores', opciones.vendedores)} />
+    <SelectorCompacto buscable etiqueta="Vendedor" valor={filtros.idVendedor === null ? '' : String(filtros.idVendedor)} onCambiar={(v) => cambiar({ idVendedor: nulo(v) })} placeholder="Todos los vendedores" limpiable opciones={opcionesDe(disponibles.vendedores)} />
   );
-  const selectorRuta = <SelectorCompacto buscable etiqueta="Ruta" valor={filtros.idRuta === null ? '' : String(filtros.idRuta)} onCambiar={(v) => cambiar({ idRuta: nulo(v) })} opciones={opcionesDe('Todas las rutas', rutasParaElegir)} />;
+  const selectorRuta = <SelectorCompacto buscable etiqueta="Ruta" valor={filtros.idRuta === null ? '' : String(filtros.idRuta)} onCambiar={(v) => cambiar({ idRuta: nulo(v) })} placeholder="Todas las rutas" limpiable opciones={opcionesDe(disponibles.rutas)} />;
   const selectorDia = <SelectorDia modo="cobertura" dia={filtros.dia} onDia={(dia) => cambiar({ dia })} />;
 
   const lista = (claseAltura?: string, llenaLaColumna = false) => (

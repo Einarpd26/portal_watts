@@ -24,6 +24,8 @@ interface SearchSelectProps {
   ubicacionMenu?: "auto" | "top" | "bottom";
   /** Texto del control mientras no haya una opción elegida (valor sin opción que lo represente) */
   placeholder?: string;
+  /** Muestra un botón «×» dentro del control que quita la elección (el valor pasa a «»); con el placeholder equivale a «Todos» */
+  limpiable?: boolean;
   /** Marca el control con borde rojo; el mensaje lo muestra quien lo usa */
   conError?: boolean;
   /** id del campo de entrada, para enlazar un <label> */
@@ -53,6 +55,7 @@ const CLASES: ClassNamesConfig<Opcion, false> = {
   indicatorsContainer: () => "pr-2",
   indicatorSeparator: () => "hidden",
   dropdownIndicator: () => "p-1 text-gray-400",
+  clearIndicator: () => "cursor-pointer p-1 text-gray-400 transition-colors hover:text-gray-700",
   menu: () => "mt-1 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg",
   menuList: () => "max-h-60 py-1",
   option: ({ isSelected, isFocused }) =>
@@ -76,6 +79,7 @@ export default function SearchSelect({
   deshabilitado = false,
   ubicacionMenu = "auto",
   placeholder,
+  limpiable = false,
   conError = false,
   idCampo,
 }: SearchSelectProps) {
@@ -91,8 +95,10 @@ export default function SearchSelect({
       placeholder={placeholder}
       options={lista}
       value={elegida}
+      isClearable={limpiable}
       onChange={(o) => {
         if (o) onCambiar(o.value);
+        else if (limpiable) onCambiar("");
       }}
       isSearchable={buscable}
       isDisabled={deshabilitado}
