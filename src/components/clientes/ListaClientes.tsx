@@ -6,9 +6,11 @@ import { CLASES_ABC } from '@/utils/clientesMapa';
 import { formatearMonto } from '@/utils/formatoClientes';
 import type { ClienteMapa } from '@/types';
 import CampoBusqueda from '@/components/ui/CampoBusqueda';
+import { Paginacion } from '@/components/ui/Paginacion';
+import { usePaginacion } from '@/hooks/usePaginacion';
 
-/** Cuántos clientes se listan a la vez: el mapa muestra todos, la lista es para encontrar uno */
-const LIMITE = 50;
+/** Cuántos clientes tiene cada página de la lista: el mapa muestra todos, la lista es para encontrar uno */
+const POR_PAGINA = 50;
 
 interface ListaClientesProps {
   clientes: ClienteMapa[];
@@ -21,6 +23,8 @@ interface ListaClientesProps {
   onTexto: (texto: string) => void;
   /** Lo que va bajo el buscador: los interruptores de clase */
   filtros?: React.ReactNode;
+  /** Resume los filtros puestos: al cambiar, la lista vuelve a la primera página */
+  clavePagina: string;
 }
 
 const ordenDeClase = (c: ClienteMapa) => (c.clasificacion === null ? CLASES_ABC.length : CLASES_ABC.indexOf(c.clasificacion));
@@ -29,9 +33,9 @@ const ordenDeClase = (c: ClienteMapa) => (c.clasificacion === null ? CLASES_ABC.
  * Los mismos clientes del mapa en una lista (ADR-004 D7): permite elegir uno sin tocar puntos, con teclado o
  * lector de pantalla. Primero los de mayor clase y, dentro de cada clase, los que más vendieron.
  */
-export default function ListaClientes({ clientes, seleccionId, onElegir, onVerEnMapa, texto, onTexto, filtros }: ListaClientesProps) {
+export default function ListaClientes({ clientes, seleccionId, onElegir, onVerEnMapa, texto, onTexto, filtros, clavePagina }: ListaClientesProps) {
   const ordenados = [...clientes].sort((a, b) => ordenDeClase(a) - ordenDeClase(b) || b.total_ventas - a.total_ventas);
-  const visibles = ordenados.slice(0, LIMITE);
+  const { pagina, totalPaginas, visibles, irA, desde, hasta } = usePaginacion(ordenados, POR_PAGINA, clavePagina);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -69,10 +73,13 @@ export default function ListaClientes({ clientes, seleccionId, onElegir, onVerEn
           </li>
         ))}
       </ul>
-      {clientes.length > LIMITE && (
-        <p className="border-t border-gray-100 px-3 py-1.5 text-[11px] text-gray-500">
-          Mostrando {LIMITE} de {clientes.length}. Afina con los filtros para ver el resto.
-        </p>
+      {totalPaginas > 1 && (
+        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-gray-100 px-3 py-2">
+          <span className="text-[11px] text-gray-500">
+            {desde}–{hasta} de {clientes.length}
+          </span>
+          <Paginacion pagina={pagina} totalPaginas={totalPaginas} onCambiar={irA} compacta />
+        </div>
       )}
     </div>
   );

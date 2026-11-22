@@ -1,6 +1,8 @@
 "use client";
 
 import Button from '@/components/ui/Button';
+import { Paginacion } from '@/components/ui/Paginacion';
+import { usePaginacion } from '@/hooks/usePaginacion';
 import type { UsuarioActivo } from '@/types';
 
 export interface UsuariosTableProps {
@@ -12,6 +14,9 @@ export interface UsuariosTableProps {
   callerIdSucursal: number | null;
   callerIdPersona: number;
 }
+
+/** Cuántas cuentas tiene cada página de la tabla */
+const CUENTAS_POR_PAGINA = 10;
 
 function RolBadge({ codigo }: { codigo: string }) {
   return (
@@ -42,6 +47,8 @@ export function UsuariosTable({
   callerIdSucursal,
   callerIdPersona,
 }: UsuariosTableProps) {
+  const paginacion = usePaginacion(users, CUENTAS_POR_PAGINA, '');
+
   const canRevokeUser = (user: UsuarioActivo): boolean => {
     if (user.id_persona === callerIdPersona) return false;
     if (callerAlcanceTipo === 'GLOBAL') return true;
@@ -112,7 +119,7 @@ export function UsuariosTable({
                 </td>
               </tr>
             ) : (
-              users.map((user) => {
+              paginacion.visibles.map((user) => {
                 const primaryRole = user.roles[0];
                 const canRevoke = canRevokeUser(user);
 
@@ -189,6 +196,15 @@ export function UsuariosTable({
           </tbody>
         </table>
       </div>
+
+      {paginacion.totalPaginas > 1 && (
+        <div className="flex flex-col items-center justify-between gap-2 border-t border-gray-100 px-4 py-3 sm:flex-row sm:px-6">
+          <span className="text-xs text-gray-500">
+            {paginacion.desde}–{paginacion.hasta} de {users.length}
+          </span>
+          <Paginacion pagina={paginacion.pagina} totalPaginas={paginacion.totalPaginas} onCambiar={paginacion.irA} deshabilitada={isLoading} />
+        </div>
+      )}
     </div>
   );
 }
