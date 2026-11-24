@@ -84,6 +84,7 @@ export default function FilaSlot({
   return (
     <tr
       ref={setNodeRef}
+      // Transformación calculada en tiempo de ejecución por el arrastre (dnd-kit)
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn('border-t border-gray-200', isDragging && 'opacity-40')}
     >

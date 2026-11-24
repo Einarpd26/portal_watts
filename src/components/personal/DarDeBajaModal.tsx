@@ -5,6 +5,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { todayBolivia } from '@/utils/boliviaTime';
+import { cn } from '@/utils/cn';
 import type { PersonaConAsignacion } from '@/types';
 import type { BajaForm } from '@/hooks/useGestionPersonal';
 
@@ -77,9 +78,10 @@ export default function DarDeBajaModal({
 
           {hasAccount && (
             <label
-              className={`flex items-start gap-3 rounded-input border border-gray-200 p-3 text-sm ${
-                isFuture ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-50'
-              }`}
+              className={cn(
+                'flex items-start gap-3 rounded-input border border-gray-200 p-3 text-sm',
+                isFuture ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-50',
+              )}
             >
               <input
                 type="checkbox"

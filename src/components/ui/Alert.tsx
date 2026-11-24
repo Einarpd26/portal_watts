@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cn } from "@/utils/cn";
 
 // Contrato visual: docs/diseno/tokens-de-marca.md §6 — Alert
 type AlertState = "success" | "error" | "info" | "warning";
@@ -26,7 +27,7 @@ export default function Alert({
   return (
     <div
       role={state === "error" ? "alert" : "status"}
-      className={`w-full rounded-xl border-[1.5px] p-4 ${STATE_CLASSES[state]}`}
+      className={cn("w-full rounded-xl border-[1.5px] p-4", STATE_CLASSES[state])}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-0.5">
