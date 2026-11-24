@@ -1,4 +1,7 @@
+"use client";
+
 import { useId, useState } from "react";
+import { cn } from "@/utils/cn";
 import type { InputHTMLAttributes } from "react";
 
 // Contrato visual: docs/diseno/tokens-de-marca.md §6 — Input
@@ -28,9 +31,10 @@ export default function Input({
     <div>
       <label
         htmlFor={inputId}
-        className={`block mb-1 font-semibold uppercase tracking-[0.08em] text-gray-500 ${
-          compact ? "text-[10px]" : "text-xs"
-        }`}
+        className={cn(
+          "block mb-1 font-semibold uppercase tracking-[0.08em] text-gray-500",
+          compact ? "text-[10px]" : "text-xs",
+        )}
       >
         {label}
       </label>
@@ -40,16 +44,14 @@ export default function Input({
           id={inputId}
           type={resolvedType}
           aria-invalid={error ? true : undefined}
-          className={[
+          className={cn(
             "w-full rounded-input border-[1.5px] px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none transition-[border-color,box-shadow] duration-150",
             error
               ? "border-error-500 focus:border-error-500 focus:shadow-[0_0_0_3px_rgba(239,68,68,.15)]"
               : "border-gray-200 focus:border-primary-600 focus:shadow-[0_0_0_3px_rgba(220,38,38,.15)]",
             showPasswordToggle && "pr-10",
             className,
-          ]
-            .filter(Boolean)
-            .join(" ")}
+          )}
           {...rest}
         />
 

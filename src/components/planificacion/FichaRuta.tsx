@@ -73,6 +73,7 @@ export default function FichaRuta({ ruta, slots, visitas, duplicada, edicion, as
               {/* El color del slot es un dato del mapa: se aplica como estilo */}
               <span
                 className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10"
+                // Color calculado en tiempo de ejecución según la posición del slot
                 style={{ backgroundColor: colorDeSlot(Math.max(posicionDe(v.id_slot), 0)) }}
                 aria-hidden="true"
               />

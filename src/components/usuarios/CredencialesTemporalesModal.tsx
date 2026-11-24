@@ -1,5 +1,8 @@
+'use client';
+
 import React, { useState } from 'react';
 import Button from '@/components/ui/Button';
+import { cn } from '@/utils/cn';
 import type { CredencialesTemporales } from '@/hooks/useGestionUsuarios';
 
 interface CredencialesTemporalesModalProps {
@@ -24,7 +27,7 @@ function CopyField({ label, value, mono = false }: { label: string; value: strin
     <div>
       <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">{label}</p>
       <div className="flex items-center gap-2 rounded-input border border-gray-200 bg-gray-50 px-3 py-2">
-        <span className={`min-w-0 flex-1 select-all break-all text-sm text-gray-900 ${mono ? 'font-mono' : ''}`}>
+        <span className={cn('min-w-0 flex-1 select-all break-all text-sm text-gray-900', mono && 'font-mono')}>
           {value}
         </span>
         <button

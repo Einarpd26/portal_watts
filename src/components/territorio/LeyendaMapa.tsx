@@ -15,6 +15,7 @@ function Punto({ color }: { color: string | undefined }) {
   return (
     <span
       className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10"
+      // Color calculado en tiempo de ejecución a partir de los datos (zona o estado)
       style={{ backgroundColor: color }}
       aria-hidden="true"
     />
